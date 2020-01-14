@@ -1,14 +1,13 @@
 ThisBuild / scalaVersion := "2.12.10"
-ThisBuild / organization := "org.rise-lang"
+ThisBuild / organization := "org.elevate-lang"
 
 lazy val shine = (project in file("."))
-  .aggregate(executor)
-  .dependsOn(executor, rise)
+  .dependsOn(rise)
   .settings(
-    name    := "shine",
+    name    := "elevate",
     version := "1.0",
 
-    javaOptions ++= Seq("-Djava.library.path=lib/executor/lib/Executor/build", "-Xss16m"),
+    javaOptions ++= Seq("-Xss16m"),
 
     scalacOptions ++= Seq(
       "-Xfatal-warnings",
@@ -40,7 +39,5 @@ lazy val shine = (project in file("."))
       "com.github.ghik" %% "silencer-lib" % "1.4.3" % Provided cross CrossVersion.full
     )
   )
-
-lazy val executor   = (project in file("lib/executor"))
 
 lazy val rise       = (project in file("lib/rise"))
