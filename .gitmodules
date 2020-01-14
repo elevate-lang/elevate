@@ -1,6 +1,3 @@
-[submodule "lib/executor"]
-	path = lib/executor
-	url = https://github.com/rise-lang/executor.git
 [submodule "lib/rise"]
 	path = lib/rise
 	url = https://github.com/rise-lang/rise.git
