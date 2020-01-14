@@ -1,7 +1,7 @@
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / organization := "org.elevate-lang"
 
-lazy val shine = (project in file("."))
+lazy val elevate = (project in file("."))
   .dependsOn(rise)
   .settings(
     name    := "elevate",
