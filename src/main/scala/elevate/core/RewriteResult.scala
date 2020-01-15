@@ -12,7 +12,7 @@ sealed trait RewriteResult[P] {
 }
 
 case class Success[P](p: P) extends RewriteResult[P] {
-  override def getProgramOrElse(p: P): P = p
+  override def getProgramOrElse(x: P): P = p
   override def get: P = p
 
   override def mapSuccess(f: P => P): RewriteResult[P] = Success(f(p))
