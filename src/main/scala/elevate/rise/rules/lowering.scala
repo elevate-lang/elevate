@@ -18,6 +18,14 @@ object lowering {
     override def toString = "mapSeq"
   }
 
+  case object mapSeqUnroll extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
+      case _       => Failure(mapSeqUnroll)
+    }
+    override def toString = "mapSeqUnroll"
+  }
+
   case class mapGlobal(dim: Int = 0) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Map() => Success(rise.OpenCL.TypedDSL.mapGlobal(dim) :: e.t)
