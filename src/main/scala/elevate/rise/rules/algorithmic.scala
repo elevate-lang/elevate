@@ -5,6 +5,7 @@ import elevate.core.strategies.predicate._
 import elevate.rise.strategies.predicate._
 import elevate.rise.rules.traversal._
 import elevate.rise._
+import elevate.rise.strategies.normalForm.LCNF
 import rise.core._
 import rise.core.TypedDSL._
 import rise.core.primitives._
@@ -28,7 +29,7 @@ object algorithmic {
       case App(Map(), f) => Success((split(n) >> map(map(f)) >> join) :: e.t)
       case _             => Failure(splitJoin(n))
     }
-    override def toString = s"splitJoin($n)"
+    override def toString: String = s"splitJoin($n)"
   }
 
   // fusion / fission
@@ -39,7 +40,7 @@ object algorithmic {
       case App(App(Map(), f), App(App(Map(), g), arg)) => Success(map(typed(g) >> f)(arg) :: e.t)
       case _                                           => Failure(mapFusion)
     }
-    override def toString = s"mapFusion"
+    override def toString: String = s"mapFusion"
   }
 
   // fission of the last function to be applied inside a map
@@ -55,7 +56,7 @@ object algorithmic {
         Success((app(map, lambda(untyped(x), gx)) >> map(f)) :: e.t)
       case _ => Failure(mapLastFission)
     }
-    override def toString = s"mapLastFission"
+    override def toString: String = s"mapLastFission"
   }
 
   // identities
@@ -63,16 +64,32 @@ object algorithmic {
   def idAfter: Strategy[Rise] = ` -> id`
   case object ` -> id` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = Success((typed(e) |> id) :: e.t)
-    override def toString = "idAfter"
+    override def toString: String = "idAfter"
   }
 
   def liftId: Strategy[Rise] = `id -> *id`
   case object `id -> *id` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id(), arg) => Success(app(map(id), arg) :: e.t)
+      case App(i@Id(), arg) => i.t match {
+        case FunType(ArrayType(_,_),_) =>
+          Success(LCNF(app(map(id), arg) :: e.t))
+        case _ => Failure(liftId)
+      }
       case _              => Failure(liftId)
     }
-    override def toString = "liftId"
+    override def toString: String = "liftId"
+  }
+
+  def idToCopy: Strategy[Rise] = `id -> fun(x => x)`
+  case object `id -> fun(x => x)` extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(i@Id(), arg) => (i.t, arg.t) match {
+        case (FunType(in: ScalarType, out: ScalarType), argT: ScalarType)
+          if in == out && in == argT =>
+          Success(arg)
+      }
+      case _ => Failure(idToCopy)
+    }
   }
 
   def createTransposePair: Strategy[Rise] = `id -> T >> T`
@@ -81,7 +98,7 @@ object algorithmic {
       case App(Id(), arg) => Success(app(transpose >> transpose, arg) :: e.t)
       case _              => Failure(createTransposePair)
     }
-    override def toString = "createTransposePair"
+    override def toString: String = "createTransposePair"
   }
 
   def `_-> T >> T`: Strategy[Rise] = idAfter `;` createTransposePair
@@ -92,7 +109,7 @@ object algorithmic {
       case App(Transpose(), App(Transpose(), x)) => Success(x :: e.t)
       case _                                     => Failure(removeTransposePair)
     }
-    override def toString = "createTransposePair"
+    override def toString: String = "createTransposePair"
   }
 
   // slideSeq fusion

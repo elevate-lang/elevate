@@ -9,8 +9,10 @@ import rise.core.types._
 
 object traversal {
 
-  // Handle all Rise-AST nodes that contain one or no subexpressions (all except App)
-  private def traverseSingleSubexpression: Strategy[Rise] => Rise => Option[RewriteResult[Rise]] =
+  // Handle all Rise-AST nodes that contain one or no subexpressions
+  // (all except App)
+  private def traverseSingleSubexpression:
+  Strategy[Rise] => Rise => Option[RewriteResult[Rise]] =
     s => {
       case App(_,_)                 => throw new Exception("this should not happen")
       case Identifier(_)            => None
