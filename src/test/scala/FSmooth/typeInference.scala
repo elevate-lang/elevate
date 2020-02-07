@@ -3,7 +3,7 @@ package FSmooth
 import FSmooth.DSL._
 import FSmooth.MSmooth._
 
-class typeInference extends test_util.Tests {
+class typeInference extends elevate.test_util.Tests {
 
   test("Type inference MSmooth vector constructs") {
     println("vectorRange = " + TypeInference.infer(vectorRange))

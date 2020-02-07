@@ -12,7 +12,7 @@ import rise.core._
 import elevate.util._
 
 
-class fissionFusion extends test_util.Tests {
+class fissionFusion extends elevate.test_util.Tests {
 
   def eq(a: Expr, b: Expr): Unit = {
     if (BENF(a).get != BENF(b).get) {

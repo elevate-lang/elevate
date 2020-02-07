@@ -8,7 +8,7 @@ import elevate.core.strategies.traversal.oncetd
 import elevate.fsmooth.rules._
 import elevate.fsmooth.traversal._
 
-class rewriteExamples extends test_util.Tests {
+class rewriteExamples extends elevate.test_util.Tests {
 
   test("Example5: Matrix Transpose") {
     val e = fun(M => matrixTranspose(matrixTranspose(M)))

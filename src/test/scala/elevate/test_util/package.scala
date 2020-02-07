@@ -1,3 +1,5 @@
+package elevate
+
 import com.github.ghik.silencer.silent
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

@@ -8,7 +8,7 @@ import elevate.rise.strategies.normalForm._
 import elevate.util._
 import rise.core.TypedDSL.{reorder => _, _}
 
-class halide extends test_util.Tests {
+class halide extends elevate.test_util.Tests {
   private def LCNFrewrite(a: Rise, s: Strategy[Rise], b: Rise): Unit = {
     val (closedA, nA) = makeClosed(a)
     val (closedB, nB) = makeClosed(b)
