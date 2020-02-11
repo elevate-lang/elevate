@@ -261,7 +261,7 @@ object movement {
   // nested map + reduce
 
   // todo simplify
-  case object liftReduce extends Strategy[Rise] {
+  case object liftReduceOld extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
 
       case App(Map(), Lambda(mapVar, App(App(App(rx@(Reduce() | ReduceSeq()), op),
@@ -304,5 +304,108 @@ object movement {
       case _ => Failure(liftReduce)
     }
     override def toString = "liftReduce"
+  }
+
+  case object liftReduce extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+
+      case App(Map(), Lambda(mapVar, App(App(App(rx@(Reduce() | ReduceSeq()), op),
+      init :: (dt: DataType)), reduceArg))) :: FunType(inputT@ArrayType(size, ArrayType(_,_)), _) =>
+
+      def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise], reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
+          Success((
+            untyped(rx)(fun((acc, y) =>
+              map(fun(x => app(app(op, fst(x)), snd(x)))) $ zippedMapArg(acc, y)
+            ))(generate(fun(IndexType(size) ->: dt)(_ => init))) $ reduceArgFun
+          ) :: e.t)
+        }
+
+        reduceArg match {
+          // simple case (see test "lift reduce")
+          // for some reason mapVar might be untyped, hence simply trying `==` fails
+          case x if x == mapVar =>
+            reduceMap(
+              (acc, y) => zip(acc, y),
+              transpose
+            )
+          // zipped input (see test "MM to MM-LoopMKN")
+          case App(App(Zip(), u), v) =>
+            val notToBeTransposed = if (mapVar == u) v else u
+            reduceMap(
+              zippedMapArg = (acc, y) =>
+                zip(acc, map(fun(bs => pair(bs, fst(y)))) $ snd(y)),
+              reduceArgFun = zip(notToBeTransposed) o transpose
+            )
+
+          // expression is not in RNF!
+          case a@App(_,_) => ???
+
+          case _ =>
+            // todo implement recursively
+            val reduceArgTransposed = inputT match {
+              case ArrayType(_, ArrayType(_, ArrayType(_,ArrayType(_,_)))) => transpose o map(transpose) o map(map(transpose))
+              case ArrayType(_, ArrayType(_, ArrayType(_,_))) => transpose o map(transpose)
+              case ArrayType(_, ArrayType(_,_)) => transpose
+              case _ => ???
+            }
+
+            val result = reduceMap(
+              (acc, y) => zip(acc, y),
+              reduceArgTransposed
+            )
+            result
+        }
+
+      case _ => Failure(liftReduce)
+    }
+    override def toString = "liftReduce"
+  }
+
+  case object liftReduceInReduceOperator extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case op@Lambda(acc_e2348, Lambda(y_e2349,
+      App(App(Map(), Lambda(e2350,
+      App(App(App(ReduceX(), op2), init), transInput))),
+      App(App(zipPrim, inputAcc :: accT), inputY :: yT)) :: resultT)) =>
+
+        // this is the operator for the outer reduce
+        val newOuterReduceOp = fun(accT)(acc => fun(yT)(y => // acc :: 32.32.float, y :: 32.32.4.(float,float)
+          mapSeq(mapSeq(fun(x => x))) o
+            (reduce(
+              // inner reduce op
+              fun((innerAcc, innerY) =>  // innerAcc :: 32.32.float, innerY :: 32.32.(float,float)
+                ((map(map(fun(x => x._1 + (x._2._1 * x._2._2)))) o map(fun(d => zip(d._1, d._2)))) $ zip(innerAcc, innerY)) //)
+              ))(
+              // init
+              acc) o
+              //mapSeq(fun(a => mapSeq(fun(x => x)) $ a)) $ acc) o
+              transpose o map(transpose)) $ y))
+
+        Success(newOuterReduceOp)
+
+      case op@Lambda(acc_e1504, Lambda(y_e1505,
+      App(App(Map(), Lambda(e1506,
+      App(App(Lambda(e668, Lambda(e669,
+      App(addOp, App(App(App(ReduceX(), op2), init), e669_2))
+      )), fst), snd))),
+      // unapply zipped branches to get input types
+      App(App(zipPrim, inputAcc :: accT), inputY :: yT)) :: resultT)) =>
+
+        // this is the operator for the outer reduce
+        val newOuterReduceOp = fun(accT)(acc => fun(yT)(y => // acc :: 32.float, y :: 32.4.(float,float)
+          //mapSeq(fun(x => x)) o
+          (reduce(
+            // inner reduce op
+            fun((innerAcc, innerY) =>  // innerAcc :: 32.float, innerY :: 32.(float,float)
+              (map(fun(x => x._1 + (x._2._1 * x._2._2))) $ zip(innerAcc, innerY)) //)
+            ))(
+            // init
+            //mapSeq(fun(x => x)) $ acc) o
+            acc) o
+            transpose) $ y))
+
+        Success(newOuterReduceOp)
+      case _ => Failure(liftReduceInReduceOperator)
+    }
   }
 }

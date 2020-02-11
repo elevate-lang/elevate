@@ -2,9 +2,11 @@ package elevate.rise.rules
 
 import elevate.core._
 import elevate.core.strategies.predicate._
+import elevate.core.strategies.traversal.tryAll
 import elevate.rise.strategies.predicate._
 import elevate.rise.rules.traversal._
 import elevate.rise._
+import elevate.rise.strategies.normalForm.LCNF
 import rise.core._
 import rise.core.TypedDSL._
 import rise.core.primitives._
@@ -41,6 +43,42 @@ object algorithmic {
     }
     override def toString = s"mapFusion"
   }
+
+  // result needs to be a reduceSeq always?
+  case object fuseReduceMap extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(
+      //reduce
+      App(App(ReduceX(), op), init),
+      //map
+      App(App(Map(), f), mapArg)
+      ) =>
+        val red = op.t match {
+          case FunType(a, FunType(b, c)) if a == b && b == c => reduce
+          case FunType(_, FunType(_, _)) => reduceSeq
+          case _ => ???
+        }
+        Success(
+          (red(fun((acc, y) =>
+            typed(op)(acc)(typed(f)(y))))(init) $ mapArg) :: e.t)
+
+      case _ => Failure(fuseReduceMap)
+    }
+  }
+
+  case object fissionReduceMap extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      // todo: think about reduce case
+      case App(App(App(ReduceSeq(),
+            Lambda(acc, Lambda(y,
+              App(App(op, acc2), a@App(f, y2))
+            ))), init), arg) if
+      acc == acc2 && contains[Rise](y).apply(y2) =>
+        Success((reduce(op)(init) o map(lambda(TDSL[Identifier](y), typed(a)))) $ arg)
+      case _ => Failure(fissionReduceMap)
+    }
+  }
+
 
   // fission of the last function to be applied inside a map
   def mapLastFission: Strategy[Rise] = `*(g >> .. >> f) -> *(g >> ..) >> *f`
@@ -107,4 +145,47 @@ object algorithmic {
       Success(oclSlideSeq(rot)(a)(sz)(sp)(wr)(typed(f) >> g)(e) :: expr.t)
     case _ => Failure(slideSeqFusion)
   }
+
+  // the inner strategies shouldn't be accessible from the outside
+  // because they might change the semantics of a program
+  case object freshLambdaIdentifier extends Strategy[Rise] {
+    case object freshIdentifier extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case Identifier(name) :: t => Success(Identifier(freshName("fresh_"+ name))(t))
+        case _ => Failure(freshIdentifier)
+      }
+    }
+
+    case class replaceIdentifier(curr: Identifier, newId: Identifier) extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case x:Identifier if curr == x => Success(newId)
+        case _ => Failure(replaceIdentifier(curr, newId))
+      }
+    }
+
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case Lambda(x,e) :: t if contains[Rise](x).apply(e) => {
+        val newX = freshIdentifier(x).get.asInstanceOf[Identifier]
+        val newE = tryAll(replaceIdentifier(x, newX)).apply(e).get
+        Success(Lambda(newX, newE)(t))
+      }
+      case _ => Failure(freshLambdaIdentifier)
+    }
+  }
+
+
+  // requires type information!
+  case class blockedReduce(n: Nat) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(App(App(Reduce(), op :: FunType(yT, FunType(initT, outT))), init), arg) if yT == outT =>
+        // avoid having two lambdas using the same identifiers
+        val freshOp = tryAll(freshLambdaIdentifier).apply(op).get
+        Success(
+          LCNF((reduceSeq(fun((acc, y) =>
+            typed(op)(acc, reduce(freshOp)(init)(y))))(init) o split(n)) $ arg))
+
+      case _ => Failure(blockedReduce(n))
+    }
+  }
+
 }
