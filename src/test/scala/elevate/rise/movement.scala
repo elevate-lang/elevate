@@ -11,7 +11,7 @@ import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
 import rise.core.types.f32
 
-class movement extends test_util.Tests {
+class movement extends elevate.test_util.Tests {
 
   // transpose
 

@@ -16,7 +16,7 @@ import rise.core.types.NatKind
 import rise.core.primitives._
 
 
-class traversals extends test_util.Tests {
+class traversals extends elevate.test_util.Tests {
 
   test("rewrite simple elevate strategy") {
     val expr = fun(f => fun(g => map(f) >> map(g)))
