@@ -9,8 +9,12 @@ import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
 import rise.core.types.{ArrayType, DataType, FunType, IndexType}
 
-// Describing possible movements between pairs of rise primitives (potentially nested in maps)
+// Describing possible movements between pairs of rise primitives
+// (potentially nested in maps)
 
+// todo: remove inspection prevention
+
+//noinspection ScalaStyle
 // todo: should all rules expect LCNF-normalized expressions as input?
 object movement {
 
