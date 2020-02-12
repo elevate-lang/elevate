@@ -8,7 +8,7 @@ import elevate.rise.strategies.traversal._
 import elevate.util._
 import rise.core.TypedDSL._
 
-class fmap extends test_util.Tests {
+class fmap extends elevate.test_util.Tests {
 
   test("fmap basic level0") {
     assert(betaEtaEquals(

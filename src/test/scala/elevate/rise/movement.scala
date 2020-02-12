@@ -9,9 +9,9 @@ import elevate.util._
 import rise.core._
 import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
-import rise.core.types.float
+import rise.core.types.f32
 
-class movement extends test_util.Tests {
+class movement extends elevate.test_util.Tests {
 
   // transpose
 
@@ -39,7 +39,7 @@ class movement extends test_util.Tests {
 
     val backward: Expr =
       nFun((m, n, k) =>
-        fun((m`.`k`.`float) ->: (k`.`n`.`float) ->: (m`.`n`.`float) ->: float ->: float ->: (n`.`m`.`float))
+        fun((m`.`k`.`f32) ->: (k`.`n`.`f32) ->: (m`.`n`.`f32) ->: f32 ->: f32 ->: (n`.`m`.`f32))
         ((a, b, c, alpha, beta) =>
           (transpose o map(fun(ac =>
             map(fun(bc =>
