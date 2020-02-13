@@ -7,7 +7,7 @@ import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
-import rise.core.types.{ArrayType, DataType, FunType, IndexType}
+import rise.core.types.{ArrayType, DataType, FunType, IndexType, PairType}
 
 // Describing possible movements between pairs of rise primitives
 // (potentially nested in maps)
@@ -312,15 +312,35 @@ object movement {
 
   case object liftReduce extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
+        // new case (can generalize with other case below, gotta figure out
+        // why theres an additional apply
+      case a@App(Map(), Lambda(mapVar,
+      App(App(App(rx@ReduceX(), op),
+      init :: (dt: DataType)), reduceArg)
+      // PairType is new here
+      )) :: FunType(inputT@ArrayType(size, ArrayType(_,PairType(_,_))), _) =>
 
-      case App(Map(), Lambda(mapVar, App(App(App(rx@(Reduce() | ReduceSeq()), op),
-      init :: (dt: DataType)), reduceArg))) :: FunType(inputT@ArrayType(size, ArrayType(_,_)), _) =>
+        println("YES AGAIN")
+        //val result = fun(x =>
 
-      def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise], reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
+        //  reduceSeq(fun(acc, y) => acc)(x._1) $ x
+        //  // unzip2D
+        //  unzip $ map(unzip)
+        //)
+        Success(a)
+
+        // usual case below ----------------------------------------------------
+      case App(Map(), Lambda(mapVar,
+           App(App(App(rx@(Reduce() | ReduceSeq()), op),
+           init :: (dt: DataType)), reduceArg)
+      )) :: FunType(inputT@ArrayType(size, ArrayType(_,_)), _) =>
+
+      def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise],
+                    reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
           Success((
             untyped(rx)(fun((acc, y) =>
               map(fun(x => app(app(op, fst(x)), snd(x)))) $ zippedMapArg(acc, y)
-            ))(generate(fun(IndexType(size) ->: dt)(_ => init))) $ reduceArgFun
+            ))(generate(fun(IndexType(size) ->: dt)(_ => init))) o reduceArgFun
           ) :: e.t)
         }
 
@@ -365,6 +385,45 @@ object movement {
     override def toString = "liftReduce"
   }
 
+  case object liftReduceInReduceOperator2 extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      /*
+      documentation for the concrete case I had:
+      32.(float, 4.(float,float)) -> 32.float (via map(f o reduce))
+      (32.float, 32.4.(float,float)) [unzip]
+      (32.float, 4.32.(float,float)) [transpose $ x._2]
+      now reducing (map(+)) x._2, using x_.1 as init,
+       */
+      case a@App(Map(), Lambda(_,
+      App(_, // <- this function contained add, do I need this?
+      App(App(App(ReduceX(), op), _), _))
+      // PairType  -> I need to be able to unzip
+      // ArrayType -> I need to be able to transpose x._2
+      ) :: FunType(PairType(_,ArrayType(_,_)), _) // lambda.t
+      ) :: FunType(ArrayType(_,_), resultT) =>    // outermost app.t
+
+        println("MATCHED!")
+
+        println(a)
+        val result: TDSL[Rise] =
+          (fun(x =>
+            reduceSeq(
+              fun((acc, y) => // acc::32.float, y::32.(float,float)
+                map(fun(a => typed(op)(a._1)(a._2))) $ zip(acc,y)
+              )
+            )(x._1 :: resultT) o
+              transpose $ x._2) o unzip) :: e.t
+        // import rise.core.dotPrinter.exprToDot
+        // exprToDot("right", result)
+        Success(result)
+      case _ =>
+        Failure(liftReduceInReduceOperator2)
+    }
+    override def toString: String = "liftReduceInReduceOperator2"
+  }
+
+  // todo eventually remove, this ones ugly and I don't even understand why it
+  // todo once worked
   case object liftReduceInReduceOperator extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case op@Lambda(acc_e2348, Lambda(y_e2349,

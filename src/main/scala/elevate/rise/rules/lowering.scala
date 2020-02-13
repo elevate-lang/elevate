@@ -4,7 +4,7 @@ import elevate.core.strategies.basic._
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal.oncetd
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
-import elevate.rise.Rise
+import elevate.rise.{ReduceX, Rise}
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.LCNF
 import elevate.rise.strategies.predicate.isGenerate
@@ -174,7 +174,7 @@ object lowering {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case reduceResult@App(App(App(Reduce(), _),_),_) =>
+      case reduceResult@App(App(App(ReduceX(), _),_),_) =>
         Success(constructCopy(reduceResult.t) $ reduceResult)
       case _ => Failure(copyAfterReduce)
     }

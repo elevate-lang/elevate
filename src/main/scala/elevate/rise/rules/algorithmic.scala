@@ -42,10 +42,9 @@ object algorithmic {
         Success(map(typed(g) >> f)(arg) :: e.t)
       case _ => Failure(mapFusion)
     }
-    override def toString: String = s"mapFusion"
+    override def toString: String = "mapFusion"
   }
 
-  // result needs to be a reduceSeq always?
   case object fuseReduceMap extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(
@@ -53,9 +52,8 @@ object algorithmic {
       App(App(Map(), f), mapArg)     // map
       ) =>
         val red = op.t match {
-          case FunType(a, FunType(b, c)) if a == b && b == c => reduce
-          case FunType(_, FunType(_, _)) => reduceSeq
-          case _ => ??? // does this actually occur?!
+          case FunType(_, yToOutT) if f.t == yToOutT => reduce
+          case _ => reduceSeq
         }
         Success(
           (red(fun((acc, y) =>
@@ -63,19 +61,20 @@ object algorithmic {
 
       case _ => Failure(fuseReduceMap)
     }
+    override def toString: String = "fuseReduceMap"
   }
 
   case object fissionReduceMap extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      // todo: think about reduce case
-      case App(App(App(ReduceSeq(), Lambda(acc, Lambda(y,
-      App(App(op, acc2), a@App(_, y2))))), init), arg) if
+      case App(App(ReduceX(), Lambda(acc, Lambda(y,
+      App(App(op, acc2), f@App(_, y2))))), init) if
       acc == acc2 && contains[Rise](y).apply(y2) =>
-        Success(((reduce(op)(init) o
-          map(lambda(TDSL[Identifier](y), typed(a)))) $ arg) :: e.t
+        Success((reduce(op)(init) o
+          map(lambda(TDSL[Identifier](y), typed(f)))) :: e.t
         )
       case _ => Failure(fissionReduceMap)
     }
+    override def toString: String = "fissionReduceMap"
   }
 
 
