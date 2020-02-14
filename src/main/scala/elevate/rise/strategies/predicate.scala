@@ -1,8 +1,9 @@
 package elevate.rise.strategies
 
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
-import elevate.rise.Rise
-import rise.core.primitives.{Generate, Let, Map, Reduce, Zip}
+import elevate.rise._
+import rise.core.primitives.{Generate, Let, Map, Reduce, ReduceSeq, Zip}
+import rise.core.types.ArrayType
 import rise.core.{App, Identifier, Lambda}
 
 object predicate {
@@ -28,9 +29,26 @@ object predicate {
   case object isReduce extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case r@Reduce() => Success(r)
-      case _          => Failure(isMap)
+      case _          => Failure(isReduce)
     }
     override def toString = "isReduce"
+  }
+
+  case object isReduceSeq extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case r@ReduceSeq() => Success(r)
+      case _             => Failure(isReduceSeq)
+    }
+    override def toString = "isReduce"
+  }
+
+  def isReduceX: Strategy[Rise] = (isReduce <+ isReduceSeq)
+
+  case object isArray extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case e :: ArrayType(_,_) => Success(e)
+      case _ => Failure(isArray)
+    }
   }
 
   case object isGenerate extends Strategy[Rise] {

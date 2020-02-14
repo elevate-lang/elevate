@@ -2,12 +2,12 @@ package elevate.rise.rules
 
 import elevate.core.strategies.basic._
 import elevate.core.strategies.predicate._
-import elevate.core.strategies.traversal.oncetd
+import elevate.core.strategies.traversal.{oncetd, tryAll}
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.{ReduceX, Rise}
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.LCNF
-import elevate.rise.strategies.predicate.isGenerate
+import elevate.rise.strategies.predicate._
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
@@ -130,12 +130,33 @@ object lowering {
 
   // Lowerings used in PLDI submission
 
+  // adds copy after every generate
   val materializeGenerate: Strategy[Rise] =
     normalize.apply(
       argument(function(isGenerate)) `;`
       not(isCopy) `;`
       argument(copyAfterGenerate)
     )
+
+  // adds explicit copies for every init value in reductions
+  val materializeInitOfReduce: Strategy[Rise] =
+    normalize.apply(
+      function(function(isReduceX)) `;`
+      argument(not(isCopy) `;` insertCopyAfter)
+    )
+
+  case object insertCopyAfter extends Strategy[Rise] {
+    def constructCopy(t: Type): TDSL[Rise] = t match {
+      case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
+      case _: BasicType => fun(x => x)
+      case _ => ??? // shouldn't happen?
+    }
+
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case a => Success(constructCopy(a.t) $ a)
+    }
+  }
+
 
   // todo currently only works for mapSeq
   case object isCopy extends Strategy[Rise] {
@@ -158,7 +179,8 @@ object lowering {
     normalize.apply(lowering.mapSeqCompute <+ lowering.reduceSeq)
 
   val addRequiredCopies: Strategy[Rise] =
-    `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeGenerate
+    // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce
+    tryAll(copyAfterReduce) `;` LCNF `;` materializeInitOfReduce
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
   val lowerToC: Strategy[Rise] = addRequiredCopies `;` specializeSeq

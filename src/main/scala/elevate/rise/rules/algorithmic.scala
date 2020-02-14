@@ -174,6 +174,7 @@ object algorithmic {
       }
       case _ => Failure(freshLambdaIdentifier)
     }
+    override def toString: String = "freshLambdaIdentifier"
   }
 
   case class blockedReduce(n: Nat) extends Strategy[Rise] {
@@ -190,6 +191,6 @@ object algorithmic {
 
       case _ => Failure(blockedReduce(n))
     }
+    override def toString: String = s"blockedReduce($n)"
   }
-
 }

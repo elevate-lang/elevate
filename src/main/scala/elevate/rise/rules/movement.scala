@@ -264,72 +264,59 @@ object movement {
 
   // nested map + reduce
 
-  // todo simplify
-  case object liftReduceOld extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-
-      case App(Map(), Lambda(mapVar, App(App(App(rx@(Reduce() | ReduceSeq()), op),
-      init :: (dt: DataType)), reduceArg))) :: FunType(ArrayType(size, ArrayType(_,_)), _) =>
-
-        def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise], reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
-          Success((
-            untyped(rx)(fun((acc, y) =>
-              map(fun(x => app(app(op, fst(x)), snd(x)))) $ zippedMapArg(acc, y)
-            ))(generate(fun(IndexType(size) ->: dt)(_ => init))) o reduceArgFun
-          ) :: e.t)
-        }
-
-        reduceArg match {
-          // simple case (see test "lift reduce")
-          case x if x == mapVar =>
-            reduceMap(
-              (acc, y) => zip(acc, y),
-              transpose
-            )
-
-          // zipped input (see test "MM to MM-LoopMKN")
-          case App(App(Zip(), u), v) =>
-            val notToBeTransposed = if (mapVar == u) v else u
-            reduceMap(
-              zippedMapArg = (acc, y) => zip(acc, map(fun(bs => pair(bs, fst(y)))) $ snd(y)),
-              reduceArgFun = zip(notToBeTransposed) o transpose
-            )
-          // input is tile1.tile2.dim.(float,float)
-          // dim needs to be reduced -> we need dim.tile1.tile2.(float,float)
-          // todo what's the general case? How to (re-)order dimensions here?
-          case _ =>
-            val result = reduceMap(
-              (acc, y) => zip(acc, y),
-              transpose o map(transpose)
-            )
-            result
-        }
-
-      case _ => Failure(liftReduce)
-    }
-    override def toString = "liftReduce"
-  }
-
+  // different variants for rewriting map(reduce) to reduce(map)
+  // todo what makes them different? can we decompose them into simpler rules?
   case object liftReduce extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-        // new case (can generalize with other case below, gotta figure out
-        // why theres an additional apply
-      case a@App(Map(), Lambda(mapVar,
-      App(App(App(rx@ReduceX(), op),
-      init :: (dt: DataType)), reduceArg)
+
+       // 2D array of pairs ----------------------------------------------------
+      case App(Map(), Lambda(_,
+      App(App(App(ReduceX(), op),
+      _), _)
       // PairType is new here
-      )) :: FunType(inputT@ArrayType(size, ArrayType(_,PairType(_,_))), _) =>
+      )) :: FunType(ArrayType(_, ArrayType(_,PairType(_,_))), resultT) =>
 
-        println("YES AGAIN")
-        //val result = fun(x =>
+        val result: TDSL[Rise] = (fun(x =>
+          (reduceSeq(fun((acc, y) =>
+            map(fun(a => typed(op)(a._1)(a._2))) $ zip(acc,y)
+          ))(x._1 :: resultT) o // x._1 :: 2D array
+            // transpose2D
+            transpose o map(transpose) $ x._2)) o
+          // unzip2D
+          unzip o map(unzip)) :: e.t
 
-        //  reduceSeq(fun(acc, y) => acc)(x._1) $ x
-        //  // unzip2D
-        //  unzip $ map(unzip)
-        //)
-        Success(a)
+        Success(result)
 
-        // usual case below ----------------------------------------------------
+        // yet another case ----------------------------------------------------
+      /*
+    documentation for the concrete case I had:
+    32.(float, 4.(float,float)) -> 32.float (via map(f o reduce))
+    (32.float, 32.4.(float,float)) [unzip]
+    (32.float, 4.32.(float,float)) [transpose $ x._2]
+    now reducing (map(+)) x._2, using x_.1 as init,
+     */
+      case App(Map(), Lambda(_,
+      App(_, // <- this function contained add, do I need this? ...
+      // or can we get rid of this somehow?
+      App(App(App(ReduceX(), op), _), _))
+      // PairType  -> I need to be able to unzip
+      // ArrayType -> I need to be able to transpose x._2
+      ) :: FunType(PairType(_,ArrayType(_,_)), _) // lambda.t
+      ) :: FunType(ArrayType(_,_), resultT) =>    // outermost app.t
+
+        val result: TDSL[Rise] =
+          (fun(x =>
+            reduceSeq(
+              fun((acc, y) => // acc::32.float, y::32.(float,float)
+                map(fun(a => typed(op)(a._1)(a._2))) $ zip(acc,y)
+              )
+            )(x._1 :: resultT) o
+              transpose $ x._2) o unzip) :: e.t
+
+        Success(result)
+
+        // "usual" case below --------------------------------------------------
+        // this case already works for multiple dimensions (taken from old repo)
       case App(Map(), Lambda(mapVar,
            App(App(App(rx@(Reduce() | ReduceSeq()), op),
            init :: (dt: DataType)), reduceArg)
@@ -346,7 +333,6 @@ object movement {
 
         reduceArg match {
           // simple case (see test "lift reduce")
-          // for some reason mapVar might be untyped, hence simply trying `==` fails
           case x if x == mapVar =>
             reduceMap(
               (acc, y) => zip(acc, y),
@@ -367,8 +353,10 @@ object movement {
           case _ =>
             // todo implement recursively
             val reduceArgTransposed = inputT match {
-              case ArrayType(_, ArrayType(_, ArrayType(_,ArrayType(_,_)))) => transpose o map(transpose) o map(map(transpose))
-              case ArrayType(_, ArrayType(_, ArrayType(_,_))) => transpose o map(transpose)
+              case ArrayType(_, ArrayType(_, ArrayType(_,ArrayType(_,_)))) =>
+                transpose o map(transpose) o map(map(transpose))
+              case ArrayType(_, ArrayType(_, ArrayType(_,_))) =>
+                transpose o map(transpose)
               case ArrayType(_, ArrayType(_,_)) => transpose
               case _ => ???
             }
@@ -383,92 +371,5 @@ object movement {
       case _ => Failure(liftReduce)
     }
     override def toString = "liftReduce"
-  }
-
-  case object liftReduceInReduceOperator2 extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      /*
-      documentation for the concrete case I had:
-      32.(float, 4.(float,float)) -> 32.float (via map(f o reduce))
-      (32.float, 32.4.(float,float)) [unzip]
-      (32.float, 4.32.(float,float)) [transpose $ x._2]
-      now reducing (map(+)) x._2, using x_.1 as init,
-       */
-      case a@App(Map(), Lambda(_,
-      App(_, // <- this function contained add, do I need this?
-      App(App(App(ReduceX(), op), _), _))
-      // PairType  -> I need to be able to unzip
-      // ArrayType -> I need to be able to transpose x._2
-      ) :: FunType(PairType(_,ArrayType(_,_)), _) // lambda.t
-      ) :: FunType(ArrayType(_,_), resultT) =>    // outermost app.t
-
-        println("MATCHED!")
-
-        println(a)
-        val result: TDSL[Rise] =
-          (fun(x =>
-            reduceSeq(
-              fun((acc, y) => // acc::32.float, y::32.(float,float)
-                map(fun(a => typed(op)(a._1)(a._2))) $ zip(acc,y)
-              )
-            )(x._1 :: resultT) o
-              transpose $ x._2) o unzip) :: e.t
-        // import rise.core.dotPrinter.exprToDot
-        // exprToDot("right", result)
-        Success(result)
-      case _ =>
-        Failure(liftReduceInReduceOperator2)
-    }
-    override def toString: String = "liftReduceInReduceOperator2"
-  }
-
-  // todo eventually remove, this ones ugly and I don't even understand why it
-  // todo once worked
-  case object liftReduceInReduceOperator extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case op@Lambda(acc_e2348, Lambda(y_e2349,
-      App(App(Map(), Lambda(e2350,
-      App(App(App(ReduceX(), op2), init), transInput))),
-      App(App(zipPrim, inputAcc :: accT), inputY :: yT)) :: resultT)) =>
-
-        // this is the operator for the outer reduce
-        val newOuterReduceOp = fun(accT)(acc => fun(yT)(y => // acc :: 32.32.float, y :: 32.32.4.(float,float)
-          mapSeq(mapSeq(fun(x => x))) o
-            (reduce(
-              // inner reduce op
-              fun((innerAcc, innerY) =>  // innerAcc :: 32.32.float, innerY :: 32.32.(float,float)
-                ((map(map(fun(x => x._1 + (x._2._1 * x._2._2)))) o map(fun(d => zip(d._1, d._2)))) $ zip(innerAcc, innerY)) //)
-              ))(
-              // init
-              acc) o
-              //mapSeq(fun(a => mapSeq(fun(x => x)) $ a)) $ acc) o
-              transpose o map(transpose)) $ y))
-
-        Success(newOuterReduceOp)
-
-      case op@Lambda(acc_e1504, Lambda(y_e1505,
-      App(App(Map(), Lambda(e1506,
-      App(App(Lambda(e668, Lambda(e669,
-      App(addOp, App(App(App(ReduceX(), op2), init), e669_2))
-      )), fst), snd))),
-      // unapply zipped branches to get input types
-      App(App(zipPrim, inputAcc :: accT), inputY :: yT)) :: resultT)) =>
-
-        // this is the operator for the outer reduce
-        val newOuterReduceOp = fun(accT)(acc => fun(yT)(y => // acc :: 32.float, y :: 32.4.(float,float)
-          //mapSeq(fun(x => x)) o
-          (reduce(
-            // inner reduce op
-            fun((innerAcc, innerY) =>  // innerAcc :: 32.float, innerY :: 32.(float,float)
-              (map(fun(x => x._1 + (x._2._1 * x._2._2))) $ zip(innerAcc, innerY)) //)
-            ))(
-            // init
-            //mapSeq(fun(x => x)) $ acc) o
-            acc) o
-            transpose) $ y))
-
-        Success(newOuterReduceOp)
-      case _ => Failure(liftReduceInReduceOperator)
-    }
   }
 }
