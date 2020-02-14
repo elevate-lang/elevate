@@ -60,18 +60,6 @@ object lowering {
 
   // Specialized Lowering
 
-  // only transforms maps which contain ForeignFunctions or mapSeqs
-//  case object mapSeqCompute extends Strategy[Rise] {
-//    def apply(e: Rise): RewriteResult[Rise] = e match {
-//      // (mapSeq λη1. (my_abs η1))
-//      case App(m @ Map(), l @ Lambda(_, App(ForeignFunction(_), _))) => Success(app(TypedDSL.mapSeq :: m.t, l) :: e.t)
-//      // (map λη1. ((mapSeq λη2. (my_abs η2)) η1))
-//      case App(m @ Map(), l @ Lambda(_, App(App(MapSeq(), _), _))) => Success(app(TypedDSL.mapSeq :: m.t, l) :: e.t)
-//      case _ => Failure(mapSeqCompute)
-//    }
-//    override def toString = "mapSeqCompute"
-//  }
-
   case object mapSeqCompute extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(Map(), f) if containsComputation(f) && not(isMappingZip)(f) =>
