@@ -15,9 +15,25 @@ package object rules {
         case lifting.Reducing(lf) => Success(lf(x) :: e.t)
         case _                    => Failure(betaReduction)
       }
-      case DepApp(f, x: Nat) => typedLifting.liftDepFunExpr[NatKind](f) match {
-        case lifting.Reducing(lf) => Success(lf(x) :: e.t)
+      case DepApp(f, n: Nat) => typedLifting.liftDepFunExpr[NatKind](f) match {
+        case lifting.Reducing(lf) => Success(lf(n) :: e.t)
         case _                    => Failure(betaReduction)
+      }
+      case DepApp(f, dt: DataType) => typedLifting.liftDepFunExpr[DataKind](f) match {
+        case lifting.Reducing(lf) => Success(lf(dt) :: e.t)
+        case _                    => Failure(betaReduction)
+      }
+      case DepApp(f, addr: AddressSpace) => typedLifting.liftDepFunExpr[AddressSpaceKind](f) match {
+        case lifting.Reducing(lf) => Success(lf(addr) :: e.t)
+        case _ => Failure(betaReduction)
+      }
+      case DepApp(f, n2n: NatToNat) => typedLifting.liftDepFunExpr[NatToNatKind](f) match {
+        case lifting.Reducing(lf) => Success(lf(n2n) :: e.t)
+        case _ => Failure(betaReduction)
+      }
+      case DepApp(f, n2d: NatToData) => typedLifting.liftDepFunExpr[NatToDataKind](f) match {
+        case lifting.Reducing(lf) => Success(lf(n2d) :: e.t)
+        case _ => Failure(betaReduction)
       }
       case _                      => Failure(betaReduction)
     }

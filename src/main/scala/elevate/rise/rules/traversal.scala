@@ -12,16 +12,18 @@ object traversal {
   // Handle all Rise-AST nodes that contain one or no subexpressions (all except App)
   private def traverseSingleSubexpression: Strategy[Rise] => Rise => Option[RewriteResult[Rise]] =
     s => {
-      case App(_,_)                 => throw new Exception("this should not happen")
-      case Identifier(_)            => None
-      case l @ Lambda(x, e)         => Some(s(e).mapSuccess(Lambda(x, _)(l.t)))
-      case dl @ DepLambda(x, e)     => x match {
-        case n: NatIdentifier       => Some(s(e).mapSuccess(DepLambda[NatKind](n, _)(dl.t)))
-        case dt: DataTypeIdentifier => Some(s(e).mapSuccess(DepLambda[DataKind](dt, _)(dl.t)))
+      case App(_,_)                       => throw new Exception("this should not happen")
+      case Identifier(_)                  => None
+      case l @ Lambda(x, e)               => Some(s(e).mapSuccess(Lambda(x, _)(l.t)))
+      case dl @ DepLambda(x, e)           => x match {
+        case n: NatIdentifier             => Some(s(e).mapSuccess(DepLambda[NatKind](n, _)(dl.t)))
+        case dt: DataTypeIdentifier       => Some(s(e).mapSuccess(DepLambda[DataKind](dt, _)(dl.t)))
+        case addr: AddressSpaceIdentifier => Some(s(e).mapSuccess(DepLambda[AddressSpaceKind](addr, _)(dl.t)))
       }
       case da @ DepApp(f, x)        => x match {
         case n: Nat                 => Some(s(f).mapSuccess(DepApp[NatKind](_, n)(da.t)))
         case dt: DataType           => Some(s(f).mapSuccess(DepApp[DataKind](_, dt)(da.t)))
+        case addr: AddressSpace     => Some(s(f).mapSuccess(DepApp[AddressSpaceKind](_, addr)(da.t)))
       }
       case Literal(_)               => None
       case _: ForeignFunction       => None
