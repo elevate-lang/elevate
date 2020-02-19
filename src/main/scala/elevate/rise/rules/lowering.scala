@@ -74,4 +74,14 @@ object lowering {
     }
     override def toString = s"slideSeq($rot, $write_dt1)"
   }
+
+  case object toMemAfterMapSeq extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] =
+      e match {
+        case a@App(App(MapSeq(), _), _) =>
+          Success((typed(a) |> toMem) :: a.t)
+        case _ => Failure(toMemAfterMapSeq)
+      }
+    override def toString = "toMemAfterMapSeq"
+  }
 }
