@@ -10,12 +10,20 @@ class Random[P](var solution:P, val panel:ProblemConstraints[P]) extends Heurist
 
     for (i <- Range(0, N)) {
       val Ns = panel.N(solution)
-      val randomIndex = random.nextInt(Ns.size)
-      print("i: " + i + " - " + randomIndex + "\n")
-      solution = Ns.toSeq(randomIndex)
-      print("solution: " + solution + " f(solution): " + panel.f(solution) + "\n")
+      var valid = false
+      while(!valid){
+        val randomIndex = random.nextInt(Ns.size)
+        solution = Ns.toSeq(randomIndex)
+        if(panel.f(solution) > 0){
+          valid = true
+        }
+      }
     }
 
+    print("solution: \n" + solution)
+
+    val value = panel.f(solution)
+    println("f(solution): " + value)
     solution
   }
 
