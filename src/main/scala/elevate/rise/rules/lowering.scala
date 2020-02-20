@@ -74,4 +74,17 @@ object lowering {
     }
     override def toString = s"slideSeq($rot, $write_dt1)"
   }
+
+  // writing to memory
+
+  // TODO: think about more complex cases
+  case object mapSeqUnrollWrite extends Strategy[Rise] {
+    import rise.core.types._
+    def apply(e: Rise): RewriteResult[Rise] = e.t match {
+      case ArrayType(_, _: BasicType) =>
+        Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
+      case _ =>
+        Failure(mapSeqUnrollWrite)
+    }
+  }
 }

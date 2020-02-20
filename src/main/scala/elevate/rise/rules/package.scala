@@ -31,6 +31,8 @@ package object rules {
   // TODO: express as a combination of strategies
   case object gentleBetaReduction extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(Lambda(x, b), v: Identifier) =>
+        Success(substitute.exprInExpr(v, `for` = x, in = b))
       case App(Lambda(x, b), v) if !containsAtLeast(1, x)(b) =>
         Success(substitute.exprInExpr(v, `for` = x, in = b))
       case DepApp(DepLambda(x, b), v) =>

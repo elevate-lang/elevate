@@ -2,6 +2,7 @@ package elevate.rise.strategies
 
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
+import rise.core.primitives
 import rise.core.primitives.{Generate, Let, Map, Reduce, Zip}
 import rise.core.{App, Identifier, Lambda}
 
@@ -55,6 +56,22 @@ object predicate {
       case _       => Failure(isMap)
     }
     override def toString = "isMap"
+  }
+
+  case object isMakeArray extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case primitives.MakeArray(_) => Success(e)
+      case _ => Failure(isMakeArray)
+    }
+    override def toString = "isMakeArray"
+  }
+
+  case object isSlideSeq extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case primitives.SlideSeq(_) => Success(e)
+      case _ => Failure(isSlideSeq)
+    }
+    override def toString = "isSlideSeq"
   }
 
   // Matching Applied Primitives

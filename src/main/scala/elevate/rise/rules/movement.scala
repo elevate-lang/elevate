@@ -136,6 +136,14 @@ object movement {
       Failure(takeAfterMap)
   }
 
+  def dropAfterTake: Strategy[Rise] = `take (n+m) >> drop m -> drop m >> take n`
+  def `take (n+m) >> drop m -> drop m >> take n`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), m: Nat), App(DepApp(Take(), nm: Nat), in)) =>
+      Success(app(take(nm - m), app(drop(m), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropAfterTake)
+  }
+
   // special-cases
   // slide + transpose
 
