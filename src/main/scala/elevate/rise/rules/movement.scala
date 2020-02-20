@@ -7,10 +7,14 @@ import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
-import rise.core.types.{ArrayType, DataType, FunType, IndexType}
+import rise.core.types.{ArrayType, DataType, FunType, IndexType, PairType}
 
-// Describing possible movements between pairs of rise primitives (potentially nested in maps)
+// Describing possible movements between pairs of rise primitives
+// (potentially nested in maps)
 
+// todo: remove inspection prevention
+
+//noinspection ScalaStyle
 // todo: should all rules expect LCNF-normalized expressions as input?
 object movement {
 
@@ -260,14 +264,66 @@ object movement {
 
   // nested map + reduce
 
-  // todo simplify
+  // different variants for rewriting map(reduce) to reduce(map)
+  // todo what makes them different? can we decompose them into simpler rules?
   case object liftReduce extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
 
-      case App(Map(), Lambda(mapVar, App(App(App(rx@(Reduce() | ReduceSeq()), op),
-      init :: (dt: DataType)), reduceArg))) :: FunType(ArrayType(size, ArrayType(_,_)), _) =>
+       // 2D array of pairs ----------------------------------------------------
+      case App(Map(), Lambda(_,
+      App(App(App(ReduceX(), op),
+      _), _)
+      // PairType is new here
+      )) :: FunType(ArrayType(_, ArrayType(_,PairType(_,_))), resultT) =>
 
-        def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise], reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
+        val result: TDSL[Rise] = (fun(x =>
+          (reduceSeq(fun((acc, y) =>
+            map(fun(a => typed(op)(a._1)(a._2))) $ zip(acc,y)
+          ))(x._1 :: resultT) o // x._1 :: 2D array
+            // transpose2D
+            transpose o map(transpose) $ x._2)) o
+          // unzip2D
+          unzip o map(unzip)) :: e.t
+
+        Success(result)
+
+        // yet another case ----------------------------------------------------
+      /*
+    documentation for the concrete case I had:
+    32.(float, 4.(float,float)) -> 32.float (via map(f o reduce))
+    (32.float, 32.4.(float,float)) [unzip]
+    (32.float, 4.32.(float,float)) [transpose $ x._2]
+    now reducing (map(+)) x._2, using x_.1 as init,
+     */
+      case App(Map(), Lambda(_,
+      App(_, // <- this function contained add, do I need this? ...
+      // or can we get rid of this somehow?
+      App(App(App(ReduceX(), op), _), _))
+      // PairType  -> I need to be able to unzip
+      // ArrayType -> I need to be able to transpose x._2
+      ) :: FunType(PairType(_,ArrayType(_,_)), _) // lambda.t
+      ) :: FunType(ArrayType(_,_), resultT) =>    // outermost app.t
+
+        val result: TDSL[Rise] =
+          (fun(x =>
+            reduceSeq(
+              fun((acc, y) => // acc::32.float, y::32.(float,float)
+                map(fun(a => typed(op)(a._1)(a._2))) $ zip(acc,y)
+              )
+            )(x._1 :: resultT) o
+              transpose $ x._2) o unzip) :: e.t
+
+        Success(result)
+
+        // "usual" case below --------------------------------------------------
+        // this case already works for multiple dimensions (taken from old repo)
+      case App(Map(), Lambda(mapVar,
+           App(App(App(rx@(Reduce() | ReduceSeq()), op),
+           init :: (dt: DataType)), reduceArg)
+      )) :: FunType(inputT@ArrayType(size, ArrayType(_,_)), _) =>
+
+      def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise],
+                    reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
           Success((
             untyped(rx)(fun((acc, y) =>
               map(fun(x => app(app(op, fst(x)), snd(x)))) $ zippedMapArg(acc, y)
@@ -282,21 +338,32 @@ object movement {
               (acc, y) => zip(acc, y),
               transpose
             )
-
           // zipped input (see test "MM to MM-LoopMKN")
           case App(App(Zip(), u), v) =>
             val notToBeTransposed = if (mapVar == u) v else u
             reduceMap(
-              zippedMapArg = (acc, y) => zip(acc, map(fun(bs => pair(bs, fst(y)))) $ snd(y)),
+              zippedMapArg = (acc, y) =>
+                zip(acc, map(fun(bs => pair(bs, fst(y)))) $ snd(y)),
               reduceArgFun = zip(notToBeTransposed) o transpose
             )
-          // input is tile1.tile2.dim.(float,float)
-          // dim needs to be reduced -> we need dim.tile1.tile2.(float,float)
-          // todo what's the general case? How to (re-)order dimensions here?
+
+          // expression is not in RNF!
+          case a@App(_,_) => ???
+
           case _ =>
+            // todo implement recursively
+            val reduceArgTransposed = inputT match {
+              case ArrayType(_, ArrayType(_, ArrayType(_,ArrayType(_,_)))) =>
+                transpose o map(transpose) o map(map(transpose))
+              case ArrayType(_, ArrayType(_, ArrayType(_,_))) =>
+                transpose o map(transpose)
+              case ArrayType(_, ArrayType(_,_)) => transpose
+              case _ => ???
+            }
+
             val result = reduceMap(
               (acc, y) => zip(acc, y),
-              transpose o map(transpose)
+              reduceArgTransposed
             )
             result
         }
