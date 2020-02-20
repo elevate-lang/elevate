@@ -107,4 +107,20 @@ object algorithmic {
       Success(oclSlideSeq(rot)(a)(sz)(sp)(wr)(typed(f) >> g)(e) :: expr.t)
     case _ => Failure(slideSeqFusion)
   }
+
+  // overlapped tiling
+
+  // constraint: n - m = u - v
+  // v = u + m - n
+  def slideOverlap(u: Nat): Strategy[Rise] =
+    `slide(n, m) -> slide(u, v) >> *(slide(n, m)) >> J`(u)
+  def `slide(n, m) -> slide(u, v) >> *(slide(n, m)) >> J`(
+   u: Nat
+  ): Strategy[Rise] = {
+    case expr @ DepApp(DepApp(Slide(), n: Nat), m: Nat) =>
+      val v = u + m - n
+      Success((slide(u)(v) >> map(slide(n)(m)) >> join) :: expr.t)
+    case _ =>
+      Failure(slideOverlap(u))
+  }
 }
