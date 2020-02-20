@@ -9,6 +9,7 @@ import rise.core._
 import rise.core.TypedDSL._
 import rise.core.primitives._
 import rise.core.types._
+import arithexpr.arithmetic.Cst
 
 //noinspection MutatorLikeMethodIsParameterless
 object algorithmic {
@@ -122,5 +123,34 @@ object algorithmic {
       Success((slide(u)(v) >> map(slide(n)(m)) >> join) :: expr.t)
     case _ =>
       Failure(slideOverlap(u))
+  }
+
+  // slide widening
+
+  def dropInSlide: Strategy[Rise] =
+    `slide n 1 >> drop l -> slide (n+l) 1 >> map(drop l)`
+  def `slide n 1 >> drop l -> slide (n+l) 1 >> map(drop l)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), l: Nat),
+      App(DepApp(DepApp(Slide(), n: Nat), Cst(1)), in)
+    ) =>
+      Success(app(map(drop(l)), app(slide(n+l)(1), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropInSlide)
+  }
+
+  def takeInSlide: Strategy[Rise] =
+    `slide n 1 >> take (N - r) -> slide (n+r) 1 >> map(take (n - r))`
+  def `slide n 1 >> take (N - r) -> slide (n+r) 1 >> map(take (n - r))`: Strategy[Rise] = {
+    case expr @ App(t @ DepApp(Take(), rem: Nat),
+    App(DepApp(DepApp(Slide(), n: Nat), Cst(1)), in)
+    ) =>
+      t.t match {
+        case FunType(ArrayType(size, _), _) =>
+          val r = size - rem
+          Success(app(map(take(n)), app(slide(n+r)(1), typed(in))) :: expr.t)
+        case _ => throw new Exception("this should not happen")
+      }
+    case _ =>
+      Failure(dropInSlide)
   }
 }
