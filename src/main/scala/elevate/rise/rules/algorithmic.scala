@@ -191,10 +191,9 @@ object algorithmic {
         typedX = xt
         Success(xt)
       }).apply(e).mapSuccess(_ => {
-        app(fun(y => {
-          val typedY = y.unsafe_get_e.setType(typedX.t)
-          substitute.exprInExpr(typedY, `for` = typedX, e)
-        }), typedX) :: e.t
+        app(fun(typedX.t)(y =>
+          substitute.exprInExpr(y, `for` = typedX, e)
+        ), typedX) :: e.t
       })
     }
   }
