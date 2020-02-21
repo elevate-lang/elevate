@@ -283,7 +283,6 @@ object movement {
     override def toString = "slideBeforeSplit"
   }
 
-
   // nested map + reduce
 
   // todo simplify

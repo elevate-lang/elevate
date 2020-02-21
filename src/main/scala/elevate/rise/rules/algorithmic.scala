@@ -153,4 +153,49 @@ object algorithmic {
     case _ =>
       Failure(dropInSlide)
   }
+
+  // makeArray(n)(map f1 e)..(map fn e)
+  // -> e |> map(fun(x => makeArray(n)(f1 x)..(fn x))) |> transpose
+  case object mapOutsideMakeArray extends Strategy[Rise] {
+    def matchExpectedMakeArray(mka: Rise): Option[Rise] = mka match {
+      case App(MakeArray(_), App(App(Map(), _), e)) => Some(e)
+      case App(f, App(App(Map(), _), e2)) =>
+        matchExpectedMakeArray(f).flatMap(e =>
+          if (e == e2) { Some(e) } else { None })
+      case _ => None
+    }
+
+    def transformMakeArray(mka: Rise, x: TDSL[Rise]): TDSL[Rise] = mka match {
+      case MakeArray(n) => array(n)
+      case App(mka, App(App(Map(), f), _)) =>
+        app(transformMakeArray(mka, x), app(f, x))
+      case _ => throw new Exception("this should not happen")
+    }
+
+    def apply(expr: Rise): RewriteResult[Rise] =
+      matchExpectedMakeArray(expr) match {
+        case Some(e) => Success(
+          app(transpose, map(fun(x => transformMakeArray(expr, x)))(e))
+            :: expr.t)
+        case None => Failure(mapOutsideMakeArray)
+      }
+  }
+
+  // TODO: should not be in this file?
+  // broadly speaking, f(x) -> x |> fun(y => f(y))
+  case class subexpressionElimination(x: Rise) extends Strategy[Rise] {
+    import elevate.core.strategies.traversal._
+    def apply(e: Rise): RewriteResult[Rise] = {
+      var typedX: Rise = null // Hack to get the typed version of X
+      oncetd(isEqualTo(x) `;` { xt =>
+        typedX = xt
+        Success(xt)
+      }).apply(e).mapSuccess(_ => {
+        app(fun(y => {
+          val typedY = y.unsafe_get_e.setType(typedX.t)
+          substitute.exprInExpr(typedY, `for` = typedX, e)
+        }), typedX) :: e.t
+      })
+    }
+  }
 }
