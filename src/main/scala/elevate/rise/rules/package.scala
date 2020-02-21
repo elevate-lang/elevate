@@ -12,15 +12,11 @@ package object rules {
 
   case object betaReduction extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(f, x) => typedLifting.liftFunExpr(f) match {
-        case lifting.Reducing(lf) => Success(lf(x) :: e.t)
-        case _                    => Failure(betaReduction)
-      }
-      case DepApp(f, x: Nat) => typedLifting.liftDepFunExpr[NatKind](f) match {
-        case lifting.Reducing(lf) => Success(lf(x) :: e.t)
-        case _                    => Failure(betaReduction)
-      }
-      case _                      => Failure(betaReduction)
+      case App(Lambda(x, b), v) =>
+        Success(substitute.exprInExpr(v, `for` = x, in = b))
+      case DepApp(DepLambda(x, b), v) =>
+        Success(substitute.kindInExpr(v, `for` = x, in = b))
+      case _ => Failure(betaReduction)
     }
     override def toString = "betaReduction"
   }
