@@ -155,16 +155,51 @@ object algorithmic {
   }
 
   def dropNothing: Strategy[Rise] = {
-    case App(DepApp(Drop(), Cst(0)), in) => Success(in)
+    case expr @ DepApp(Drop(), Cst(0)) => Success(fun(x => x) :: expr.t)
     case _ => Failure(dropNothing)
   }
 
   def takeAll: Strategy[Rise] = {
-    case App(DepApp(Take(), n: Nat), in) => in.t match {
-      case ArrayType(m, _) if n == m => Success(in)
+    case expr @ DepApp(Take(), n: Nat) => expr.t match {
+      case FunType(ArrayType(m, _), _) if n == m => Success(fun(x => x) :: expr.t)
       case _ => Failure(takeAll)
     }
     case _ => Failure(takeAll)
+  }
+
+  def mapIdentity: Strategy[Rise] = {
+    case expr @ App(Map(), Lambda(x1, x2)) if x1 == x2 => Success(fun(x => x) :: expr.t)
+    case _ => Failure(mapIdentity)
+  }
+
+  def slideAfter: Strategy[Rise] = `x -> join (slide 1 1 x)`
+  def `x -> join (slide 1 1 x)`: Strategy[Rise] = {
+    x => Success(join(slide(1)(1)(x)) :: x.t)
+  }
+
+  def dropBeforeJoin: Strategy[Rise] = `J >> drop d -> drop (d / m) >> J >> drop (d % m)`
+  def `J >> drop d -> drop (d / m) >> J >> drop (d % m)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), d: Nat), App(Join(), in)) => in.t match {
+      case ArrayType(_, ArrayType(m, _)) =>
+        Success(app(drop(d % m), join(drop(d / m)(in))) :: expr.t)
+      case _ => throw new Exception("this should not happen")
+    }
+    case _ => Failure(dropBeforeJoin)
+  }
+
+  // J >> take (n*m - d)
+  // -> dropLast (d / m) >> J >> dropLast (d % m)
+  // -> take (n - d / m) >> J >> take ((n - d / m)*m - d % m)
+  def takeBeforeJoin: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), nmd: Nat), App(Join(), in)) => in.t match {
+      case ArrayType(n, ArrayType(m, _)) =>
+        val d = n*m - nmd
+        val t1 = n - d / m
+        val t2 = t1*m - d % m
+        Success(app(take(t2), join(take(t1)(in))) :: expr.t)
+      case _ => throw new Exception("this should not happen")
+    }
+    case _ => Failure(dropBeforeJoin)
   }
 
   // makeArray(n)(map f1 e)..(map fn e)
@@ -192,6 +227,53 @@ object algorithmic {
             :: expr.t)
         case None => Failure(mapOutsideMakeArray)
       }
+  }
+
+  // select t (f a) (f b) -> f (select t a b)
+  def fOutsideSelect: Strategy[Rise] = {
+    case expr @ App(App(App(Select(), t), App(f1, a)), App(f2, b)) if f1 == f2 =>
+      f1.t match {
+        case FunType(_: DataType, _: DataType) => Success(app(f1, select(t)(a)(b)) :: expr.t)
+        case _ => Failure(fOutsideSelect)
+      }
+
+    case _ => Failure(fOutsideSelect)
+  }
+
+  // makeArray (f e1) .. (f en) -> map f (makeArray e1 .. en)
+  case object fOutsideMakeArray extends Strategy[Rise] {
+    def matchExpectedMakeArray(mka: Rise): Option[(Int, Rise)] = mka match {
+      case App(MakeArray(n), App(f, _)) =>
+        f.t match {
+          case FunType(_: DataType, _: DataType) => Some((n - 1, f))
+          case _ => None
+        }
+      case App(mka, App(f2, _)) =>
+        matchExpectedMakeArray(mka).flatMap { case (n, f) =>
+          if (f == f2) { Some((n - 1, f)) } else { None }
+        }
+      case _ => None
+    }
+
+    def transformMakeArray(mka: Rise): TDSL[Rise] = mka match {
+      case MakeArray(n) => array(n)
+      case App(mka, App(_, e)) => app(transformMakeArray(mka), e)
+      case _ => throw new Exception("this should not happen")
+    }
+
+    def apply(expr: Rise): RewriteResult[Rise] =
+      matchExpectedMakeArray(expr) match {
+        case Some((0, f)) =>
+          Success(app(map(f), transformMakeArray(expr)) :: expr.t)
+        case _ => Failure(fOutsideMakeArray)
+      }
+  }
+
+  // zip (map fa a) (map fb b) -> zip a b >> map (p => pair (fa (fst p)) (fb (snd p)))
+  def mapOutsideZip: Strategy[Rise] = {
+    case expr @ App(App(Zip(), App(App(Map(), fa), a)), App(App(Map(), fb), b)) =>
+      Success(map(fun(p => pair(app(fa, fst(p)), app(fb, snd(p)))), zip(a, b)) :: expr.t)
+    case _ => Failure(mapOutsideZip)
   }
 
   // TODO: should not be in this file?
