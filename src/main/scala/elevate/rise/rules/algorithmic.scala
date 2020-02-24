@@ -154,6 +154,19 @@ object algorithmic {
       Failure(dropInSlide)
   }
 
+  def dropNothing: Strategy[Rise] = {
+    case App(DepApp(Drop(), Cst(0)), in) => Success(in)
+    case _ => Failure(dropNothing)
+  }
+
+  def takeAll: Strategy[Rise] = {
+    case App(DepApp(Take(), n: Nat), in) => in.t match {
+      case ArrayType(m, _) if n == m => Success(in)
+      case _ => Failure(takeAll)
+    }
+    case _ => Failure(takeAll)
+  }
+
   // makeArray(n)(map f1 e)..(map fn e)
   // -> e |> map(fun(x => makeArray(n)(f1 x)..(fn x))) |> transpose
   case object mapOutsideMakeArray extends Strategy[Rise] {

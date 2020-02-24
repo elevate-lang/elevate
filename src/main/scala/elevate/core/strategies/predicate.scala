@@ -20,6 +20,12 @@ object predicate {
     override def toString = s"not($s)"
   }
 
+  case class liftPredicate[P](f: P => Boolean) extends Strategy[P] {
+    def apply(p: P): RewriteResult[P] =
+      if (f(p)) Success(p) else Failure(liftPredicate(f))
+    override def toString = s"liftPredicate($f)"
+  }
+
   case class isEqualTo[P](x: P) extends Strategy[P] {
     def apply(p: P): RewriteResult[P] =
       if (p == x) Success(p) else Failure(isEqualTo(x))
