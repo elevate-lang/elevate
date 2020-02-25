@@ -18,6 +18,14 @@ object lowering {
     override def toString = "mapSeq"
   }
 
+  case object mapStream extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case m@Map() => Success(MapStream()(m.t) :: e.t)
+      case _       => Failure(mapStream)
+    }
+    override def toString = "mapStream"
+  }
+
   case object mapSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
@@ -65,14 +73,14 @@ object lowering {
     override def toString = "mapSeqCompute"
   }
 
-  case class slideSeq(rot: SlideSeq.Rotate, write_dt1: Expr) extends Strategy[Rise] {
+  case class slideSeq(rot: SlideSeq.Rotate, write_dt: Expr) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Slide() => Success(nFun(sz => nFun(sp =>
-        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt1))(fun(x => x))
+        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt))
       )) :: e.t)
-      case _ => Failure(slideSeq(rot, write_dt1))
+      case _ => Failure(slideSeq(rot, write_dt))
     }
-    override def toString = s"slideSeq($rot, $write_dt1)"
+    override def toString = s"slideSeq($rot, $write_dt)"
   }
 
   // writing to memory
