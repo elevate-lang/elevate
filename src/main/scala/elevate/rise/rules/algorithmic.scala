@@ -177,6 +177,21 @@ object algorithmic {
     x => Success(join(slide(1)(1)(x)) :: x.t)
   }
 
+  def slideAfter2: Strategy[Rise] = {
+    x => Success(map(fun(x => x `@` lidx(0, 1)), slide(1)(1)(x)) :: x.t)
+  }
+
+  // s -> map snd (zip f s)
+  def zipFstAfter(f: Rise): Strategy[Rise] = s => s.t match {
+    case ArrayType(_, _) => Success(map(snd, zip(f, s)) :: s.t)
+    case _ => Failure(zipFstAfter(f))
+  }
+  // f -> map snd (zip f s)
+  def zipSndAfter(s: Rise): Strategy[Rise] = f => f.t match {
+    case ArrayType(_, _) => Success(map(fst, zip(f, s)) :: f.t)
+    case _ => Failure(zipFstAfter(s))
+  }
+
   def dropBeforeJoin: Strategy[Rise] = `J >> drop d -> drop (d / m) >> J >> drop (d % m)`
   def `J >> drop d -> drop (d / m) >> J >> drop (d % m)`: Strategy[Rise] = {
     case expr @ App(DepApp(Drop(), d: Nat), App(Join(), in)) => in.t match {
@@ -203,7 +218,7 @@ object algorithmic {
   }
 
   // makeArray(n)(map f1 e)..(map fn e)
-  // -> e |> map(fun(x => makeArray(n)(f1 x)..(fn x))) |> transpose
+  // -> e |> map(x => makeArray(n)(f1 x)..(fn x)) |> transpose
   case object mapOutsideMakeArray extends Strategy[Rise] {
     def matchExpectedMakeArray(mka: Rise): Option[Rise] = mka match {
       case App(MakeArray(_), App(App(Map(), _), e)) => Some(e)
@@ -227,6 +242,20 @@ object algorithmic {
             :: expr.t)
         case None => Failure(mapOutsideMakeArray)
       }
+  }
+
+  // generate (i => select t (map f e) (map g e))
+  // -> e |> map (x => generate (i => select t (f x) (g x))) |> transpose
+  def mapOutsideGenerateSelect: Strategy[Rise] = {
+    case expr @ App(Generate(), Lambda(i, App(App(App(Select(), t),
+      App(App(Map(), f), e)),
+      App(App(Map(), g), e2))))
+    if e == e2 && !contains[Rise](i).apply(e) =>
+      Success(transpose(map(
+        fun(x => generate(lambda(untyped(i), select(t, app(f, x), app(g, x))))),
+        e
+      )) :: expr.t)
+    case _ => Failure(mapOutsideGenerateSelect)
   }
 
   // select t (f a) (f b) -> f (select t a b)
@@ -274,6 +303,59 @@ object algorithmic {
     case expr @ App(App(Zip(), App(App(Map(), fa), a)), App(App(Map(), fb), b)) =>
       Success(map(fun(p => pair(app(fa, fst(p)), app(fb, snd(p)))), zip(a, b)) :: expr.t)
     case _ => Failure(mapOutsideZip)
+  }
+
+  // zip a a -> map (x => pair(x, x)) a
+  def zipSame: Strategy[Rise] = {
+    case expr @ App(App(Zip(), a), a2) if a == a2 =>
+      Success(map(fun(x => pair(x, x)), a) :: expr.t)
+    case _ => Failure(zipSame)
+  }
+
+  // zip(a, b) -> map (x => pair(snd(x), fst(x))) zip(b, a)
+  def zipSwap: Strategy[Rise] = {
+    case expr @ App(App(Zip(), a), b) =>
+      Success(map(fun(x => pair(snd(x), fst(x))), zip(b, a)) :: expr.t)
+    case _ => Failure(zipSwap)
+  }
+
+  // zip(a, zip(b, c)) -> map (x => pair(.., pair(..))) zip(zip(a, b), c)
+  // zip(zip(a, b), c) -> map (x => pair(pair(..), ..)) zip(a, zip(b, c))
+  def zipRotate: Strategy[Rise] = {
+    case expr @ App(App(Zip(), a), App(App(Zip(), b), c)) => Success(map(
+      fun(x => pair(fst(fst(x)), pair(snd(fst(x)), snd(x)))),
+      zip(zip(a, b), c)
+    ) :: expr.t)
+    case expr @ App(App(Zip(), App(App(Zip(), a), b)), c) => Success(map(
+      fun(x => pair(pair(fst(x), fst(snd(x))), snd(fst(x)))),
+      zip(a, zip(b, c))
+    ) :: expr.t)
+    case _ => Failure(zipRotate)
+  }
+
+  // e -> map (x => x) e
+  def mapIdentityAfter: Strategy[Rise] = expr => expr.t match {
+    case ArrayType(_, _) => Success(map(fun(x => x), expr) :: expr.t)
+    case _ => Failure(mapIdentityAfter)
+  }
+
+  // TODO?
+  // map (x => g (f (fst x))) (zip a b) -> map (x => g (fst x)) (zip (map f a) b)
+  // def fBeforeZipMapFst: Strategy[Rise] =
+  // map (x => g (f (snd x))) (zip a b) -> map (x => g (snd x)) (zip a (map f b))
+  // def fBeforeZipMapSnd: Strategy[Rise] =
+  def fBeforeZipMap: Strategy[Rise] = {
+    case expr @ App(
+      App(Map(), Lambda(x, App(App(Zip(),
+        App(f, App(Fst(), x2))),
+        App(g, App(Snd(), x3))))),
+      App(App(Zip(), a), b)
+    ) if x == x2 && x == x3 =>
+      Success(app(
+        map(fun(x => zip(fst(x), snd(x)))),
+        zip(map(f, a), map(g, b))
+      ) :: expr.t)
+    case _ => Failure(fBeforeZipMap)
   }
 
   // TODO: should not be in this file?
