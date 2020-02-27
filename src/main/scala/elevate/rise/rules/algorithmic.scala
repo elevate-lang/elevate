@@ -182,13 +182,15 @@ object algorithmic {
   }
 
   // s -> map snd (zip f s)
-  def zipFstAfter(f: Rise): Strategy[Rise] = s => s.t match {
-    case ArrayType(_, _) => Success(map(snd, zip(f, s)) :: s.t)
+  def zipFstAfter(f: Rise): Strategy[Rise] = s => (f.t, s.t) match {
+    case (ArrayType(n, _), ArrayType(m, _)) if n == m =>
+      Success(map(snd, zip(f, s)) :: s.t)
     case _ => Failure(zipFstAfter(f))
   }
   // f -> map snd (zip f s)
-  def zipSndAfter(s: Rise): Strategy[Rise] = f => f.t match {
-    case ArrayType(_, _) => Success(map(fst, zip(f, s)) :: f.t)
+  def zipSndAfter(s: Rise): Strategy[Rise] = f => (f.t, s.t) match {
+    case (ArrayType(n, _), ArrayType(m, _)) if n == m =>
+      Success(map(fst, zip(f, s)) :: f.t)
     case _ => Failure(zipFstAfter(s))
   }
 
