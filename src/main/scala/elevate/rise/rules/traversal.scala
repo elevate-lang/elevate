@@ -116,7 +116,7 @@ object traversal {
   ) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Lambda(x, f) => s(x)(f).mapSuccess(Lambda(x, _)(e.t))
-      case _ => Failure(s(Identifier("dummy")()))
+      case _ => Failure(lambdaBodyWithName(s))
     }
     override def toString = s"body($s)"
   }

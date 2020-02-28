@@ -187,7 +187,7 @@ object algorithmic {
       Success(map(snd, zip(f, s)) :: s.t)
     case _ => Failure(zipFstAfter(f))
   }
-  // f -> map snd (zip f s)
+  // f -> map fst (zip f s)
   def zipSndAfter(s: Rise): Strategy[Rise] = f => (f.t, s.t) match {
     case (ArrayType(n, _), ArrayType(m, _)) if n == m =>
       Success(map(fst, zip(f, s)) :: f.t)
@@ -345,6 +345,28 @@ object algorithmic {
   def mapIdentityAfter: Strategy[Rise] = expr => expr.t match {
     case ArrayType(_, _) => Success(map(fun(x => x), expr) :: expr.t)
     case _ => Failure(mapIdentityAfter)
+  }
+
+  // fst (pair a b) -> a
+  def fstReduction: Strategy[Rise] = {
+    case expr @ App(Fst(), App(App(Pair(), a), _)) => Success(a :: expr.t)
+    case _ => Failure(fstReduction)
+  }
+
+  // snd (pair a b) -> b
+  def sndReduction: Strategy[Rise] = {
+    case expr @ App(Snd(), App(App(Pair(), _), b)) => Success(b :: expr.t)
+    case _ => Failure(sndReduction)
+  }
+
+  // zip (slide n m a) (slide n m b) -> map unzip (slide n m (zip a b))
+  def slideOutsideZip: Strategy[Rise] = {
+    case expr @ App(App(Zip(),
+      App(DepApp(DepApp(Slide(), n: Nat), m: Nat), a)),
+      App(DepApp(DepApp(Slide(), n2: Nat), m2: Nat), b)
+    ) if n == n2 && m == m2 =>
+      Success(map(unzip, slide(n)(m)(zip(a, b))) :: expr.t)
+    case _ => Failure(slideOutsideZip)
   }
 
   // TODO?

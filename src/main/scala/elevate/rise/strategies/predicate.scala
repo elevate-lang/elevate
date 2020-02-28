@@ -66,14 +66,6 @@ object predicate {
     override def toString = "isMakeArray"
   }
 
-  case object isSlideSeq extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case primitives.SlideSeq(_) => Success(e)
-      case _ => Failure(isSlideSeq)
-    }
-    override def toString = "isSlideSeq"
-  }
-
   // Matching Applied Primitives
 
   case object isAppliedLet extends Strategy[Rise] {
