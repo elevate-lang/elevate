@@ -322,18 +322,24 @@ object algorithmic {
   }
 
   // zip(a, zip(b, c)) -> map (x => pair(.., pair(..))) zip(zip(a, b), c)
-  // zip(zip(a, b), c) -> map (x => pair(pair(..), ..)) zip(a, zip(b, c))
-  def zipRotate: Strategy[Rise] = {
+  def zipRotateLeft: Strategy[Rise] = {
     case expr @ App(App(Zip(), a), App(App(Zip(), b), c)) => Success(map(
       fun(x => pair(fst(fst(x)), pair(snd(fst(x)), snd(x)))),
       zip(zip(a, b), c)
     ) :: expr.t)
+    case _ => Failure(zipRotateLeft)
+  }
+
+  // zip(zip(a, b), c) -> map (x => pair(pair(..), ..)) zip(a, zip(b, c))
+  def zipRotateRight: Strategy[Rise] = {
     case expr @ App(App(Zip(), App(App(Zip(), a), b)), c) => Success(map(
-      fun(x => pair(pair(fst(x), fst(snd(x))), snd(fst(x)))),
+      fun(x => pair(pair(fst(x), fst(snd(x))), snd(snd(x)))),
       zip(a, zip(b, c))
     ) :: expr.t)
-    case _ => Failure(zipRotate)
+    case _ => Failure(zipRotateRight)
   }
+
+  def zipRotate: Strategy[Rise] = zipRotateLeft <+ zipRotateRight
 
   // e -> map (x => x) e
   def mapIdentityAfter: Strategy[Rise] = expr => expr.t match {
