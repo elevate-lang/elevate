@@ -96,19 +96,6 @@ object algorithmic {
     override def toString = "createTransposePair"
   }
 
-  // slideSeq fusion
-  import rise.OpenCL.primitives._
-  import rise.OpenCL.TypedDSL._
-
-  def slideSeqFusion: Strategy[Rise] = `slideSeq(f) >> map(g) -> slideSeq(f >> g)`
-  def `slideSeq(f) >> map(g) -> slideSeq(f >> g)`: Strategy[Rise] = {
-    case expr@App(App(Map(), g), App(App(App(DepApp(DepApp(SlideSeq(rot), sz: Nat), sp: Nat), wr), f), e)) =>
-      Success(slideSeq(rot)(sz)(sp)(wr)(typed(f) >> g)(e) :: expr.t)
-    case expr@App(App(Map(), g), App(App(App(DepApp(DepApp(DepApp(OclSlideSeq(rot), a: AddressSpace), sz: Nat), sp: Nat), wr), f), e)) =>
-      Success(oclSlideSeq(rot)(a)(sz)(sp)(wr)(typed(f) >> g)(e) :: expr.t)
-    case _ => Failure(slideSeqFusion)
-  }
-
   // overlapped tiling
 
   // constraint: n - m = u - v
