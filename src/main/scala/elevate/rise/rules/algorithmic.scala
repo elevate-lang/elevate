@@ -45,7 +45,7 @@ object algorithmic {
     override def toString: String = "mapFusion"
   }
 
-  case object fuseReduceMap extends Strategy[Rise] {
+  case object reduceMapFusion extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(
       App(App(ReduceX(), op), init), // reduce
@@ -59,12 +59,12 @@ object algorithmic {
           (red(fun((acc, y) =>
             typed(op)(acc)(typed(f)(y))))(init) $ mapArg) :: e.t)
 
-      case _ => Failure(fuseReduceMap)
+      case _ => Failure(reduceMapFusion)
     }
-    override def toString: String = "fuseReduceMap"
+    override def toString: String = "reduceMapFusion"
   }
 
-  case object fissionReduceMap extends Strategy[Rise] {
+  case object reduceMapFission extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(App(ReduceX(), Lambda(acc, Lambda(y,
       App(App(op, acc2), f@App(_, y2))))), init) if
@@ -72,9 +72,9 @@ object algorithmic {
         Success((reduce(op)(init) o
           map(lambda(TDSL[Identifier](y), typed(f)))) :: e.t
         )
-      case _ => Failure(fissionReduceMap)
+      case _ => Failure(reduceMapFission)
     }
-    override def toString: String = "fissionReduceMap"
+    override def toString: String = "reduceMapFission"
   }
 
 
