@@ -26,6 +26,14 @@ object lowering {
     override def toString = "mapStream"
   }
 
+  case object iterateStream extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case m@Map() => Success(IterateStream()(m.t) :: e.t)
+      case _       => Failure(iterateStream)
+    }
+    override def toString = "iterateStream"
+  }
+
   case object mapSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
