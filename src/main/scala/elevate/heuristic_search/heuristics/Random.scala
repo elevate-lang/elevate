@@ -29,7 +29,8 @@ class Random[P](var solution:P, val panel:ProblemConstraints[P]) extends Heurist
     }
 
     path.printPathConsole()
-    path.writePathToDot()
+    //make path part of settings
+    path.writePathToDot("/home/jo/developement/rise-lang/exploration/random.dot")
 
 
     solution
