@@ -14,16 +14,15 @@ class Random[P](var solution:P, val panel:ProblemConstraints[P]) extends Heurist
       while(!valid){
         val randomIndex = random.nextInt(Ns.size)
         solution = Ns.toSeq(randomIndex)
-        if(panel.f(solution) > 0){
-          valid = true
+        panel.f(solution) match {
+          case Some(value) => valid = true
+          case _ =>
         }
       }
     }
 
-    print("solution: \n" + solution)
+    println("performance: " + panel.f(solution))
 
-    val value = panel.f(solution)
-    println("f(solution): " + value)
     solution
   }
 

@@ -9,7 +9,6 @@ class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) e
 
     do {
       oldSolution = solution
-      println("solution: " + panel.f(oldSolution))
 
       //get neighbourhood
       val Ns = panel.N(solution)
@@ -17,16 +16,20 @@ class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) e
       //evaluate neighbourhood
       println("Ns: " + Ns.size)
       Ns.foreach(ns => {
-        if (panel.f(ns) > 0 && panel.f(ns) < panel.f(solution)) {
-          solution = ns
+        (panel.f(ns), panel.f(solution)) match {
+          case (Some(fns), Some(fsolution)) =>
+            if (fns < fsolution) {
+              solution = ns
+            }
+          case _ =>
         }
       })
 
-    } while (panel.f(solution) < panel.f(oldSolution))
-
-
-    println("solution: " + panel.f(solution))
+    } while (panel.f(solution).get < panel.f(oldSolution).get)
 
     solution
   }
 }
+
+
+

@@ -7,7 +7,7 @@ trait ProblemConstraints[P] {
   def N(solution:P):Set[P]
 
   //get function value of solution
-  def f(solution:P):Double
+  def f(solution:P):Option[Double]
 
 }
 
