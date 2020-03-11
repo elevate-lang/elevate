@@ -1,10 +1,14 @@
-package elevate.heuristic_search.heuristics
+package elevate.heuristic_search.heuristic
 
+import elevate.heuristic_search.util.Path
 import elevate.heuristic_search.{Heuristic, ProblemConstraints}
 
 class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) extends Heuristic[P] {
 
+
   def start(): P = {
+    val path = new Path(solution, panel.f(solution).get)
+
     var oldSolution = solution
 
     do {
@@ -16,16 +20,20 @@ class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) e
       //evaluate neighbourhood
       println("Ns: " + Ns.size)
       Ns.foreach(ns => {
-        (panel.f(ns), panel.f(solution)) match {
+        (panel.f(ns._1), panel.f(solution)) match {
           case (Some(fns), Some(fsolution)) =>
             if (fns < fsolution) {
-              solution = ns
+              solution = ns._1
+              path.add(ns._1, ns._2, panel.f(ns._1).get)
             }
           case _ =>
         }
       })
 
     } while (panel.f(solution).get < panel.f(oldSolution).get)
+
+    path.printPathConsole()
+    path.writePathToDot()
 
     solution
   }

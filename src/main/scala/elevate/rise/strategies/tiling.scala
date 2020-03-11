@@ -1,6 +1,6 @@
 package elevate.rise.strategies
 
-import elevate.core.Strategy
+import elevate.core.{RewriteResult, Strategy}
 import elevate.core.strategies.basic._
 import elevate.rise.Rise
 import elevate.rise.rules.algorithmic._
@@ -13,7 +13,16 @@ object tiling {
 
   def tileND: Int => Int => Strategy[Rise] = d => n => tileNDList(List.tabulate(d)(_ => n))
 
+  object tilingExternal extends Strategy[Rise]{
+    def apply(e: Rise) = {
+      tileNDList(List(32,32)).apply(e)
+    }
+    override def toString:String = s"tiling"
+
+  }
+
   def tileNDList: List[Int] => Strategy[Rise] =
+
     n => n.size match {
         case x if x <= 0 => id()
         // ((map f) arg)
@@ -22,6 +31,7 @@ object tiling {
                   function(splitJoin(n.head)) `;`  // loop-blocking
                   shiftDim(i)                      // loop-interchange
       }
+
 
   // Notation: A.a -> a == tile dimension; A == original dimension
   // a.b.c.d: 4D array (outer => inner): a == outermost dim; d == innermost dim
