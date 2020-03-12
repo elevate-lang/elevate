@@ -10,8 +10,9 @@ class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) e
     val path = new Path(solution, panel.f(solution).get)
 
     var oldSolution = solution
-
+    var i = 0
     do {
+      i = i + 1
       oldSolution = solution
 
       //get neighbourhood
@@ -29,10 +30,9 @@ class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) e
           case _ =>
         }
       })
-
     } while (panel.f(solution).get < panel.f(oldSolution).get)
 
-    path.printPathConsole()
+  path.printPathConsole()
     //make path part of settings
     path.writePathToDot("/home/jo/developement/rise-lang/exploration/iterativeImprovement.dot")
 
