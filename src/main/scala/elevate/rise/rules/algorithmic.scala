@@ -356,6 +356,16 @@ object algorithmic {
     case _ => Failure(slideOutsideZip)
   }
 
+  // slide n m (zip a b) -> map zip (zip (slide n m a) (slide n m b))
+  def slideInsideZip: Strategy[Rise] = {
+    case expr @ App(DepApp(DepApp(Slide(), n: Nat), m: Nat),
+      App(App(Zip(), a), b)
+    ) =>
+      Success(map(fun(p => zip(fst(p), snd(p))),
+        zip(slide(n)(m)(a), slide(n)(m)(b))) :: expr.t)
+    case _ => Failure(slideInsideZip)
+  }
+
   // TODO?
   // map (x => g (f (fst x))) (zip a b) -> map (x => g (fst x)) (zip (map f a) b)
   // def fBeforeZipMapFst: Strategy[Rise] =
