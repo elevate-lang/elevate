@@ -6,7 +6,7 @@ import java.nio.file.{Files, Paths}
 import elevate.core.Strategy
 
 class Path[P](program:P,
-              value:Double,
+              value:Option[Double],
               var initial:PathElement[P] = null,
               var current:PathElement[P] = null
              ){
@@ -15,7 +15,7 @@ class Path[P](program:P,
     // set initial path element to current element
     current = initial
 
-  def add(program: P, strategy: Strategy[P], value:Double): Unit = {
+  def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit = {
     // create new path element
     val elem = new PathElement[P](program, strategy, value, current, null)
 
@@ -95,7 +95,7 @@ class Path[P](program:P,
 
 class PathElement[P] (val program:P,
                       val strategy:Strategy[P],
-                      val value:Double,
+                      val value:Option[Double],
                       var predecessor:PathElement[P],
                       var successor:PathElement[P]
                       ){
