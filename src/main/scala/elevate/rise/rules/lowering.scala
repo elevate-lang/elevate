@@ -103,4 +103,17 @@ object lowering {
         Failure(mapSeqUnrollWrite)
     }
   }
+
+  object ocl {
+    import rise.OpenCL.TypedDSL
+    import rise.core.types.AddressSpace
+
+    case class reduceSeqUnroll(a: AddressSpace) extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case Reduce() => Success(TypedDSL.oclReduceSeqUnroll(a) :: e.t)
+        case _ => Failure(reduceSeqUnroll(a))
+      }
+      override def toString = "reduceSeqUnroll"
+    }
+  }
 }
