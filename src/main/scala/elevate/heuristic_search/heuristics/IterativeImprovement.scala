@@ -1,12 +1,12 @@
 package elevate.heuristic_search.heuristic
 
 import elevate.heuristic_search.util.Path
-import elevate.heuristic_search.{Heuristic, ProblemConstraints}
+import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
-class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) extends Heuristic[P] {
+class IterativeImprovement[P] extends Heuristic[P] {
 
-
-  def start(): P = {
+  def start(panel:HeuristicPanel[P], initialSolution:P, depth:Int): (P, Option[Double]) = {
+    var solution:P = initialSolution
     val path = new Path(solution, panel.f(solution))
 
     var oldSolution = solution
@@ -36,7 +36,7 @@ class IterativeImprovement[P](var solution:P, val panel:ProblemConstraints[P]) e
     // create folder as well, maybe use relative paths
     path.writePathToDot("/home/jo/developement/rise-lang/exploration/iterativeImprovement.dot")
 
-    solution
+    (solution, panel.f(solution))
   }
 }
 

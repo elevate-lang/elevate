@@ -3,7 +3,7 @@ package elevate.heuristic_search
 import elevate.core.Strategy
 
 //used to implement heuristics
-trait ProblemConstraints[P] {
+trait HeuristicPanel[P] {
 
   //get neighborhood of solution
   def N(solution:P):Set[(P, Strategy[P])]

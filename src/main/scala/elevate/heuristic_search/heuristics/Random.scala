@@ -1,20 +1,18 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search.util.Path
-import elevate.heuristic_search.{Heuristic, ProblemConstraints}
+import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
-class Random[P](var solution:P, val panel:ProblemConstraints[P], val iterations: Int) extends Heuristic[P] {
+class Random[P] extends Heuristic[P] {
   // initialize global best
-  var best = panel.f(solution)
+  var best:Option[Double] = None
 
-  def start(): P = {
-
+  def start(panel:HeuristicPanel[P], initialSolution:P, depth: Int): (P, Option[Double]) = {
+    var solution:P = initialSolution
     val path = new Path(solution, panel.f(solution))
-
     val random = scala.util.Random
 
-
-    for (_ <- Range(0, iterations)) {
+    for (_ <- Range(0, depth)) {
       val Ns = panel.N(solution)
       var valid = false
       var j = 0
@@ -52,7 +50,7 @@ class Random[P](var solution:P, val panel:ProblemConstraints[P], val iterations:
     path.writePathToDot("/home/jo/developement/rise-lang/exploration/random.dot")
 
 
-    solution
+    (solution, panel.f(solution))
   }
 
 }
