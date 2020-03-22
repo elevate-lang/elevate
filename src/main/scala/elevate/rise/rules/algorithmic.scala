@@ -294,6 +294,14 @@ object algorithmic {
     case _ => Failure(mapOutsideZip)
   }
 
+  // pair (map fa a) (map fb b)
+  // -> zip a b >> map (p => pair (fa (fst p)) (fb (snd p))) >> unzip
+  def mapOutsidePair: Strategy[Rise] = {
+    case expr @ App(App(Pair(), App(App(Map(), fa), a)), App(App(Map(), fb), b)) =>
+      Success(unzip(map(fun(p => pair(app(fa, fst(p)), app(fb, snd(p)))), zip(a, b))) :: expr.t)
+    case _ => Failure(mapOutsidePair)
+  }
+
   // zip a a -> map (x => pair(x, x)) a
   def zipSame: Strategy[Rise] = {
     case expr @ App(App(Zip(), a), a2) if a == a2 =>

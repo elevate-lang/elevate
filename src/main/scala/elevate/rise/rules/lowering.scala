@@ -106,6 +106,7 @@ object lowering {
 
   object ocl {
     import rise.OpenCL.TypedDSL
+    import rise.OpenCL.primitives._
     import rise.core.types.AddressSpace
 
     case class reduceSeqUnroll(a: AddressSpace) extends Strategy[Rise] {
@@ -114,6 +115,30 @@ object lowering {
         case _ => Failure(reduceSeqUnroll(a))
       }
       override def toString = "reduceSeqUnroll"
+    }
+
+    case class circularBuffer(a: AddressSpace)
+      extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case DepApp(DepApp(Slide(), n: Nat), m: Nat) if m == (1: Nat) =>
+          Success(
+            TypedDSL.oclSlideSeq(SlideSeq.Indices)(a)(n)(m)(fun(x => x))
+            :: e.t)
+        case _ => Failure(circularBuffer(a))
+      }
+      override def toString = s"circularBuffer($a)"
+    }
+
+    case object circularBufferLoadFusion extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case App(App(
+          cb @ DepApp(DepApp(DepApp(OclSlideSeq(SlideSeq.Indices), _), _), _),
+          load), App(App(Map(), f), in)
+        ) =>
+          Success(untyped(cb)(typed(f) >> load, in) :: e.t)
+        case _ => Failure(circularBufferLoadFusion)
+      }
+      override def toString = s"circularBufferLoadFusion"
     }
   }
 }
