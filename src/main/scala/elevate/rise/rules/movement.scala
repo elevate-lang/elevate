@@ -78,16 +78,28 @@ object movement {
     override def toString = "slideBeforeMapMapF"
   }
 
-  def mapFBeforeSlide: Strategy[Rise] = `*f >> S -> S >> **f`
+  def slideBeforeMap: Strategy[Rise] = `*f >> S -> S >> **f`
   case object `*f >> S -> S >> **f` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(
-      s,
-      App(App(Map(), f), y)) if isSplitOrSlide(s) =>
+      case App(s @ DepApp(DepApp(Slide(), _: Nat), _: Nat),
+        App(App(Map(), f), y)
+      ) =>
         Success((typed(y) |> untyped(s) |> map(map(f))) :: e.t)
-      case _ => Failure(mapFBeforeSlide)
+      case _ => Failure(slideBeforeMap)
     }
-    override def toString = "mapFBeforeSlide"
+    override def toString = "slideBeforeMap"
+  }
+
+  // *f >> S -> S >> **f
+  case object splitBeforeMap extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(s @ DepApp(Split(), _: Nat),
+        App(App(Map(), f), y)
+      ) =>
+        Success((typed(y) |> untyped(s) |> map(map(f))) :: e.t)
+      case _ => Failure(splitBeforeMap)
+    }
+    override def toString = "splitBeforeMap"
   }
 
   // join
@@ -326,6 +338,20 @@ object movement {
       App(DepApp(DepApp(Slide(), n: Nat), s: Nat), y)
       ) =>
         Success((typed(y) |> slide(k + n - s)(k) |> map(slide(n)(s))) :: e.t)
+      case _ => Failure(slideBeforeSplit)
+    }
+    override def toString = "slideBeforeSplit"
+  }
+
+  // TODO: what if s != 1?
+  // slide(n)(s=1) >> slide(m)(k) -> slide(m+n-1)(k) >> map(slide(n)(1))
+  case object slideBeforeSlide extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(
+      DepApp(DepApp(Slide(), m: Nat), k: Nat),
+      App(DepApp(DepApp(Slide(), n: Nat), s: Nat), in)
+      ) if s == (1: Nat) =>
+        Success((typed(in) |> slide(m+n-s)(k) |> map(slide(n)(s))) :: e.t)
       case _ => Failure(slideBeforeSplit)
     }
     override def toString = "slideBeforeSplit"
