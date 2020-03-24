@@ -9,7 +9,7 @@ import rise.core._
 import rise.core.TypedDSL._
 import rise.core.primitives._
 import rise.core.types._
-import arithexpr.arithmetic.Cst
+import arithexpr.arithmetic.{ArithExpr, Cst}
 
 //noinspection MutatorLikeMethodIsParameterless
 object algorithmic {
@@ -41,6 +41,34 @@ object algorithmic {
       case _                                           => Failure(mapFusion)
     }
     override def toString = s"mapFusion"
+  }
+
+  // mapFst g >> mapFst f -> mapFst (g >> f)
+  def mapFstFusion: Strategy[Rise] = {
+    case e @ App(App(MapFst(), f), App(App(MapFst(), g), in)) =>
+      Success(mapFst(typed(g) >> f, in) :: e.t)
+    case _ => Failure(mapFstFusion)
+  }
+
+  // mapSnd g >> mapSnd f -> mapSnd (g >> f)
+  def mapSndFusion: Strategy[Rise] = {
+    case e @ App(App(MapSnd(), f), App(App(MapSnd(), g), in)) =>
+      Success(mapSnd(typed(g) >> f, in) :: e.t)
+    case _ => Failure(mapSndFusion)
+  }
+
+  // *g >> reduce f init -> reduce (acc, x => f acc (g x)) init
+  case object reduceMapFusion extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(App(App(r @ ReduceMaybeSeq(), f), init), App(App(Map(), g), in)) =>
+        val red = (r, g.t) match {
+          case (Reduce(), FunType(i, o)) if i == o => reduce
+          case _ => reduceSeq
+        }
+        Success(red(fun(acc => fun(x =>
+          typed(f)(acc)(typed(g)(x)))), init, in) :: e.t)
+      case _ => Failure(reduceMapFusion)
+    }
   }
 
   // fission of the last function to be applied inside a map
@@ -154,6 +182,11 @@ object algorithmic {
     case _ => Failure(takeAll)
   }
 
+  def padEmptyNothing: Strategy[Rise] = {
+    case e @ DepApp(PadEmpty(), Cst(0)) => Success(fun(x => x) :: e.t)
+    case _ => Failure(padEmptyNothing)
+  }
+
   def mapIdentity: Strategy[Rise] = {
     case expr @ App(Map(), Lambda(x1, x2)) if x1 == x2 => Success(fun(x => x) :: expr.t)
     case _ => Failure(mapIdentity)
@@ -204,6 +237,20 @@ object algorithmic {
       case _ => throw new Exception("this should not happen")
     }
     case _ => Failure(dropBeforeJoin)
+  }
+
+  // take n >> padEmpty m -> padEmpty m'
+  def removeTakeBeforePadEmpty: Strategy[Rise] = {
+    case e @ App(DepApp(PadEmpty(), m: Nat), App(DepApp(Take(), n: Nat), in)) =>
+      in.t match {
+        case ArrayType(size, _)
+        if ArithExpr.isSmaller(size - n, m + 1).contains(true) =>
+          val mPrime = m - (size - n)
+          Success(padEmpty(mPrime)(in) :: e.t)
+        case _ =>
+          Failure(removeTakeBeforePadEmpty)
+      }
+    case _ => Failure(removeTakeBeforePadEmpty)
   }
 
   // makeArray(n)(map f1 e)..(map fn e)
@@ -393,13 +440,58 @@ object algorithmic {
     case _ => Failure(fBeforeZipMap)
   }
 
+  // a |> map (zip b) |> transpose
+  // -> transpose a |> zip2D (map (x => generate (_ => x) b)
+  def transposeBeforeMapZip: Strategy[Rise] = {
+    case e @ App(Transpose(), App(App(Map(), App(Zip(), b)), a)) =>
+      Success(map(fun(p => zip(fst(p), snd(p))),
+        zip(map(fun(x => generate(fun(_ => x))), b), transpose(a))) :: e.t)
+    case _ => Failure(transposeBeforeMapZip)
+  }
+
+  // unzip (zip a b) -> pair a b
+  def unzipZipIsPair: Strategy[Rise] = {
+    case e @ App(Unzip(), App(App(Zip(), a), b)) =>
+      Success(pair(a, b) :: e.t)
+    case _ => Failure(unzipZipIsPair)
+  }
+
+  // FIXME: this is very specific
+  // zip (fst/snd unzip e) (fst/snd unzip e)
+  // -> map (p => pair (fst/snd p) (fst/snd p)) e
+  def zipUnzipAccessSimplification: Strategy[Rise] = {
+    case e @ App(App(Zip(),
+      App(a1 @ (Fst() | Snd()), App(Unzip(), e1))),
+      App(a2 @ (Fst() | Snd()), App(Unzip(), e2))
+    ) if e1 == e2 =>
+      Success(map(fun(p => pair(untyped(a1)(p), untyped(a2)(p))), e1) :: e.t)
+    case _ => Failure(zipUnzipAccessSimplification)
+  }
+
+  // FIXME: this is very specific
+  // map (p => g (fst p) (snd p)) (zip (fst/snd e) (fst/snd e))
+  // -> map (p => g (fst/snd p) (fst/snd p)) (zip (fst e) (snd e))
+  def mapProjZipUnification: Strategy[Rise] = {
+    case e @ App(App(Map(),
+      Lambda(p, App(App(g, App(Fst(), p1)), App(Snd(), p2)))),
+      App(App(Zip(),
+        App(a1 @ (Fst() | Snd()), e1)),
+        App(a2 @ (Fst() | Snd()), e2)))
+    if e1 == e2 && p == p1 && p == p2 &&
+      a1 == a2 && !contains[Rise](p).apply(g)
+    =>
+      Success(map(fun(p => typed(g)(untyped(a1)(p), untyped(a2)(p))),
+        zip(fst(e1), snd(e1))) :: e.t)
+    case _ => Failure(mapProjZipUnification)
+  }
+
   // TODO: should not be in this file?
   // broadly speaking, f(x) -> x |> fun(y => f(y))
-  case class subexpressionElimination(x: Rise) extends Strategy[Rise] {
+  case class subexpressionElimination(find: Strategy[Rise]) extends Strategy[Rise] {
     import elevate.core.strategies.traversal._
     def apply(e: Rise): RewriteResult[Rise] = {
       var typedX: Rise = null // Hack to get the typed version of X
-      oncetd(isEqualTo(x) `;` { xt =>
+      oncetd(find `;` { xt =>
         typedX = xt
         Success(xt)
       }).apply(e).mapSuccess(_ => {

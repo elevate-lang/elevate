@@ -1,7 +1,7 @@
 package elevate.rise.rules
 
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
-import elevate.rise.Rise
+import elevate.rise._
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
@@ -61,8 +61,8 @@ object lowering {
   // todo shall we allow lowering from an already lowered reduceSeq?
   case object reduceSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Reduce() | ReduceSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
-      case _                      => Failure(reduceSeqUnroll)
+      case ReduceMaybeSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
+      case _ => Failure(reduceSeqUnroll)
     }
     override def toString = "reduceSeqUnroll"
   }
@@ -111,7 +111,7 @@ object lowering {
 
     case class reduceSeqUnroll(a: AddressSpace) extends Strategy[Rise] {
       def apply(e: Rise): RewriteResult[Rise] = e match {
-        case Reduce() => Success(TypedDSL.oclReduceSeqUnroll(a) :: e.t)
+        case ReduceMaybeSeq() => Success(TypedDSL.oclReduceSeqUnroll(a) :: e.t)
         case _ => Failure(reduceSeqUnroll(a))
       }
       override def toString = "reduceSeqUnroll"
