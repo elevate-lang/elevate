@@ -86,7 +86,7 @@ class movement extends elevate.test_util.Tests {
 
   test("*f >> S -> S >> **f") {
     assert(betaEtaEquals(
-      oncetd(`*f >> S -> S >> **f`).apply(λ(f => *(f) >> S)),
+      oncetd(splitBeforeMap).apply(λ(f => *(f) >> S)),
       λ(f => S >> **(f)))
     )
   }
