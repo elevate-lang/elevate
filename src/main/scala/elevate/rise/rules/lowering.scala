@@ -5,6 +5,7 @@ import elevate.rise._
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
+import arithexpr.arithmetic.Cst
 
 object lowering {
 
@@ -81,14 +82,23 @@ object lowering {
     override def toString = "mapSeqCompute"
   }
 
-  case class slideSeq(rot: SlideSeq.Rotate, write_dt: Expr) extends Strategy[Rise] {
+  // TODO: load identity instead, then change with other rules?
+  case class circularBuffer(load: Expr) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Slide() => Success(nFun(sz => nFun(sp =>
-        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt))
-      )) :: e.t)
-      case _ => Failure(slideSeq(rot, write_dt))
+      case DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
+        TypedDSL.circularBuffer(sz)(sz)(untyped(load)) :: e.t)
+      case _ => Failure(circularBuffer(load))
     }
-    override def toString = s"slideSeq($rot, $write_dt)"
+    override def toString = s"circularBuffer($load)"
+  }
+
+  case class rotateValues(write: Expr) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
+        TypedDSL.rotateValues(sz)(untyped(write)) :: e.t)
+      case _ => Failure(rotateValues(write))
+    }
+    override def toString = s"rotateValues($write)"
   }
 
   // writing to memory
@@ -120,9 +130,9 @@ object lowering {
     case class circularBuffer(a: AddressSpace)
       extends Strategy[Rise] {
       def apply(e: Rise): RewriteResult[Rise] = e match {
-        case DepApp(DepApp(Slide(), n: Nat), m: Nat) if m == (1: Nat) =>
+        case DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
           Success(
-            TypedDSL.oclSlideSeq(SlideSeq.Indices)(a)(n)(m)(fun(x => x))
+            TypedDSL.oclCircularBuffer(a)(n)(n)(fun(x => x))
             :: e.t)
         case _ => Failure(circularBuffer(a))
       }
@@ -132,7 +142,7 @@ object lowering {
     case object circularBufferLoadFusion extends Strategy[Rise] {
       def apply(e: Rise): RewriteResult[Rise] = e match {
         case App(App(
-          cb @ DepApp(DepApp(DepApp(OclSlideSeq(SlideSeq.Indices), _), _), _),
+          cb @ DepApp(DepApp(DepApp(OclCircularBuffer(), _), _), _),
           load), App(App(Map(), f), in)
         ) =>
           Success(untyped(cb)(typed(f) >> load, in) :: e.t)
