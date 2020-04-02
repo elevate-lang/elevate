@@ -165,4 +165,31 @@ object vectorize {
       Success(r :: e.t)
     case _ => Failure(alignSlide)
   }
+
+  def makeShuffle(s: Rise): Type => TDSL[Rise] = {
+    case ArrayType(_, _: VectorType) => untyped(s)
+    case ArrayType(n, PairType(a, b)) =>
+      unzip >> fun(p => zip(
+        makeShuffle(s)(ArrayType(n, a))(fst(p)),
+        makeShuffle(s)(ArrayType(n, b))(snd(p))))
+    case t => throw new Exception(s"did not expect $t")
+  }
+
+  // TODO: express as a combination of smaller rules
+  // FIXME: function f needs to be element-wise (a hidden mapVec)
+  def mapAfterShuffle: Strategy[Rise] = {
+    case e @ App(DepApp(AsVector(), v: Nat),
+      App(Join(), App(DepApp(DepApp(Slide(), v2: Nat), Cst(1)),
+        App(DepApp(Take(), t: Nat), App(AsScalar(),
+          App(App(Map(), f), in)
+        ))
+      ))
+    ) if v == v2 =>
+      val shuffle = makeShuffle(
+        asScalar >> take(t) >>
+        slide(v)(1) >> join >> asVector(v)
+      )(in.t)
+      Success((typed(in) |> shuffle |> map(f)) :: e.t)
+    case _ => Failure(mapAfterShuffle)
+  }
 }
