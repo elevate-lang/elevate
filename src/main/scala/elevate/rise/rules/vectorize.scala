@@ -1,5 +1,6 @@
 package elevate.rise.rules
 
+import arithexpr.arithmetic.Cst
 import elevate.core._
 import elevate.rise._
 import rise.core._
@@ -132,5 +133,36 @@ object vectorize {
     case e @ App(App(Pair(), App(AsScalar(), a)), App(AsScalar(), b)) =>
       Success((pair(a, b) |> mapFst(asScalar) |> mapSnd(asScalar)) :: e.t)
     case _ => Failure(asScalarOutsidePair)
+  }
+
+  // TODO: express as a combination of smaller rules
+  def alignSlide: Strategy[Rise] = {
+    case e @ App(Transpose(),
+      App(App(Map(), DepApp(AsVector(), Cst(v))),
+        App(Join(), App(App(Map(), Transpose()),
+          App(App(Map(), DepApp(PadEmpty(), Cst(p))),
+            App(App(Map(), DepApp(DepApp(Slide(), Cst(3)), Cst(1))),
+              in
+            )
+          )
+        ))
+      )
+    ) if p <= v =>
+      val inW = in.t.asInstanceOf[ArrayType].elemType
+        .asInstanceOf[ArrayType].size
+      val pV = if (((inW + v) % v).eval == 0) { // TODO: generalize
+        Cst(v)
+      } else {
+        Cst(v + v) - ((inW + v) % v)
+      }
+      val r = typed(in) |>
+        map(padEmpty(pV) >> asVectorAligned(v) >> slide(2)(1)) >>
+        transpose >>
+        map(
+          map(asScalar >> take(v+2) >> slide(v)(1) >> join >> asVector(v)) >>
+          join
+        )
+      Success(r :: e.t)
+    case _ => Failure(alignSlide)
   }
 }
