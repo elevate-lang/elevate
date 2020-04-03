@@ -501,4 +501,45 @@ object algorithmic {
       })
     }
   }
+
+
+  private val mulT: TDSL[Rise] = fun(x => fst(x) * snd(x))
+  private val sum: TDSL[Rise] = reduce(add)(l(0.0f))
+  private val dot: TDSL[Rise] = fun(a => fun(b =>
+    zip(a)(b) |> map(mulT) |> sum
+  ))
+  // TODO: check separability property?
+  def separateDotHV(weights2d: Expr, wH: Expr, wV: Expr): Strategy[Rise] = {
+    case e @ App(App(App(Reduce(), rf), init), App(App(Map(), mf),
+      App(App(Zip(), App(Join(), weights)), App(Join(), nbh))
+    )) if rf == ((add :: rf.t): Expr) &&
+      init == (l(0.0f): Expr) &&
+      mf == ((mulT :: mf.t): Expr) &&
+      weights == weights2d
+      =>
+      Success((typed(nbh) |> map(dot(wH)) |> dot(wV)) :: e.t)
+    case _ => Failure(separateDotHV(weights2d, wH, wV))
+  }
+  def separateDotVH(weights2d: Expr, wV: Expr, wH: Expr): Strategy[Rise] = {
+    case e @ App(App(App(Reduce(), rf), init), App(App(Map(), mf),
+    App(App(Zip(), App(Join(), weights)), App(Join(), nbh))
+    )) if rf == ((add :: rf.t): Expr) &&
+      init == (l(0.0f): Expr) &&
+      mf == ((mulT :: mf.t): Expr) &&
+      weights == weights2d
+    =>
+      Success((typed(nbh) |> transpose |> map(dot(wV)) |> dot(wH)) :: e.t)
+    case _ => Failure(separateDotVH(weights2d, wV, wH))
+  }
+
+  def separateSumHV: Strategy[Rise] = {
+    case e @ App(sum2, App(Join(), in)) if sum2 == ((sum :: sum2.t): Expr) =>
+      Success((typed(in) |> map(sum) |> sum) :: e.t)
+    case _ => Failure(separateSumHV)
+  }
+  def separateSumVH: Strategy[Rise] = {
+    case e @ App(sum2, App(Join(), in)) if sum2 == ((sum :: sum2.t): Expr) =>
+      Success((typed(in) |> transpose |> map(sum) |> sum) :: e.t)
+    case _ => Failure(separateSumVH)
+  }
 }
