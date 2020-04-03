@@ -150,5 +150,17 @@ object lowering {
       }
       override def toString = s"circularBufferLoadFusion"
     }
+
+    case class rotateValues(a: AddressSpace, write: Expr)
+      extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
+          Success(
+            TypedDSL.oclRotateValues(a)(n)(untyped(write))
+              :: e.t)
+        case _ => Failure(rotateValues(a, write))
+      }
+      override def toString = s"rotateValues($a, $write)"
+    }
   }
 }

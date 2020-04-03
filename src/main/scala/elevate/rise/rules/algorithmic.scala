@@ -57,6 +57,15 @@ object algorithmic {
     case _ => Failure(mapSndFusion)
   }
 
+  // padEmpty n >> padEmpty m -> padEmpty n + m
+  def padEmptyFusion: Strategy[Rise] = {
+    case e @ App(DepApp(PadEmpty(), m: Nat),
+      App(DepApp(PadEmpty(), n: Nat), in))
+    =>
+      Success(padEmpty(n+m)(in) :: e.t)
+    case _ => Failure(padEmptyFusion)
+  }
+
   // *g >> reduce f init -> reduce (acc, x => f acc (g x)) init
   case object reduceMapFusion extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
@@ -456,6 +465,16 @@ object algorithmic {
     case _ => Failure(unzipZipIsPair)
   }
 
+  // FIXME: fighting against beta-reduction
+  // unzip ((p => zip (fst p) (snd p)) in) -> in
+  def unzipZipIdentity: Strategy[Rise] = {
+    case e @ App(Unzip(), App(Lambda(p,
+      App(App(Zip(), App(Fst(), p2)), App(Snd(), p3))), in))
+    if p == p2 && p == p3 =>
+      Success(in :: e.t)
+    case _ => Failure(unzipZipIdentity)
+  }
+
   // FIXME: this is very specific
   // zip (fst/snd unzip e) (fst/snd unzip e)
   // -> map (p => pair (fst/snd p) (fst/snd p)) e
@@ -466,6 +485,23 @@ object algorithmic {
     ) if e1 == e2 =>
       Success(map(fun(p => pair(untyped(a1)(p), untyped(a2)(p))), e1) :: e.t)
     case _ => Failure(zipUnzipAccessSimplification)
+  }
+
+  // FIXME: this is very specific
+  def zipAsVectorUnzipSimplification: Strategy[Rise] = {
+    case e @ App(
+      Lambda(x, App(App(Zip(),
+        App(DepApp(AsVector(), v: Nat), App(Fst(), x2))),
+        App(DepApp(AsVector(), v2: Nat), App(Snd(), x3)))),
+      App(Unzip(), in)
+    ) if x == x2 && x == x3 && v == v2 =>
+      println(in.t)
+      println(e.t)
+      val r = typed(in) |>
+        mapFst(asVectorAligned(v)) |> mapSnd(asVectorAligned(v)) |>
+        fun(p => zip(fst(p), snd(p)))
+      Success(r :: e.t)
+    case _ => Failure(zipAsVectorUnzipSimplification)
   }
 
   // FIXME: this is very specific

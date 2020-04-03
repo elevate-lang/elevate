@@ -135,6 +135,25 @@ object vectorize {
     case _ => Failure(asScalarOutsidePair)
   }
 
+  // padEmpty (p*v) (asScalar in) -> asScalar (padEmpty p in)
+  def padEmptyBeforeAsScalar: Strategy[Rise] = {
+    case App(DepApp(PadEmpty(), pv: Nat), App(AsScalar(), in)) =>
+      in.t match {
+        case ArrayType(_, VectorType(v, _)) if (pv % v) == (0: Nat) =>
+          Success(asScalar(padEmpty(pv / v)(in)))
+        case _ => Failure(padEmptyBeforeAsScalar)
+      }
+    case _ => Failure(padEmptyBeforeAsScalar)
+  }
+
+  // padEmpty p (asVector v in) -> asVector v (padEmpty (p*v) in)
+  def padEmptyBeforeAsVector: Strategy[Rise] = {
+    case e @ App(DepApp(PadEmpty(), p: Nat), App(asV @ DepApp(_, v: Nat), in))
+    if isAsVector(asV) =>
+      Success(untyped(asV)(padEmpty(p*v)(in)) :: e.t)
+    case _ => Failure(padEmptyBeforeAsVector)
+  }
+
   // TODO: express as a combination of smaller rules
   def alignSlide: Strategy[Rise] = {
     case e @ App(Transpose(),
@@ -163,6 +182,25 @@ object vectorize {
           join
         )
       Success(r :: e.t)
+
+    case e @ App(Transpose(),
+      App(App(Map(), DepApp(AsVector(), Cst(v))),
+        App(Transpose(), App(DepApp(PadEmpty(), Cst(p)),
+          App(DepApp(DepApp(Slide(), Cst(3)), Cst(1)), in)
+        ))
+      )
+    ) if p <= v =>
+      val inW = in.t.asInstanceOf[ArrayType].size
+      val pV = if (((inW + v) % v).eval == 0) { // TODO: generalize
+        Cst(v)
+      } else {
+        Cst(v + v) - ((inW + v) % v)
+      }
+      val r = typed(in) |>
+        padEmpty(pV) >> asVectorAligned(v) >> slide(2)(1) >>
+        map(asScalar >> take(v+2) >> slide(v)(1) >> join >> asVector(v))
+      Success(r :: e.t)
+
     case _ => Failure(alignSlide)
   }
 
@@ -191,5 +229,21 @@ object vectorize {
       )(in.t)
       Success((typed(in) |> shuffle |> map(f)) :: e.t)
     case _ => Failure(mapAfterShuffle)
+  }
+
+  // FIXME: this is very specific
+  def padEmptyBeforeZipAsVector: Strategy[Rise] = {
+    case e @ App(DepApp(PadEmpty(), p: Nat), App(
+      Lambda(x, App(App(Zip(),
+        App(asV @ DepApp(_, v: Nat), App(Fst(), x2))),
+        App(asV2, App(Snd(), x3)))),
+      in
+    )) if x == x2 && x == x3 && isAsVector(asV) && asV == asV2 =>
+      Success((
+        typed(in) |> mapFst(padEmpty(p*v)) |> mapSnd(padEmpty(p*v)) |>
+        // FIXME: aligning although we have no alignment information
+        fun(p => zip(asVectorAligned(v)(fst(p)), asVectorAligned(v)(snd(p))))
+      ) :: e.t)
+    case _ => Failure(padEmptyBeforeZipAsVector)
   }
 }
