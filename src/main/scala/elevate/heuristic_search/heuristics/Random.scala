@@ -7,7 +7,7 @@ class Random[P] extends Heuristic[P] {
   // initialize global best
   var best:Option[Double] = None
 
-  def start(panel:HeuristicPanel[P], initialSolution:P, depth: Int): (P, Option[Double]) = {
+  def start(panel:HeuristicPanel[P], initialSolution:P, depth: Int): (P, Option[Double], Path[P]) = {
     var solution:P = initialSolution
     val path = new Path(solution, panel.f(solution))
     val random = scala.util.Random
@@ -44,13 +44,7 @@ class Random[P] extends Heuristic[P] {
       }
     }
 
-    path.printPathConsole()
-    // make path part of settings
-    // create folder as well, maybe use relative paths
-    path.writePathToDot("/home/jo/developement/rise-lang/exploration/random.dot")
-
-
-    (solution, panel.f(solution))
+    (solution, panel.f(solution), path)
   }
 
 }

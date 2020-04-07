@@ -3,6 +3,7 @@ package elevate.heuristic_search
 import elevate.core.Strategy
 import elevate.heuristic_search.heuristics.Random
 import elevate.heuristic_search._
+import elevate.heuristic_search.util.Path
 
 
 // runner class
@@ -11,7 +12,8 @@ class Metaheuristic[P](val name:String,
                        val depth:Int,
                        val iterations: Int,
                        val runner:Runner[P],
-                       val strategies:Set[Strategy[P]]
+                       val strategies:Set[Strategy[P]],
+                       val output:String
                       ) extends Runner[P] {
 
   def execute(solution: P): (P, Option[Double]) = {
@@ -23,13 +25,16 @@ class Metaheuristic[P](val name:String,
     var best: (P, Option[Double]) = (solution, None)
     for (_ <- Range(0, iterations)) {
       val result = heuristic.start(panel, solution, depth)
+      // print path
+      result._3.writePathToDot(output + "/" + name + ".dot")
+
       best._2 match {
         case Some(currentBest) => {
           result._2 match {
             case Some(candidateBest) => {
               // check if new best is found
               if (candidateBest < currentBest) {
-                best = result
+                best = (result._1, result._2)
               }
             }
             case _ => // do nothing
@@ -41,7 +46,7 @@ class Metaheuristic[P](val name:String,
           result._2 match {
             case Some(_) => {
               // initialize best
-              best = result
+              best = (result._1, result._2)
             }
             case _ => // do nothing
           }
