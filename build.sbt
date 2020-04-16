@@ -11,7 +11,7 @@ lazy val elevate = (project in file("."))
 
     scalacOptions ++= Seq(
       "-Xfatal-warnings",
-      "-Xlint",
+      "-Xlint:-unused",
       "-Xmax-classfile-name", "100",
       "-unchecked",
       "-deprecation",
