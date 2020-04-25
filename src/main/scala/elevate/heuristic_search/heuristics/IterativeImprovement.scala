@@ -7,36 +7,47 @@ class IterativeImprovement[P] extends Heuristic[P] {
 
   def start(panel:HeuristicPanel[P], initialSolution:P, depth:Int): (P, Option[Double], Path[P]) = {
     var solution:P = initialSolution
-    val path = new Path(solution, panel.f(solution))
+    var solutionValue:Option[Double] = panel.f(solution)
+    val path = new Path(solution, solutionValue)
 
     var oldSolution = solution
+    var oldSolutionValue:Option[Double] = solutionValue
     var i = 0
     do {
       i = i + 1
+      // save current state
       oldSolution = solution
+      oldSolutionValue = solutionValue
 
       //get neighbourhood
       val Ns = panel.N(solution)
 
       //evaluate neighbourhood
       Ns.foreach(ns => {
-        (panel.f(ns._1), panel.f(solution)) match {
-          case (Some(fns), Some(fsolution)) =>
-            if (fns < fsolution) {
+        val fns = panel.f(ns._1)
+        val fsolution = solutionValue
+        (fns, fsolution) match {
+          case (Some(fnsInternal), Some(fsolutionInternal)) =>
+
+            // check for new minimum
+            if (fnsInternal < fsolutionInternal) {
               solution = ns._1
-              path.add(ns._1, ns._2, panel.f(ns._1))
+              solutionValue = fns
+
+              path.add(ns._1, ns._2, fns)
             }
           case _ =>
         }
       })
 
-    } while((panel.f(solution), panel.f(oldSolution)) match {
-          case (Some(value0), Some(value1)) => (panel.f(solution).get < panel.f(oldSolution).get)
+      // check, if chosen solution is better
+    } while((solutionValue, oldSolutionValue) match {
+          case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
           case _ => false
         }
     )
 
-    (solution, panel.f(solution), path)
+    (solution, solutionValue, path)
   }
 }
 
