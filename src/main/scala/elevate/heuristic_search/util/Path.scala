@@ -70,13 +70,15 @@ class Path[P](program:P,
     val uniqueFilename_full = getUniqueFilename(filename, 4)
     val uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain" + ".dot"
 
-    // print String to file
+    // create new files
     val pwFull = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
     val pwReduced = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced), false))
 
+    // write string encoding path to file
     pwFull.write(full)
     pwReduced.write(reduced)
 
+    // close files
     pwFull.close()
     pwReduced.close()
 
@@ -121,14 +123,6 @@ class Path[P](program:P,
 
       tmp = tmp.successor
     } while(tmp != null)
-
-
-    // optional
-    // add folder for low-level expressions  using hash
-    // add low level expressions
-
-    // mkdir folder for C programs
-    // add C programs
 
   }
 
