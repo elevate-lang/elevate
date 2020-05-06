@@ -3,7 +3,9 @@ package elevate.heuristic_search.util
 import java.io.{File, FileOutputStream, PrintWriter}
 import java.nio.file.{Files, Paths}
 
-import elevate.core.Strategy
+import scala.sys.process._
+import scala.language.postfixOps
+import elevate.core.{RewriteResult, Strategy}
 
 class Path[P](program:P,
               value:Option[Double],
@@ -65,32 +67,97 @@ class Path[P](program:P,
     reduced += "}"
 
     //check if file exists and avoid overwriting
-    var uniqueFilename_full = filename
-    var uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain" + ".dot"
+    val uniqueFilename_full = getUniqueFilename(filename, 4)
+    val uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain" + ".dot"
 
-    if(Files.exists(Paths.get(uniqueFilename_full))){
-      val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
-      println(warningString + "adding System.currentTimeMillis().")
-      uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)+ "_" + System.currentTimeMillis() + ".dot"
-    }
-
-    if(Files.exists(Paths.get(uniqueFilename_reduced))){
-      val warningString = "Warning! Clash at " + uniqueFilename_reduced + ".\n"
-      println(warningString + "adding System.currentTimeMillis().")
-      uniqueFilename_reduced = uniqueFilename_reduced.substring(0, uniqueFilename_reduced.length-4)+ "_" + System.currentTimeMillis() + ".dot"
-    }
-
-    // print String to file
+    // create new files
     val pwFull = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
     val pwReduced = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced), false))
 
+    // write string encoding path to file
     pwFull.write(full)
     pwReduced.write(reduced)
 
+    // close files
     pwFull.close()
     pwReduced.close()
 
   }
+
+  def writePathToDisk(filename: String) = {
+    // traverse from initial to current
+
+    // write high-level expression and strategy list to files on disk
+    var tmp = initial
+
+    do {
+      // get unique filename
+      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + tmp.program.hashCode().toString, 0)
+      // create folder
+      (s"mkdir ${uniqueFilename}" !!)
+
+      // create file for expression
+      val pwProgram = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/" + tmp.program.hashCode().toString), false))
+
+      // create file for strategies
+      val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
+
+      // write expression to file
+      pwProgram.write(tmp.program.toString)
+
+      // strategy list
+     val list = getStrategies(tmp)
+
+      // create strategy string for file
+      var strategyString = ""
+      list.foreach(elem=>{
+        strategyString +=  elem.toString + "\n"
+      })
+
+      // write strategy string to file
+      pwStrategies.write(strategyString)
+
+      // close files
+      pwProgram.close()
+      pwStrategies.close()
+
+      tmp = tmp.successor
+    } while(tmp != null)
+
+  }
+
+  def getStrategies(element: PathElement[P]):Seq[P=>RewriteResult[P]] = {
+    var tmp = initial
+    val strategies = scala.collection.mutable.ListBuffer.empty[P=>RewriteResult[P]]
+
+    // there is no first strategy resulting in the initial expression
+
+    // add elements to list (start with second)
+    while(tmp != element) {
+      tmp = tmp.successor
+      strategies += tmp.strategy
+    }
+
+    // return sequence
+    strategies.toSeq
+  }
+
+  def getUniqueFilename(filename:String, offset: Int):String= {
+    var uniqueFilename_full = filename
+
+    // check if file or folder already exists
+    if(Files.exists(Paths.get(uniqueFilename_full))){
+      val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
+      println(warningString + "adding System.currentTimeMillis().")
+
+      // append timestamp
+      val end = uniqueFilename_full.substring(uniqueFilename_full.length-offset, uniqueFilename_full.length)
+      uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length-offset)+ "_" + System.currentTimeMillis() + end
+    }
+
+    uniqueFilename_full
+  }
+
 }
 
 class PathElement[P] (val program:P,

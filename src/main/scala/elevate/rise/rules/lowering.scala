@@ -11,6 +11,7 @@ import elevate.rise.strategies.predicate._
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
+import rise.core.DSL.toMem
 import rise.core.types._
 
 object lowering {
@@ -20,32 +21,36 @@ object lowering {
   case object mapSeq extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeq()(m.t) :: e.t)
-      case _       => Failure(mapSeq)
+      case _ => Failure(mapSeq)
     }
+
     override def toString = "mapSeq"
   }
 
   case object mapSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
-      case _       => Failure(mapSeqUnroll)
+      case _ => Failure(mapSeqUnroll)
     }
+
     override def toString = "mapSeqUnroll"
   }
 
   case class mapGlobal(dim: Int = 0) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Map() => Success(rise.OpenCL.TypedDSL.mapGlobal(dim) :: e.t)
-      case _       => Failure(mapGlobal(dim))
+      case _ => Failure(mapGlobal(dim))
     }
+
     override def toString = "mapGlobal"
   }
 
   case object reduceSeq extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Reduce() => Success(TypedDSL.reduceSeq :: e.t)
-      case _        => Failure(reduceSeq)
+      case _ => Failure(reduceSeq)
     }
+
     override def toString = "reduceSeq"
   }
 
@@ -53,8 +58,9 @@ object lowering {
   case object reduceSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Reduce() | ReduceSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
-      case _                      => Failure(reduceSeqUnroll)
+      case _ => Failure(reduceSeqUnroll)
     }
+
     override def toString = "reduceSeqUnroll"
   }
 
@@ -82,15 +88,15 @@ object lowering {
   case object isComputation extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       // unary function (map)
-      case l@Lambda(_,_) if isId(l) => Success(l)
-      case l@Lambda(_,_) =>
+      case l@Lambda(_, _) if isId(l) => Success(l)
+      case l@Lambda(_, _) =>
         l.t match {
           // unary function
           case FunType(in, out) if
-            isPairOrBasicType(in) && isPairOrBasicType(out) => Success(l)
+          isPairOrBasicType(in) && isPairOrBasicType(out) => Success(l)
           // binary function
           case FunType(in, FunType(in2, out)) if
-            isPairOrBasicType(in) && isPairOrBasicType(in2) &&
+          isPairOrBasicType(in) && isPairOrBasicType(in2) &&
             isPairOrBasicType(out) => Success(l)
           case _ => Failure(containsComputation)
         }
@@ -99,8 +105,8 @@ object lowering {
     }
 
     private def isPairOrBasicType(t: Type): Boolean = t match {
-      case _:BasicType => true
-      case PairType(a,b) => isPairOrBasicType(a) && isPairOrBasicType(b)
+      case _: BasicType => true
+      case PairType(a, b) => isPairOrBasicType(a) && isPairOrBasicType(b)
       case _ => false
     }
   }
@@ -113,6 +119,7 @@ object lowering {
       )) :: e.t)
       case _ => Failure(slideSeq(rot, write_dt1))
     }
+
     override def toString = s"slideSeq($rot, $write_dt1)"
   }
 
@@ -122,15 +129,15 @@ object lowering {
   val materializeGenerate: Strategy[Rise] =
     normalize.apply(
       argument(function(isGenerate)) `;`
-      not(isCopy) `;`
-      argument(copyAfterGenerate)
+        not(isCopy) `;`
+        argument(copyAfterGenerate)
     )
 
   // adds explicit copies for every init value in reductions
   val materializeInitOfReduce: Strategy[Rise] =
     normalize.apply(
       function(function(isReduceX)) `;`
-      argument(not(isCopy) `;` insertCopyAfter)
+        argument(not(isCopy) `;` insertCopyAfter)
     )
 
   case object insertCopyAfter extends Strategy[Rise] {
@@ -167,7 +174,7 @@ object lowering {
     normalize.apply(lowering.mapSeqCompute <+ lowering.reduceSeq)
 
   val addRequiredCopies: Strategy[Rise] =
-    // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce
+  // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce
     tryAll(copyAfterReduce) `;` LCNF `;` materializeInitOfReduce
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
@@ -184,7 +191,7 @@ object lowering {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case reduceResult@App(App(App(ReduceX(), _),_),_) =>
+      case reduceResult@App(App(App(ReduceX(), _), _), _) =>
         Success(constructCopy(reduceResult.t) $ reduceResult)
       case _ => Failure(copyAfterReduce)
     }
@@ -194,7 +201,7 @@ object lowering {
   case object copyAfterGenerate extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
-      case _:BasicType => fun(x => x)
+      case _: BasicType => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
@@ -202,5 +209,18 @@ object lowering {
       case a@App(Generate(), _) => Success(constructCopy(a.t) $ a)
       case _ => Failure(copyAfterGenerate)
     }
+
+    case object toMemAfterMapSeq extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] =
+        e match {
+          case a@App(App(MapSeq(), _), _) =>
+            Success((typed(a) |> toMem) :: a.t)
+          case _ => Failure(toMemAfterMapSeq)
+        }
+
+      override def toString = "toMemAfterMapSeq"
+    }
+
   }
+
 }

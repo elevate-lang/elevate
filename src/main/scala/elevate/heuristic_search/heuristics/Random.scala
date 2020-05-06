@@ -44,7 +44,7 @@ class Random[P] extends Heuristic[P] {
       }
     }
 
-    (solution, panel.f(solution), path)
+    (solution, best, path)
   }
 
 }
