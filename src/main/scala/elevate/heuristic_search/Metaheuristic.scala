@@ -1,5 +1,7 @@
 package elevate.heuristic_search
 
+import java.io.{File, FileOutputStream, PrintWriter}
+
 import elevate.core.Strategy
 import elevate.heuristic_search.heuristics.Random
 import elevate.heuristic_search._
@@ -16,6 +18,8 @@ class Metaheuristic[P](val name:String,
                        val output:String
                       ) extends Runner[P] {
 
+  var counter = 0
+
   def execute(solution: P): (P, Option[Double]) = {
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
@@ -25,6 +29,10 @@ class Metaheuristic[P](val name:String,
     var best: (P, Option[Double]) = (solution, None)
     for (_ <- Range(0, iterations)) {
       val result = heuristic.start(panel, solution, depth)
+
+      // write runtimes
+      writeValues(output + "/" + name + ".csv", result, name)
+
       // print path
       result._3.writePathToDot(output + "/" + name + ".dot")
 
@@ -56,58 +64,36 @@ class Metaheuristic[P](val name:String,
 
     best
   }
+
+  def writeValues(path: String, result: (P, Option[Double], Path[P]), name:String) {
+    // open file for appendix
+    val file = new PrintWriter(new FileOutputStream(new File(path), true))
+
+    // create string to write to file
+    var string = counter + ", " + name + ", " + System.currentTimeMillis().toString + ", " + result._1.hashCode().toString + ", "
+    result._2 match{
+      case Some(value) => string += value.toString + "\n"
+      case _ => string += "-1 \n"
+    }
+
+    // write to file and close
+    file.write(string)
+    counter += 1
+    file.close()
+  }
+
+  def writeHeader(path:String) {
+    // open file for appendix
+    val file = new PrintWriter(new FileOutputStream(new File(path), true))
+
+    // create string to write to file
+    val string = "iteration, " + "runner, " + "timestamp, " + "hash, " + "runtime\n"
+
+    // write to file and close
+    file.write(string)
+    file.close()
+  }
+
 }
 
-    // best in all iterations which represents the return value
-
-
-
-
-
-    // make this general!
-    // get this from configuration
-//
-//    // traverse runner path
-//    name match {
-//      case "C" => {
-//        // lower
-//        val lowered = elevate.rise.rules.lowering.lowerToC.apply(solution)
-//        //execute
-//        executeC(lowered, iterations)
-//      }
-//      case "OpenMP" => throw new Exception("not yet implemented")
-//      case "OpenCL" => throw new Exception("not yet implemented")
-//      case "Random" => {
-//        println("start new search from: " + name)
-//        var best:Option[Double] = None
-//
-//        // repeat random for iterations time
-//        for(_ <- Range(0,iterations)){
-//
-//          // new MockupSearch instance
-//          val version = new Exploration[P](runner, strategies)
-//
-//          // start random heuristic
-//          val heuristic = new Random[P](solution, version, iterations)
-//          heuristic.start()
-//
-//          // check for new best value (and/or initialize best variable)
-//          (best, heuristic.best) match {
-//            case (Some(a), Some(b)) => {
-//              if (b < a) {
-//                best = heuristic.best
-//              }
-//            }
-//            case (None, Some(b)) =>{
-//              best = Some(b)
-//            }
-//            case _ =>
-//          }
-//        }
-//        best
-//      }
-//      case _ => {
-//        throw new Exception("should never reach this point")
-//      }
-//    }
 
