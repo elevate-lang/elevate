@@ -14,6 +14,7 @@ sealed trait RewriteResult[P] {
 }
 
 case class Success[P](p: P) extends RewriteResult[P] {
+  Success.rewriteCount = Success.rewriteCount + 1
   override def getProgramOrElse(x: P): P = p
   override def get: P = p
 
@@ -22,6 +23,10 @@ case class Success[P](p: P) extends RewriteResult[P] {
 
   override def mapFailure(f: Strategy[P] => Strategy[P]): RewriteResult[P] = this
   override def flatMapFailure(f: Strategy[P] => RewriteResult[P]): RewriteResult[P] = this
+}
+
+object Success {
+  var rewriteCount = 1
 }
 
 case class Failure[P](s: Strategy[P]) extends RewriteResult[P] {

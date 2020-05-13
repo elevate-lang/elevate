@@ -85,6 +85,14 @@ object predicate {
     override def toString = "isMap"
   }
 
+  case object isLet extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case l@Let() => Success(l)
+      case _       => Failure(isLet)
+    }
+    override def toString = "isLet"
+  }
+
   // Matching Applied Primitives
 
   case object isAppliedLet extends Strategy[Rise] {

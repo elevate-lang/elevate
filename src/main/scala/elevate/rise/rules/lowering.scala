@@ -184,7 +184,7 @@ object lowering {
     tryAll(copyAfterReduce) `;` DFNF `;` materializeInitOfReduce
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
-  val lowerToC: Strategy[Rise] = addRequiredCopies `;` specializeSeq
+  val lowerToC: Strategy[Rise] = addRequiredCopies `;` `try`(bottomUp(copyAfterReduceInit)) `;` specializeSeq
 
 
   // todo currently only works for mapSeq
@@ -212,8 +212,8 @@ object lowering {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(a@App(ReduceX(), _), init) =>
-        Success(TDSL(a) $ constructCopy(init.t) $ init)
+      case App(a@App(ReduceSeqUnroll(), _), init) =>
+        Success(TDSL(a) $ (constructCopy(init.t) $ init))
       case _ => Failure(copyAfterReduce)
     }
   }
