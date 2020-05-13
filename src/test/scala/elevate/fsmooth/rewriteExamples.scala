@@ -4,7 +4,7 @@ import FSmooth.{Application, Let, ScalarValue, TypeInference}
 import FSmooth.DSL._
 import FSmooth.MSmooth.{matrixEye, matrixTranspose}
 import elevate.core.strategies.basic.normalize
-import elevate.core.strategies.traversal.oncetd
+import elevate.core.strategies.traversal.topDown
 import elevate.fsmooth.rules._
 import elevate.fsmooth.traversal._
 
@@ -59,7 +59,7 @@ class rewriteExamples extends elevate.test_util.Tests {
 
     println("\n-- step3: loop normalisation")
     // this rule only applies if the ifold arguments are ordered correctly
-    val strategy2 = oncetd(foldConditional)
+    val strategy2 = topDown(foldConditional)
     val step3 = strategy2.apply(step2.get)
     println(step3)
 

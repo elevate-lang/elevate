@@ -38,7 +38,7 @@ object traversal {
     }
 
   // For Rise, the only AST node that contains multiple subexpressions is App!
-  implicit object LiftTraversable
+  implicit object RiseTraversable
     extends elevate.core.strategies.Traversable[Rise] {
 
     override def all: Strategy[Rise] => Strategy[Rise] = s => {

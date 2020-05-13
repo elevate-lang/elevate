@@ -13,6 +13,9 @@ object tiling {
 
   def tileND: Int => Int => Strategy[Rise] = d => n => tileNDList(List.tabulate(d)(_ => n))
 
+  // special syntax for 2D case - for ICFP'20 paper
+  def tile(x: Int, y: Int): Strategy[Rise] = tileNDList(List(x,y))
+
   def tileNDList: List[Int] => Strategy[Rise] =
     n => n.size match {
         case x if x <= 0 => id()
@@ -44,7 +47,7 @@ object tiling {
   // position: how far to move right until we reach maps
   // level:    how deep transpose pairs are nested in maps
   def shiftDimRec: Int => Int => Strategy[Rise] =
-    position => level => LCNF `;`
+    position => level => DFNF `;`
       (level match {
       case 1 => moveTowardsArgument(position)(loopInterchangeAtLevel(1))
       case l => shiftDimRec(position)(l - 1) `;` RNF `;`
@@ -53,7 +56,7 @@ object tiling {
 
   // in front of **f, creating transpose pairs, move one transpose over **f
   def loopInterchange: Strategy[Rise] =
-      idAfter `;` createTransposePair `;` LCNF `;` argument(mapMapFBeforeTranspose)
+      idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)
 
   // level == 0: A.B.C.D => A.B.D.C
   //             ^ ^        ^ ^

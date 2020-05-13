@@ -6,7 +6,7 @@ import elevate.core.strategies.traversal.tryAll
 import elevate.rise.strategies.predicate._
 import elevate.rise.rules.traversal._
 import elevate.rise._
-import elevate.rise.strategies.normalForm.LCNF
+import elevate.rise.strategies.normalForm.DFNF
 import rise.core._
 import rise.core.TypedDSL._
 import rise.core.primitives._
@@ -31,6 +31,15 @@ object algorithmic {
       case _             => Failure(splitJoin(n))
     }
     override def toString: String = s"splitJoin($n)"
+  }
+
+  case class splitJoin2(n: Nat) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case e => e.t match {
+        case ArrayType(_,_) => Success(join o split(n) $ e)
+        case _ => Failure(splitJoin2(n))
+      }
+    }
   }
 
   // fusion / fission
@@ -105,13 +114,24 @@ object algorithmic {
     override def toString: String = "idAfter"
   }
 
-  def liftId: Strategy[Rise] = `id -> *id`
+  def idToCopy: Strategy[Rise] = `id -> fun(x => x)`
+  case object `id -> fun(x => x)` extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(Id() :: FunType(in: ScalarType, out: ScalarType), arg :: (argT: ScalarType))
+        if in == out && in == argT =>
+        Success(fun(x => x) $ arg)
+      case _ => Failure(idToCopy)
+    }
+  }
+
+
+    def liftId: Strategy[Rise] = `id -> *id`
   case object `id -> *id` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id(), arg) => Success(app(map(id), arg) :: e.t)
-      case _              => Failure(liftId)
+      case App(Id() :: FunType(ArrayType(_, _), _), arg) => Success(DFNF((map(id) $ arg)).get)
+      case _ => Failure(liftId)
     }
-    override def toString: String = "liftId"
+    override def toString = "liftId"
   }
 
   def createTransposePair: Strategy[Rise] = `id -> T >> T`
@@ -177,13 +197,15 @@ object algorithmic {
     override def toString: String = "freshLambdaIdentifier"
   }
 
+  // different name for ICFP'20
+  def splitStrategy(n: Nat): Strategy[Rise] = blockedReduce(n)
   case class blockedReduce(n: Nat) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(App(App(Reduce(), op :: FunType(yT, FunType(initT, outT))),
       init), arg) if yT == outT =>
         // avoid having two lambdas using the same identifiers
         val freshOp = tryAll(freshLambdaIdentifier).apply(op).get
-        Success(LCNF(
+        Success(DFNF(
           (reduceSeq(fun((acc, y) =>
           typed(op)(acc, reduce(freshOp)(init)(y))))(init) o
           split(n)) $ arg

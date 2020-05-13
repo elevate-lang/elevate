@@ -2,12 +2,14 @@ package elevate.rise.rules
 
 import elevate.core.strategies.basic._
 import elevate.core.strategies.predicate._
-import elevate.core.strategies.traversal.{oncetd, tryAll}
+import elevate.core.strategies.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.{ReduceX, Rise}
 import elevate.rise.rules.traversal._
-import elevate.rise.strategies.normalForm.LCNF
+import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
+import elevate.rise.strategies.predicate.isVectorizeablePrimitive.isVectorArray
+import rise.OpenMP.TypedDSL.mapPar
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
@@ -77,7 +79,7 @@ object lowering {
     }
   }
 
-  def containsComputation: Strategy[Rise] = oncetd(isComputation)
+  def containsComputation: Strategy[Rise] = topDown(isComputation)
 
   // requires type information!
   case object isComputation extends Strategy[Rise] {
@@ -179,7 +181,7 @@ object lowering {
 
   val addRequiredCopies: Strategy[Rise] =
     // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce
-    tryAll(copyAfterReduce) `;` LCNF `;` materializeInitOfReduce
+    tryAll(copyAfterReduce) `;` DFNF `;` materializeInitOfReduce
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
   val lowerToC: Strategy[Rise] = addRequiredCopies `;` specializeSeq
@@ -196,6 +198,7 @@ object lowering {
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case reduceResult@App(App(App(ReduceX(), _),_),_) =>
+        println("copyAfterReduce hit")
         Success(constructCopy(reduceResult.t) $ reduceResult)
       case _ => Failure(copyAfterReduce)
     }
@@ -212,6 +215,52 @@ object lowering {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case a@App(Generate(), _) => Success(constructCopy(a.t) $ a)
       case _ => Failure(copyAfterGenerate)
+    }
+  }
+
+  case class vectorize(n: Nat) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case a@App(App(Map(), f), input) if
+      isComputation(f) && !isVectorArray(a.t) =>
+
+        val newF = untyped(f)
+        Success(
+          (asScalar o map(newF)) $ (vectorizeArrayBasedOnType(input.t) $ input)
+        )
+      case _ => Failure(vectorize(n))
+    }
+
+    private def vectorizeArrayBasedOnType(t: Type): TDSL[Rise] = {
+      def generateUnZips(dt: Type): TDSL[Rise] = {
+        dt match {
+          case _: BasicType => asVectorAligned(n)
+          case PairType(aT, bT) => fun(x =>
+            zip((generateUnZips(aT) $ x._1))(generateUnZips(bT) $ x._2)) o unzip
+          case x => println(x) ; ???
+        }
+      }
+
+      t match {
+        case ArrayType(_, dt) => generateUnZips(dt) // remove first array layer
+        case _ => ??? // shouldnt happen
+      }
+    }
+  }
+
+  def untype: Strategy[Rise] = p => Success(p.setType(TypePlaceholder))
+
+  case object parallel extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(Map(), f) if containsComputation(f) => Success(mapPar(f))
+      case _ => Failure(parallel)
+    }
+    override def toString = "parallel"
+  }
+
+  case object unroll extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll)
+      case _ => Failure(unroll)
     }
   }
 }

@@ -7,6 +7,8 @@ sealed trait RewriteResult[P] {
   def mapSuccess(f: P => P): RewriteResult[P]
   def flatMapSuccess(f: P => RewriteResult[P]): RewriteResult[P]
 
+  def >>=(f: P => RewriteResult[P]): RewriteResult[P] = flatMapSuccess(f)
+
   def mapFailure(f: Strategy[P] => Strategy[P]): RewriteResult[P]
   def flatMapFailure(f: Strategy[P] => RewriteResult[P]): RewriteResult[P]
 }
