@@ -198,8 +198,22 @@ object lowering {
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case reduceResult@App(App(App(ReduceX(), _),_),_) =>
-        println("copyAfterReduce hit")
         Success(constructCopy(reduceResult.t) $ reduceResult)
+      case _ => Failure(copyAfterReduce)
+    }
+  }
+
+  case object copyAfterReduceInit extends Strategy[Rise] {
+    def constructCopy(t: Type): TDSL[Rise] = t match {
+      case _: BasicType => let(fun(x => x))
+      case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
+      case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
+      case x => println(x) ; ??? // shouldn't happen?
+    }
+
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case App(a@App(ReduceX(), _), init) =>
+        Success(TDSL(a) $ constructCopy(init.t) $ init)
       case _ => Failure(copyAfterReduce)
     }
   }
