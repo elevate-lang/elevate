@@ -1,10 +1,22 @@
 package elevate.rise.strategies
 
 import com.github.ghik.silencer.silent
+import elevate.core.strategies.basic
+import elevate.core.strategies.basic.{applyNTimes, id}
+import elevate.core.strategies.traversal._
+import elevate.rise.strategies.traversal._
+import elevate.rise.rules.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
+import elevate.rise.rules.algorithmic.reduceMapFusion
+import elevate.rise.rules.movement.{liftReduce, mapFBeforeSlide}
+import elevate.rise.rules.traversal.{argument, argumentOf, body, function}
+import elevate.rise.strategies.normalForm.{DFNF, RNF}
+import elevate.rise.strategies.predicate.{isApplied, isMap, isReduceSeq}
+import elevate.rise.strategies.traversal.fmap
 import rise.core.TypedDSL._
 import rise.core._
+import rise.core.primitives.ReduceSeq
 
 object algorithmic {
   // TODO: only compose simpler rules
@@ -54,5 +66,49 @@ object algorithmic {
       }
     }
 
+  }
+
+  //scalastyle:off
+  val normForReorder =
+    (mapFBeforeSlide `@` topDown[Rise]) `;;`
+    (reduceMapFusion `@` topDown[Rise]) `;;`
+    (reduceMapFusion `@` topDown[Rise]) `;;` RNF
+
+  def reorder(l: List[Int]): Strategy[Rise] = normForReorder `;` (reorderRec(l) `@` topDown[Rise])
+  case class reorderRec(l: List[Int]) extends Strategy[Rise] {
+    val isFullyAppliedReduceSeq: Strategy[Rise] = isApplied(isApplied(isApplied(isReduceSeq))) <+
+      argument(isApplied(isApplied(isApplied(isReduceSeq)))) // weird reduce special case
+    val isFullyAppliedMap: Strategy[Rise] = isApplied(isApplied(isMap))
+
+    // pos = how far nested is the reduction?
+    def moveReductionUp(pos: Int): Strategy[Rise] = {
+      if (pos <= 1) id[Rise]()
+      else
+        applyNTimes(pos-2)(stepDown)(function(liftReduce)) `;` DFNF `;` RNF `;`  moveReductionUp(pos-1)
+    }
+    def apply(e: Rise): RewriteResult[Rise] = l match {
+      // nothing to reorder, go further down
+      case x :: xs if x == 1 => (stepDown(reorderRec(xs.map(y => if (y>x) y-1 else y ))))(e)
+      // work to do
+      case pos :: xs => {(
+
+        (applyNTimes(pos-1)(stepDown)(isFullyAppliedReduceSeq) `;`
+          // move reduction and normalize the AST
+          moveReductionUp(pos) `;`
+          // recurse and continue reordering
+          stepDown(reorderRec(xs.map(y => if (y>pos) y-1 else y )))) <+
+          // other case: is it a map?
+          applyNTimes(pos-1)(stepDown)(isFullyAppliedMap) `;`
+          basic.fail()
+        )(e)
+      }
+      case Nil => id[Rise]()(e)
+      case _ => Failure(reorderRec(l))
+    }
+
+    def freduce(s: Strategy[Rise]) = function(function(argumentOf(ReduceSeq()(), body(body(s)))))
+    def freduceX(s: Strategy[Rise]) = argument(function(function(argumentOf(ReduceSeq()(), body(body(s))))))
+    def stepDown(s: Strategy[Rise]): Strategy[Rise] =
+      freduceX(s) <+ freduce(s) <+ fmap(s)
   }
 }

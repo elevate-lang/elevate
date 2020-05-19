@@ -117,7 +117,7 @@ object algorithmic {
   def idToCopy: Strategy[Rise] = `id -> fun(x => x)`
   case object `id -> fun(x => x)` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id() :: FunType(in: ScalarType, out: ScalarType), arg :: (argT: ScalarType))
+      case App(Id() ::: FunType(in: ScalarType, out: ScalarType), arg ::: (argT: ScalarType))
         if in == out && in == argT =>
         Success(fun(x => x) $ arg)
       case _ => Failure(idToCopy)
@@ -128,7 +128,7 @@ object algorithmic {
     def liftId: Strategy[Rise] = `id -> *id`
   case object `id -> *id` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id() :: FunType(ArrayType(_, _), _), arg) => Success(DFNF((map(id) $ arg)).get)
+      case App(Id() ::: FunType(ArrayType(_, _), _), arg) => Success(DFNF((map(id) $ arg)).get)
       case _ => Failure(liftId)
     }
     override def toString = "liftId"
@@ -172,7 +172,7 @@ object algorithmic {
   case object freshLambdaIdentifier extends Strategy[Rise] {
     case object freshIdentifier extends Strategy[Rise] {
       def apply(e: Rise): RewriteResult[Rise] = e match {
-        case Identifier(name) :: t =>
+        case Identifier(name) ::: t =>
           Success(Identifier(freshName("fresh_"+ name))(t))
         case _ => Failure(freshIdentifier)
       }
@@ -187,7 +187,7 @@ object algorithmic {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Lambda(x,e) :: t if contains[Rise](x).apply(e) => {
+      case Lambda(x,e) ::: t if contains[Rise](x).apply(e) => {
         val newX = freshIdentifier(x).get.asInstanceOf[Identifier]
         val newE = tryAll(replaceIdentifier(x, newX)).apply(e).get
         Success(Lambda(newX, newE)(t))
@@ -201,7 +201,7 @@ object algorithmic {
   def splitStrategy(n: Nat): Strategy[Rise] = blockedReduce(n)
   case class blockedReduce(n: Nat) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(App(App(Reduce(), op :: FunType(yT, FunType(initT, outT))),
+      case App(App(App(Reduce(), op ::: FunType(yT, FunType(initT, outT))),
       init), arg) if yT == outT =>
         // avoid having two lambdas using the same identifiers
         val freshOp = tryAll(freshLambdaIdentifier).apply(op).get

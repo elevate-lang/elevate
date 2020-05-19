@@ -56,7 +56,7 @@ object predicate {
 
   case object isArray extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case e :: ArrayType(_,_) => Success(e)
+      case e ::: ArrayType(_,_) => Success(e)
       case _ => Failure(isArray)
     }
   }
