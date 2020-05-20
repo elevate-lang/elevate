@@ -8,7 +8,7 @@ import elevate.rise.strategies.traversal._
 import elevate.rise.rules.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
-import elevate.rise.rules.algorithmic.reduceMapFusion
+import elevate.rise.rules.algorithmic.fuseReduceMap
 import elevate.rise.rules.movement.{liftReduce, mapFBeforeSlide}
 import elevate.rise.rules.traversal.{argument, argumentOf, body, function}
 import elevate.rise.strategies.normalForm.{DFNF, RNF}
@@ -71,8 +71,8 @@ object algorithmic {
   //scalastyle:off
   val normForReorder =
     (mapFBeforeSlide `@` topDown[Rise]) `;;`
-    (reduceMapFusion `@` topDown[Rise]) `;;`
-    (reduceMapFusion `@` topDown[Rise]) `;;` RNF
+    (fuseReduceMap `@` topDown[Rise]) `;;`
+    (fuseReduceMap `@` topDown[Rise]) `;;` RNF
 
   def reorder(l: List[Int]): Strategy[Rise] = normForReorder `;` (reorderRec(l) `@` topDown[Rise])
   case class reorderRec(l: List[Int]) extends Strategy[Rise] {
