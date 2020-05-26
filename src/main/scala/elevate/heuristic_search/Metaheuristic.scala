@@ -35,7 +35,8 @@ class Metaheuristic[P](val name:String,
 
       // print path
       result._3.writePathToDot(output + "/" + name + ".dot")
-      result._3.writePathToDisk(output + "/" )
+      //result._3.writePathToDisk(output + "/" )
+      result._3.writePathToDisk(output)
 
       best._2 match {
         case Some(currentBest) => {

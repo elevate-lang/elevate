@@ -147,8 +147,11 @@ class Path[P](program:P,
 
     // check if file or folder already exists
     if(Files.exists(Paths.get(uniqueFilename_full))){
-      val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
-      println(warningString + "adding System.currentTimeMillis().")
+      //val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
+      //println(warningString + "adding System.currentTimeMillis().")
+
+      // wait for it
+      Thread.sleep(1)
 
       // append timestamp
       val end = uniqueFilename_full.substring(uniqueFilename_full.length-offset, uniqueFilename_full.length)
