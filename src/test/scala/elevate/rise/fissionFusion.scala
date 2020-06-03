@@ -2,7 +2,7 @@ package elevate.rise
 
 import elevate.core.Strategy
 import elevate.core.strategies.basic._
-import elevate.core.strategies.traversal.{oncetd, position}
+import elevate.core.strategies.traversal.{topDown, position}
 import elevate.rise.rules.algorithmic.{mapFusion, mapLastFission}
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.algorithmic.{mapFirstFission, mapFullFission}
@@ -34,7 +34,7 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => map(f1 >> f2))),
       position(2)(mapLastFission),
       fun(f1 => fun(f2 => map(f1) >> map(f2))),
-      oncetd(mapFusion))
+      topDown(mapFusion))
   }
 
   test("last fission, chain of 3") {
@@ -42,7 +42,7 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2 >> f3)))),
       position(3)(mapLastFission),
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2) >> map(f3)))),
-      oncetd(mapFusion))
+      topDown(mapFusion))
   }
 
   test("first fission, chain of 2") {
@@ -50,7 +50,7 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => map(f1 >> f2))),
       position(2)(mapFirstFission),
       fun(f1 => fun(f2 => map(f1) >> map(f2))),
-      oncetd(mapFusion))
+      topDown(mapFusion))
   }
 
   test("first fission, chain of 3") {
@@ -58,7 +58,7 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2 >> f3)))),
       position(3)(mapFirstFission),
       fun(f1 => fun(f2 => fun(f3 => map(f1) >> map(f2 >> f3)))),
-      oncetd(mapFusion))
+      topDown(mapFusion))
   }
 
   test("full fission, chain of 2") {
@@ -66,7 +66,7 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => map(f1 >> f2))),
       position(2)(mapFullFission),
       fun(f1 => fun(f2 => map(f1) >> map(f2))),
-      oncetd(mapFusion))
+      topDown(mapFusion))
   }
 
   test("full fission, chain of 3") {
