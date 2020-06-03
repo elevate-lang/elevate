@@ -1,11 +1,12 @@
 package elevate.rise.strategies
 
+import elevate.core.strategies.predicate._
 import elevate.core._
-import elevate.rise.Rise
+import elevate.rise._
 import elevate.rise.rules.lowering.isComputation
-import rise.core._
 import rise.core.primitives._
 import rise.core.types._
+import rise.core._
 
 
 object predicate {
