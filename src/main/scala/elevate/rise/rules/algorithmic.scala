@@ -11,6 +11,7 @@ import rise.core._
 import rise.core.TypedDSL._
 import rise.core.primitives._
 import rise.core.types._
+import arithexpr.arithmetic.Cst
 
 // noinspection MutatorLikeMethodIsParameterless
 object algorithmic {
@@ -54,7 +55,7 @@ object algorithmic {
     override def toString: String = "mapFusion"
   }
 
-  case object reduceMapFusion extends Strategy[Rise] {
+  case object fuseReduceMap extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(
       App(App(ReduceX(), op), init), // reduce
@@ -68,7 +69,7 @@ object algorithmic {
           (red(fun((acc, y) =>
             typed(op)(acc)(typed(f)(y))))(init) $ mapArg) :: e.t)
 
-      case _ => Failure(reduceMapFusion)
+      case _ => Failure(fuseReduceMap)
     }
     override def toString: String = "reduceMapFusion"
   }
@@ -117,7 +118,7 @@ object algorithmic {
   def idToCopy: Strategy[Rise] = `id -> fun(x => x)`
   case object `id -> fun(x => x)` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id() :: FunType(in: ScalarType, out: ScalarType), arg :: (argT: ScalarType))
+      case App(Id() ::: FunType(in: ScalarType, out: ScalarType), arg ::: (argT: ScalarType))
         if in == out && in == argT =>
         Success(fun(x => x) $ arg)
       case _ => Failure(idToCopy)
@@ -125,13 +126,13 @@ object algorithmic {
   }
 
 
-    def liftId: Strategy[Rise] = `id -> *id`
+  def liftId: Strategy[Rise] = `id -> *id`
   case object `id -> *id` extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id() :: FunType(ArrayType(_, _), _), arg) => Success(DFNF((map(id) $ arg)).get)
+      case App(Id() ::: FunType(ArrayType(_, _), _), arg) => Success(DFNF((map(id) $ arg)).get)
       case _ => Failure(liftId)
     }
-    override def toString = "liftId"
+    override def toString: String = "liftId"
   }
 
   def createTransposePair: Strategy[Rise] = `id -> T >> T`
@@ -152,19 +153,93 @@ object algorithmic {
     override def toString: String = "createTransposePair"
   }
 
-  // slideSeq fusion
-  import rise.OpenCL.primitives._
-  import rise.OpenCL.TypedDSL._
+  // overlapped tiling
 
-  def slideSeqFusion: Strategy[Rise] = {
-    case expr@App(App(Map(), g),
-    App(App(App(DepApp(DepApp(SlideSeq(rot), sz: Nat), sp: Nat), wr), f), e)) =>
-      Success(slideSeq(rot)(sz)(sp)(wr)(typed(f) >> g)(e) :: expr.t)
-    case expr@App(App(Map(), g),
-    App(App(App(DepApp(DepApp(DepApp(OclSlideSeq(rot), a: AddressSpace),
-    sz: Nat), sp: Nat), wr), f), e)) =>
-      Success(oclSlideSeq(rot)(a)(sz)(sp)(wr)(typed(f) >> g)(e) :: expr.t)
-    case _ => Failure(slideSeqFusion)
+  // constraint: n - m = u - v
+  // v = u + m - n
+  def slideOverlap(u: Nat): Strategy[Rise] =
+    `slide(n, m) -> slide(u, v) >> *(slide(n, m)) >> J`(u)
+  def `slide(n, m) -> slide(u, v) >> *(slide(n, m)) >> J`(
+   u: Nat
+  ): Strategy[Rise] = {
+    case expr @ DepApp(DepApp(Slide(), n: Nat), m: Nat) =>
+      val v = u + m - n
+      Success((slide(u)(v) >> map(slide(n)(m)) >> join) :: expr.t)
+    case _ =>
+      Failure(slideOverlap(u))
+  }
+
+  // slide widening
+
+  def dropInSlide: Strategy[Rise] =
+    `slide n 1 >> drop l -> slide (n+l) 1 >> map(drop l)`
+  def `slide n 1 >> drop l -> slide (n+l) 1 >> map(drop l)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), l: Nat),
+      App(DepApp(DepApp(Slide(), n: Nat), Cst(1)), in)
+    ) =>
+      Success(app(map(drop(l)), app(slide(n+l)(1), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropInSlide)
+  }
+
+  def takeInSlide: Strategy[Rise] =
+    `slide n 1 >> take (N - r) -> slide (n+r) 1 >> map(take (n - r))`
+  def `slide n 1 >> take (N - r) -> slide (n+r) 1 >> map(take (n - r))`: Strategy[Rise] = {
+    case expr @ App(t @ DepApp(Take(), rem: Nat),
+    App(DepApp(DepApp(Slide(), n: Nat), Cst(1)), in)
+    ) =>
+      t.t match {
+        case FunType(ArrayType(size, _), _) =>
+          val r = size - rem
+          Success(app(map(take(n)), app(slide(n+r)(1), typed(in))) :: expr.t)
+        case _ => throw new Exception("this should not happen")
+      }
+    case _ =>
+      Failure(dropInSlide)
+  }
+
+  // makeArray(n)(map f1 e)..(map fn e)
+  // -> e |> map(fun(x => makeArray(n)(f1 x)..(fn x))) |> transpose
+  case object mapOutsideMakeArray extends Strategy[Rise] {
+    def matchExpectedMakeArray(mka: Rise): Option[Rise] = mka match {
+      case App(MakeArray(_), App(App(Map(), _), e)) => Some(e)
+      case App(f, App(App(Map(), _), e2)) =>
+        matchExpectedMakeArray(f).flatMap(e =>
+          if (e == e2) { Some(e) } else { None })
+      case _ => None
+    }
+
+    def transformMakeArray(mka: Rise, x: TDSL[Rise]): TDSL[Rise] = mka match {
+      case MakeArray(n) => array(n)
+      case App(mka, App(App(Map(), f), _)) =>
+        app(transformMakeArray(mka, x), app(f, x))
+      case _ => throw new Exception("this should not happen")
+    }
+
+    def apply(expr: Rise): RewriteResult[Rise] =
+      matchExpectedMakeArray(expr) match {
+        case Some(e) => Success(
+          app(transpose, map(fun(x => transformMakeArray(expr, x)))(e))
+            :: expr.t)
+        case None => Failure(mapOutsideMakeArray)
+      }
+  }
+
+  // TODO: should not be in this file?
+  // broadly speaking, f(x) -> x |> fun(y => f(y))
+  case class subexpressionElimination(x: Rise) extends Strategy[Rise] {
+    import elevate.core.strategies.traversal._
+    def apply(e: Rise): RewriteResult[Rise] = {
+      var typedX: Rise = null // Hack to get the typed version of X
+      topDown(isEqualTo(x) `;` { xt =>
+        typedX = xt
+        Success(xt)
+      }).apply(e).mapSuccess(_ => {
+        app(fun(typedX.t)(y =>
+          substitute.exprInExpr(y, `for` = typedX, e)
+        ), typedX) :: e.t
+      })
+    }
   }
 
   // the inner strategies shouldn't be accessible from the outside
@@ -172,7 +247,7 @@ object algorithmic {
   case object freshLambdaIdentifier extends Strategy[Rise] {
     case object freshIdentifier extends Strategy[Rise] {
       def apply(e: Rise): RewriteResult[Rise] = e match {
-        case Identifier(name) :: t =>
+        case Identifier(name) ::: t =>
           Success(Identifier(freshName("fresh_"+ name))(t))
         case _ => Failure(freshIdentifier)
       }
@@ -187,7 +262,7 @@ object algorithmic {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Lambda(x,e) :: t if contains[Rise](x).apply(e) => {
+      case Lambda(x,e) ::: t if contains[Rise](x).apply(e) => {
         val newX = freshIdentifier(x).get.asInstanceOf[Identifier]
         val newE = tryAll(replaceIdentifier(x, newX)).apply(e).get
         Success(Lambda(newX, newE)(t))
@@ -201,7 +276,7 @@ object algorithmic {
   def splitStrategy(n: Nat): Strategy[Rise] = blockedReduce(n)
   case class blockedReduce(n: Nat) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(App(App(Reduce(), op :: FunType(yT, FunType(initT, outT))),
+      case App(App(App(Reduce(), op ::: FunType(yT, FunType(initT, outT))),
       init), arg) if yT == outT =>
         // avoid having two lambdas using the same identifiers
         val freshOp = tryAll(freshLambdaIdentifier).apply(op).get

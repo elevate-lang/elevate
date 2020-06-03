@@ -9,7 +9,7 @@ import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
 import elevate.rise.strategies.predicate.isVectorizeablePrimitive.isVectorArray
-import rise.OpenMP.TypedDSL.mapPar
+import rise.openMP.TypedDSL.mapPar
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
@@ -24,7 +24,15 @@ object lowering {
       case m@Map() => Success(MapSeq()(m.t) :: e.t)
       case _       => Failure(mapSeq)
     }
-    override def toString = "mapSeq"
+    override def toString: String = "mapSeq"
+  }
+
+  case object mapStream extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case m@Map() => Success(MapStream()(m.t) :: e.t)
+      case _       => Failure(mapStream)
+    }
+    override def toString = "mapStream"
   }
 
   case object mapSeqUnroll extends Strategy[Rise] {
@@ -32,15 +40,15 @@ object lowering {
       case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
       case _       => Failure(mapSeqUnroll)
     }
-    override def toString = "mapSeqUnroll"
+    override def toString: String = "mapSeqUnroll"
   }
 
   case class mapGlobal(dim: Int = 0) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Map() => Success(rise.OpenCL.TypedDSL.mapGlobal(dim) :: e.t)
+      case Map() => Success(rise.openCL.TypedDSL.mapGlobal(dim) :: e.t)
       case _       => Failure(mapGlobal(dim))
     }
-    override def toString = "mapGlobal"
+    override def toString: String = "mapGlobal"
   }
 
   case object reduceSeq extends Strategy[Rise] {
@@ -48,7 +56,7 @@ object lowering {
       case Reduce() => Success(TypedDSL.reduceSeq :: e.t)
       case _        => Failure(reduceSeq)
     }
-    override def toString = "reduceSeq"
+    override def toString: String = "reduceSeq"
   }
 
   // todo shall we allow lowering from an already lowered reduceSeq?
@@ -57,7 +65,7 @@ object lowering {
       case Reduce() | ReduceSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
       case _                      => Failure(reduceSeqUnroll)
     }
-    override def toString = "reduceSeqUnroll"
+    override def toString: String = "reduceSeqUnroll"
   }
 
   // Specialized Lowering
@@ -68,7 +76,6 @@ object lowering {
         Success(TypedDSL.mapSeq(f))
       case _ => Failure(mapSeqCompute)
     }
-    override def toString = "mapSeqCompute"
   }
 
   case object isMappingZip extends Strategy[Rise] {
@@ -109,21 +116,35 @@ object lowering {
   }
 
 
-  case class slideSeq(rot: SlideSeq.Rotate, write_dt1: Expr) extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Slide() => Success(nFun(sz => nFun(sp =>
-        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt1))(fun(x => x))
-      )) :: e.t)
-      case _ => Failure(slideSeq(rot, write_dt1))
+//  case class slideSeq(rot: SlideSeq.Rotate, write_dt1: Expr) extends Strategy[Rise] {
+//    def apply(e: Rise): RewriteResult[Rise] = e match {
+//      case Slide() => Success(nFun(sz => nFun(sp =>
+//        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt))
+//      )) :: e.t)
+//      case _ => Failure(slideSeq(rot, write_dt))
+//    }
+//    override def toString = s"slideSeq($rot, $write_dt)"
+//  }
+
+  // writing to memory
+
+  // TODO: think about more complex cases
+  case object mapSeqUnrollWrite extends Strategy[Rise] {
+    import rise.core.types._
+    def apply(e: Rise): RewriteResult[Rise] = e.t match {
+      case ArrayType(_, _: BasicType) =>
+        Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
+      case _ =>
+        Failure(mapSeqUnrollWrite)
     }
-    override def toString = s"slideSeq($rot, $write_dt1)"
+    override def toString: String = s"mapSeqUnrollWrite"
   }
 
   case object toMemAfterMapSeq extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] =
       e match {
         case a@App(App(MapSeq(), _), _) =>
-          Success((typed(a) |> toMem) :: a.t)
+          Success((typed(a) |> TypedDSL.toMem) :: a.t)
         case _ => Failure(toMemAfterMapSeq)
       }
     override def toString = "toMemAfterMapSeq"

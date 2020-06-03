@@ -122,6 +122,32 @@ object movement {
     override def toString = "mapMapFBeforeJoin"
   }
 
+  // drop and take
+
+  def dropAfterMap: Strategy[Rise] = `*f >> drop n -> drop n >> *f`
+  def `*f >> drop n -> drop n >> *f`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), n: Nat), App(App(Map(), f), in)) =>
+      Success(app(map(f), app(drop(n), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropAfterMap)
+  }
+
+  def takeAfterMap: Strategy[Rise] = `*f >> take n -> take n >> *f`
+  def `*f >> take n -> take n >> *f`: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), n: Nat), App(App(Map(), f), in)) =>
+      Success(app(map(f), app(take(n), typed(in))) :: expr.t)
+    case _ =>
+      Failure(takeAfterMap)
+  }
+
+  def dropAfterTake: Strategy[Rise] = `take (n+m) >> drop m -> drop m >> take n`
+  def `take (n+m) >> drop m -> drop m >> take n`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), m: Nat), App(DepApp(Take(), nm: Nat), in)) =>
+      Success(app(take(nm - m), app(drop(m), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropAfterTake)
+  }
+
   // special-cases
   // slide + transpose
 
@@ -261,7 +287,6 @@ object movement {
     override def toString = "slideBeforeSplit"
   }
 
-
   // nested map + reduce
 
   // different variants for rewriting map(reduce) to reduce(map)
@@ -274,7 +299,7 @@ object movement {
       App(App(App(ReduceX(), op),
       _), _)
       // PairType is new here
-      )) :: FunType(ArrayType(_, ArrayType(_,PairType(_,_))), resultT) =>
+      )) ::: FunType(ArrayType(_, ArrayType(_,PairType(_,_))), resultT) =>
 
         val result: TDSL[Rise] = (fun(x =>
           (reduceSeq(fun((acc, y) =>
@@ -301,8 +326,8 @@ object movement {
       App(App(App(ReduceX(), op), _), _))
       // PairType  -> I need to be able to unzip
       // ArrayType -> I need to be able to transpose x._2
-      ) :: FunType(PairType(_,ArrayType(_,_)), _) // lambda.t
-      ) :: FunType(ArrayType(_,_), resultT) =>    // outermost app.t
+      ) ::: FunType(PairType(_,ArrayType(_,_)), _) // lambda.t
+      ) ::: FunType(ArrayType(_,_), resultT) =>    // outermost app.t
 
         val result: TDSL[Rise] =
           (fun(x =>
@@ -319,8 +344,8 @@ object movement {
         // this case already works for multiple dimensions (taken from old repo)
       case App(Map(), Lambda(mapVar,
            App(App(App(rx@(Reduce() | ReduceSeq()), op),
-           init :: (dt: DataType)), reduceArg)
-      )) :: FunType(inputT@ArrayType(size, ArrayType(_,_)), _) =>
+           init ::: (dt: DataType)), reduceArg)
+      )) ::: FunType(inputT@ArrayType(size, ArrayType(_,_)), _) =>
 
       def reduceMap(zippedMapArg : (TDSL[Rise], TDSL[Rise]) => TDSL[Rise],
                     reduceArgFun: TDSL[Rise]): RewriteResult[Rise] = {
