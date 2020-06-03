@@ -23,7 +23,7 @@ object tiling {
         case 1 => function(splitJoin(n.head))      // loop-blocking
         case i => fmap(tileNDList(n.tail)) `;`     // recurse
                   function(splitJoin(n.head)) `;`  // loop-blocking
-                  shiftDim(i)                      // loop-interchange
+                  interchange(i)                      // loop-interchange
       }
 
   // Notation: A.a -> a == tile dimension; A == original dimension
@@ -37,7 +37,7 @@ object tiling {
   //    A.a.B.C.b.c => A.B.C.a.b.c
   //    (******f => *T o **T o ******f o **T o *T)
   // dim == 4 -> shift three levels ...
-  def shiftDim: Int => Strategy[Rise] =
+  def interchange: Int => Strategy[Rise] =
     d => {
       val joins = d
       val transposes = (1 to d-2).sum
