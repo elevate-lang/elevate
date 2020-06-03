@@ -1,12 +1,12 @@
 package elevate.rise.strategies
 
-import elevate.core.{Failure, RewriteResult, Strategy, Success}
-import elevate.core.strategies.predicate._
-import elevate.rise._
+import elevate.core._
+import elevate.rise.Rise
 import elevate.rise.rules.lowering.isComputation
-import rise.core.primitives.{Generate, Let, MakeArray, Map, Reduce, ReduceSeq, Transpose, Zip}
+import rise.core._
+import rise.core.primitives._
 import rise.core.types._
-import rise.core.{App, DepLambda, Identifier, Lambda}
+
 
 object predicate {
 
@@ -72,7 +72,7 @@ object predicate {
 
   case object isArray extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case e :: ArrayType(_,_) => Success(e)
+      case e ::: ArrayType(_,_) => Success(e)
       case _ => Failure(isArray)
     }
   }
@@ -108,6 +108,14 @@ object predicate {
     }
     override def toString = "isLet"
   }
+
+//  case object isSlideSeq extends Strategy[Rise] {
+//    def apply(e: Rise): RewriteResult[Rise] = e match {
+//      case primitives.SlideSeq(_) => Success(e)
+//      case _ => Failure(isSlideSeq)
+//    }
+//    override def toString = "isSlideSeq"
+//  }
 
   // Matching Applied Primitives
 

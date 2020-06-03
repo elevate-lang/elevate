@@ -9,7 +9,7 @@ import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
 import elevate.rise.strategies.predicate.isVectorizeablePrimitive.isVectorArray
-import rise.OpenMP.TypedDSL.mapPar
+import rise.openMP.TypedDSL.mapPar
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
@@ -27,6 +27,14 @@ object lowering {
     override def toString: String = "mapSeq"
   }
 
+  case object mapStream extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case m@Map() => Success(MapStream()(m.t) :: e.t)
+      case _       => Failure(mapStream)
+    }
+    override def toString = "mapStream"
+  }
+
   case object mapSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
@@ -37,7 +45,7 @@ object lowering {
 
   case class mapGlobal(dim: Int = 0) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Map() => Success(rise.OpenCL.TypedDSL.mapGlobal(dim) :: e.t)
+      case Map() => Success(rise.openCL.TypedDSL.mapGlobal(dim) :: e.t)
       case _       => Failure(mapGlobal(dim))
     }
     override def toString: String = "mapGlobal"
@@ -108,14 +116,28 @@ object lowering {
   }
 
 
-  case class slideSeq(rot: SlideSeq.Rotate, write_dt1: Expr) extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Slide() => Success(nFun(sz => nFun(sp =>
-        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt1))(fun(x => x))
-      )) :: e.t)
-      case _ => Failure(slideSeq(rot, write_dt1))
+//  case class slideSeq(rot: SlideSeq.Rotate, write_dt1: Expr) extends Strategy[Rise] {
+//    def apply(e: Rise): RewriteResult[Rise] = e match {
+//      case Slide() => Success(nFun(sz => nFun(sp =>
+//        TypedDSL.slideSeq(rot)(sz)(sp)(untyped(write_dt))
+//      )) :: e.t)
+//      case _ => Failure(slideSeq(rot, write_dt))
+//    }
+//    override def toString = s"slideSeq($rot, $write_dt)"
+//  }
+
+  // writing to memory
+
+  // TODO: think about more complex cases
+  case object mapSeqUnrollWrite extends Strategy[Rise] {
+    import rise.core.types._
+    def apply(e: Rise): RewriteResult[Rise] = e.t match {
+      case ArrayType(_, _: BasicType) =>
+        Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
+      case _ =>
+        Failure(mapSeqUnrollWrite)
     }
-    override def toString: String = s"slideSeq($rot, $write_dt1)"
+    override def toString: String = s"mapSeqUnrollWrite"
   }
 
   case object toMemAfterMapSeq extends Strategy[Rise] {

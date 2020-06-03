@@ -122,6 +122,32 @@ object movement {
     override def toString = "mapMapFBeforeJoin"
   }
 
+  // drop and take
+
+  def dropAfterMap: Strategy[Rise] = `*f >> drop n -> drop n >> *f`
+  def `*f >> drop n -> drop n >> *f`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), n: Nat), App(App(Map(), f), in)) =>
+      Success(app(map(f), app(drop(n), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropAfterMap)
+  }
+
+  def takeAfterMap: Strategy[Rise] = `*f >> take n -> take n >> *f`
+  def `*f >> take n -> take n >> *f`: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), n: Nat), App(App(Map(), f), in)) =>
+      Success(app(map(f), app(take(n), typed(in))) :: expr.t)
+    case _ =>
+      Failure(takeAfterMap)
+  }
+
+  def dropAfterTake: Strategy[Rise] = `take (n+m) >> drop m -> drop m >> take n`
+  def `take (n+m) >> drop m -> drop m >> take n`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), m: Nat), App(DepApp(Take(), nm: Nat), in)) =>
+      Success(app(take(nm - m), app(drop(m), typed(in))) :: expr.t)
+    case _ =>
+      Failure(dropAfterTake)
+  }
+
   // special-cases
   // slide + transpose
 
@@ -260,7 +286,6 @@ object movement {
     }
     override def toString = "slideBeforeSplit"
   }
-
 
   // nested map + reduce
 
