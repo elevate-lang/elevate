@@ -16,7 +16,7 @@ import rise.core.types.NatKind
 import rise.core.primitives._
 
 
-class traversals extends test_util.Tests {
+class traversals extends elevate.test_util.Tests {
 
   test("rewrite simple elevate strategy") {
     val expr = fun(f => fun(g => map(f) >> map(g)))
@@ -34,18 +34,18 @@ class traversals extends test_util.Tests {
     println(orig.toString)
 
     val oldTiling = body(body(
-      function(argumentOf(Map()(), body(function(splitJoin(4)) `;` LCNF `;` RNF))) `;`
+      function(argumentOf(Map()(), body(function(splitJoin(4)) `;` DFNF `;` RNF))) `;`
         function(splitJoin(4)) `;`
-        LCNF `;` RNF `;` LCNF `;` RNF `;` LCNF `;`
-        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` LCNF `;` argument(mapMapFBeforeTranspose)))) `;` LCNF `;` RNF)) `;`
-        LCNF `;` RNF `;` LCNF `;` RNF `;` RNF
+        DFNF `;` RNF `;` DFNF `;` RNF `;` DFNF `;`
+        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)))) `;` DFNF `;` RNF)) `;`
+        DFNF `;` RNF `;` DFNF `;` RNF `;` RNF
     ))
 
     val simplified = body(body(
       function(argumentOf(Map()(), body(function(splitJoin(4))))) `;`
         function(splitJoin(4)) `;`
-        RNF `;` LCNF `;`
-        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` LCNF `;` argument(mapMapFBeforeTranspose)))) `;` RNF))))
+        RNF `;` DFNF `;`
+        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)))) `;` RNF))))
 
     val normalized = FNF(simplified).get
     println(normalized)
@@ -55,13 +55,13 @@ class traversals extends test_util.Tests {
       inferType `;`
       body(body(RNF)) `;`
       inferType `;`
-      body(body(LCNF)) `;`
+      body(body(DFNF)) `;`
       inferType `;`
       body(body(argument(argument(function(argumentOf(Map()(), body(idAfter))))))) `;`
       inferType `;`
       body(body(argument(argument(function(argumentOf(Map()(), body(createTransposePair))))))) `;`
       inferType `;`
-      body(body(argument(argument(function(argumentOf(Map()(), body(LCNF))))))) `;`
+      body(body(argument(argument(function(argumentOf(Map()(), body(DFNF))))))) `;`
       inferType `;`
       body(body(argument(argument(function(argumentOf(Map()(), body(argument(mapMapFBeforeTranspose)))))))) `;`
       inferType `;`
@@ -85,12 +85,12 @@ class traversals extends test_util.Tests {
 
     assert(
       List(
-        topdown(id).apply(expr),
-        bottomup(id).apply(expr),
+        allTopdown(id).apply(expr),
+        allBottomup(id).apply(expr),
         downup(id).apply(expr),
         downup2(id,id).apply(expr),
-        oncetd(id).apply(expr),
-        oncebu(id).apply(expr),
+        topDown(id).apply(expr),
+        bottomUp(id).apply(expr),
         alltd(id).apply(expr),
         sometd(id).apply(expr),
         somebu(id).apply(expr)
@@ -104,13 +104,13 @@ class traversals extends test_util.Tests {
 
     assert(
       List(
-        oncetd(mapFusion).apply(expr),
-        oncebu(mapFusion).apply(expr),
+        topDown(mapFusion).apply(expr),
+        bottomUp(mapFusion).apply(expr),
         alltd(mapFusion).apply(expr),
         sometd(mapFusion).apply(expr),
         somebu(mapFusion).apply(expr),
-        topdown(`try`(mapFusion)).apply(expr),
-        bottomup(`try`(mapFusion)).apply(expr)
+        allTopdown(`try`(mapFusion)).apply(expr),
+        allBottomup(`try`(mapFusion)).apply(expr)
       ).forall(x => betaEtaEquals(x.get, gold))
     )
 

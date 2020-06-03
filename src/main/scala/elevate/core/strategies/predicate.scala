@@ -1,7 +1,7 @@
 package elevate.core.strategies
 
 import elevate.core._
-import elevate.core.strategies.traversal.oncetd
+import elevate.core.strategies.traversal.topDown
 
 import scala.language.implicitConversions
 
@@ -40,7 +40,7 @@ object predicate {
   }
 
   case class contains[P: Traversable](x: P) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = oncetd(isEqualTo(x)).apply(p)
+    def apply(p: P): RewriteResult[P] = topDown(isEqualTo(x)).apply(p)
     override def toString: String = s"contains($x)"
   }
 }
