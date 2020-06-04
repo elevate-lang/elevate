@@ -198,8 +198,73 @@ object algorithmic {
       Failure(dropInSlide)
   }
 
+  def dropNothing: Strategy[Rise] = {
+    case expr @ DepApp(Drop(), Cst(0)) => Success(fun(x => x) :: expr.t)
+    case _ => Failure(dropNothing)
+  }
+
+  def takeAll: Strategy[Rise] = {
+    case expr @ DepApp(Take(), n: Nat) => expr.t match {
+      case FunType(ArrayType(m, _), _) if n == m => Success(fun(x => x) :: expr.t)
+      case _ => Failure(takeAll)
+    }
+    case _ => Failure(takeAll)
+  }
+
+  def mapIdentity: Strategy[Rise] = {
+    case expr @ App(Map(), Lambda(x1, x2)) if x1 == x2 => Success(fun(x => x) :: expr.t)
+    case _ => Failure(mapIdentity)
+  }
+
+  def slideAfter: Strategy[Rise] = `x -> join (slide 1 1 x)`
+  def `x -> join (slide 1 1 x)`: Strategy[Rise] = {
+    x => Success(join(slide(1)(1)(x)) :: x.t)
+  }
+
+  def slideAfter2: Strategy[Rise] = {
+    x => Success(map(fun(x => x `@` lidx(0, 1)), slide(1)(1)(x)) :: x.t)
+  }
+
+  // s -> map snd (zip f s)
+  def zipFstAfter(f: Rise): Strategy[Rise] = s => (f.t, s.t) match {
+    case (ArrayType(n, _), ArrayType(m, _)) if n == m =>
+      Success(map(snd, zip(f, s)) :: s.t)
+    case _ => Failure(zipFstAfter(f))
+  }
+  // f -> map fst (zip f s)
+  def zipSndAfter(s: Rise): Strategy[Rise] = f => (f.t, s.t) match {
+    case (ArrayType(n, _), ArrayType(m, _)) if n == m =>
+      Success(map(fst, zip(f, s)) :: f.t)
+    case _ => Failure(zipFstAfter(s))
+  }
+
+  def dropBeforeJoin: Strategy[Rise] = `J >> drop d -> drop (d / m) >> J >> drop (d % m)`
+  def `J >> drop d -> drop (d / m) >> J >> drop (d % m)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), d: Nat), App(Join(), in)) => in.t match {
+      case ArrayType(_, ArrayType(m, _)) =>
+        Success(app(drop(d % m), join(drop(d / m)(in))) :: expr.t)
+      case _ => throw new Exception("this should not happen")
+    }
+    case _ => Failure(dropBeforeJoin)
+  }
+
+  // J >> take (n*m - d)
+  // -> dropLast (d / m) >> J >> dropLast (d % m)
+  // -> take (n - d / m) >> J >> take ((n - d / m)*m - d % m)
+  def takeBeforeJoin: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), nmd: Nat), App(Join(), in)) => in.t match {
+      case ArrayType(n, ArrayType(m, _)) =>
+        val d = n*m - nmd
+        val t1 = n - d / m
+        val t2 = t1*m - d % m
+        Success(app(take(t2), join(take(t1)(in))) :: expr.t)
+      case _ => throw new Exception("this should not happen")
+    }
+    case _ => Failure(dropBeforeJoin)
+  }
+
   // makeArray(n)(map f1 e)..(map fn e)
-  // -> e |> map(fun(x => makeArray(n)(f1 x)..(fn x))) |> transpose
+  // -> e |> map(x => makeArray(n)(f1 x)..(fn x)) |> transpose
   case object mapOutsideMakeArray extends Strategy[Rise] {
     def matchExpectedMakeArray(mka: Rise): Option[Rise] = mka match {
       case App(MakeArray(_), App(App(Map(), _), e)) => Some(e)
@@ -223,6 +288,148 @@ object algorithmic {
             :: expr.t)
         case None => Failure(mapOutsideMakeArray)
       }
+  }
+
+  // generate (i => select t (map f e) (map g e))
+  // -> e |> map (x => generate (i => select t (f x) (g x))) |> transpose
+  def mapOutsideGenerateSelect: Strategy[Rise] = {
+    case expr @ App(Generate(), Lambda(i, App(App(App(Select(), t),
+      App(App(Map(), f), e)),
+      App(App(Map(), g), e2))))
+    if e == e2 && !contains[Rise](i).apply(e) =>
+      Success(transpose(map(
+        fun(x => generate(lambda(untyped(i), select(t, app(f, x), app(g, x))))),
+        e
+      )) :: expr.t)
+    case _ => Failure(mapOutsideGenerateSelect)
+  }
+
+  // select t (f a) (f b) -> f (select t a b)
+  def fOutsideSelect: Strategy[Rise] = {
+    case expr @ App(App(App(Select(), t), App(f1, a)), App(f2, b)) if f1 == f2 =>
+      f1.t match {
+        case FunType(_: DataType, _: DataType) => Success(app(f1, select(t)(a)(b)) :: expr.t)
+        case _ => Failure(fOutsideSelect)
+      }
+
+    case _ => Failure(fOutsideSelect)
+  }
+
+  // makeArray (f e1) .. (f en) -> map f (makeArray e1 .. en)
+  case object fOutsideMakeArray extends Strategy[Rise] {
+    def matchExpectedMakeArray(mka: Rise): Option[(Int, Rise)] = mka match {
+      case App(MakeArray(n), App(f, _)) =>
+        f.t match {
+          case FunType(_: DataType, _: DataType) => Some((n - 1, f))
+          case _ => None
+        }
+      case App(mka, App(f2, _)) =>
+        matchExpectedMakeArray(mka).flatMap { case (n, f) =>
+          if (f == f2) { Some((n - 1, f)) } else { None }
+        }
+      case _ => None
+    }
+
+    def transformMakeArray(mka: Rise): TDSL[Rise] = mka match {
+      case MakeArray(n) => array(n)
+      case App(mka, App(_, e)) => app(transformMakeArray(mka), e)
+      case _ => throw new Exception("this should not happen")
+    }
+
+    def apply(expr: Rise): RewriteResult[Rise] =
+      matchExpectedMakeArray(expr) match {
+        case Some((0, f)) =>
+          Success(app(map(f), transformMakeArray(expr)) :: expr.t)
+        case _ => Failure(fOutsideMakeArray)
+      }
+  }
+
+  // zip (map fa a) (map fb b) -> zip a b >> map (p => pair (fa (fst p)) (fb (snd p)))
+  def mapOutsideZip: Strategy[Rise] = {
+    case expr @ App(App(Zip(), App(App(Map(), fa), a)), App(App(Map(), fb), b)) =>
+      Success(map(fun(p => pair(app(fa, fst(p)), app(fb, snd(p)))), zip(a, b)) :: expr.t)
+    case _ => Failure(mapOutsideZip)
+  }
+
+  // zip a a -> map (x => pair(x, x)) a
+  def zipSame: Strategy[Rise] = {
+    case expr @ App(App(Zip(), a), a2) if a == a2 =>
+      Success(map(fun(x => pair(x, x)), a) :: expr.t)
+    case _ => Failure(zipSame)
+  }
+
+  // zip(a, b) -> map (x => pair(snd(x), fst(x))) zip(b, a)
+  def zipSwap: Strategy[Rise] = {
+    case expr @ App(App(Zip(), a), b) =>
+      Success(map(fun(x => pair(snd(x), fst(x))), zip(b, a)) :: expr.t)
+    case _ => Failure(zipSwap)
+  }
+
+  // zip(a, zip(b, c)) -> map (x => pair(.., pair(..))) zip(zip(a, b), c)
+  def zipRotateLeft: Strategy[Rise] = {
+    case expr @ App(App(Zip(), a), App(App(Zip(), b), c)) => Success(map(
+      fun(x => pair(fst(fst(x)), pair(snd(fst(x)), snd(x)))),
+      zip(zip(a, b), c)
+    ) :: expr.t)
+    case _ => Failure(zipRotateLeft)
+  }
+
+  // zip(zip(a, b), c) -> map (x => pair(pair(..), ..)) zip(a, zip(b, c))
+  def zipRotateRight: Strategy[Rise] = {
+    case expr @ App(App(Zip(), App(App(Zip(), a), b)), c) => Success(map(
+      fun(x => pair(pair(fst(x), fst(snd(x))), snd(snd(x)))),
+      zip(a, zip(b, c))
+    ) :: expr.t)
+    case _ => Failure(zipRotateRight)
+  }
+
+  def zipRotate: Strategy[Rise] = zipRotateLeft <+ zipRotateRight
+
+  // e -> map (x => x) e
+  def mapIdentityAfter: Strategy[Rise] = expr => expr.t match {
+    case ArrayType(_, _) => Success(map(fun(x => x), expr) :: expr.t)
+    case _ => Failure(mapIdentityAfter)
+  }
+
+  // fst (pair a b) -> a
+  def fstReduction: Strategy[Rise] = {
+    case expr @ App(Fst(), App(App(Pair(), a), _)) => Success(a :: expr.t)
+    case _ => Failure(fstReduction)
+  }
+
+  // snd (pair a b) -> b
+  def sndReduction: Strategy[Rise] = {
+    case expr @ App(Snd(), App(App(Pair(), _), b)) => Success(b :: expr.t)
+    case _ => Failure(sndReduction)
+  }
+
+  // zip (slide n m a) (slide n m b) -> map unzip (slide n m (zip a b))
+  def slideOutsideZip: Strategy[Rise] = {
+    case expr @ App(App(Zip(),
+      App(DepApp(DepApp(Slide(), n: Nat), m: Nat), a)),
+      App(DepApp(DepApp(Slide(), n2: Nat), m2: Nat), b)
+    ) if n == n2 && m == m2 =>
+      Success(map(unzip, slide(n)(m)(zip(a, b))) :: expr.t)
+    case _ => Failure(slideOutsideZip)
+  }
+
+  // TODO?
+  // map (x => g (f (fst x))) (zip a b) -> map (x => g (fst x)) (zip (map f a) b)
+  // def fBeforeZipMapFst: Strategy[Rise] =
+  // map (x => g (f (snd x))) (zip a b) -> map (x => g (snd x)) (zip a (map f b))
+  // def fBeforeZipMapSnd: Strategy[Rise] =
+  def fBeforeZipMap: Strategy[Rise] = {
+    case expr @ App(
+      App(Map(), Lambda(x, App(App(Zip(),
+        App(f, App(Fst(), x2))),
+        App(g, App(Snd(), x3))))),
+      App(App(Zip(), a), b)
+    ) if x == x2 && x == x3 =>
+      Success(app(
+        map(fun(x => zip(fst(x), snd(x)))),
+        zip(map(f, a), map(g, b))
+      ) :: expr.t)
+    case _ => Failure(fBeforeZipMap)
   }
 
   // TODO: should not be in this file?

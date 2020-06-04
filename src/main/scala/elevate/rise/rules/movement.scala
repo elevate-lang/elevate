@@ -124,28 +124,76 @@ object movement {
 
   // drop and take
 
-  def dropAfterMap: Strategy[Rise] = `*f >> drop n -> drop n >> *f`
+  def dropBeforeMap: Strategy[Rise] = `*f >> drop n -> drop n >> *f`
   def `*f >> drop n -> drop n >> *f`: Strategy[Rise] = {
     case expr @ App(DepApp(Drop(), n: Nat), App(App(Map(), f), in)) =>
       Success(app(map(f), app(drop(n), typed(in))) :: expr.t)
     case _ =>
-      Failure(dropAfterMap)
+      Failure(dropBeforeMap)
   }
 
-  def takeAfterMap: Strategy[Rise] = `*f >> take n -> take n >> *f`
+  def takeBeforeMap: Strategy[Rise] = `*f >> take n -> take n >> *f`
   def `*f >> take n -> take n >> *f`: Strategy[Rise] = {
     case expr @ App(DepApp(Take(), n: Nat), App(App(Map(), f), in)) =>
       Success(app(map(f), app(take(n), typed(in))) :: expr.t)
     case _ =>
-      Failure(takeAfterMap)
+      Failure(takeBeforeMap)
   }
 
-  def dropAfterTake: Strategy[Rise] = `take (n+m) >> drop m -> drop m >> take n`
+  def takeInZip: Strategy[Rise] = `take n (zip a b) -> zip (take n a) (take n b)`
+  def `take n (zip a b) -> zip (take n a) (take n b)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), n), App(App(Zip(), a), b)) =>
+      Success(zip(depApp(take, n)(a), depApp(take, n)(b)) :: expr.t)
+    case _ => Failure(takeInZip)
+  }
+
+  def dropInZip: Strategy[Rise] = `drop n (zip a b) -> zip (drop n a) (drop n b)`
+  def `drop n (zip a b) -> zip (drop n a) (drop n b)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), n), App(App(Zip(), a), b)) =>
+      Success(zip(depApp(drop, n)(a), depApp(drop, n)(b)) :: expr.t)
+    case _ => Failure(dropInZip)
+  }
+
+  def takeInSelect: Strategy[Rise] = `take n (select t a b) -> select t (take n a) (take n b)`
+  def `take n (select t a b) -> select t (take n a) (take n b)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), n), App(App(App(Select(), t), a), b)) =>
+      Success(select(t, depApp(take, n)(a), depApp(take, n)(b)) :: expr.t)
+    case _ => Failure(takeInSelect)
+  }
+
+  def dropInSelect: Strategy[Rise] = `drop n (select t a b) -> select t (drop n a) (drop n b)`
+  def `drop n (select t a b) -> select t (drop n a) (drop n b)`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), n), App(App(App(Select(), t), a), b)) =>
+      Success(select(t, depApp(drop, n)(a), depApp(drop, n)(b)) :: expr.t)
+    case _ => Failure(dropInSelect)
+  }
+
+  def dropBeforeTake: Strategy[Rise] = `take (n+m) >> drop m -> drop m >> take n`
   def `take (n+m) >> drop m -> drop m >> take n`: Strategy[Rise] = {
     case expr @ App(DepApp(Drop(), m: Nat), App(DepApp(Take(), nm: Nat), in)) =>
       Success(app(take(nm - m), app(drop(m), typed(in))) :: expr.t)
-    case _ =>
-      Failure(dropAfterTake)
+    case _ => Failure(dropBeforeTake)
+  }
+
+  def takeBeforeDrop: Strategy[Rise] = `drop m >> take n -> take (n+m) >> drop m`
+  def `drop m >> take n -> take (n+m) >> drop m`: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), n: Nat), App(DepApp(Drop(), m: Nat), in)) =>
+      Success(app(drop(m), app(take(n+m), typed(in))) :: expr.t)
+    case _ => Failure(takeBeforeDrop)
+  }
+
+  def takeBeforeSlide: Strategy[Rise] = `slide n m >> take t -> take (m * (t - 1) + n) >> slide n m`
+  def `slide n m >> take t -> take (m * (t - 1) + n) >> slide n m`: Strategy[Rise] = {
+    case expr @ App(DepApp(Take(), t: Nat), App(DepApp(DepApp(Slide(), n: Nat), m: Nat), in)) =>
+      Success(app(slide(n)(m), take(m * (t - 1) + n)(in)) :: expr.t)
+    case _ => Failure(takeBeforeSlide)
+  }
+
+  def dropBeforeSlide: Strategy[Rise] = `slide n m >> drop d -> drop (d * m) >> slide n m`
+  def `slide n m >> drop d -> drop (d * m) >> slide n m`: Strategy[Rise] = {
+    case expr @ App(DepApp(Drop(), d: Nat), App(DepApp(DepApp(Slide(), n: Nat), m: Nat), in)) =>
+      Success(app(slide(n)(m), drop(d * m)(in)) :: expr.t)
+    case _ => Failure(dropBeforeSlide)
   }
 
   // special-cases

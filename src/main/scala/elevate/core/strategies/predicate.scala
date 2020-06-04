@@ -43,4 +43,10 @@ object predicate {
     def apply(p: P): RewriteResult[P] = topDown(isEqualTo(x)).apply(p)
     override def toString: String = s"contains($x)"
   }
+
+  case class liftPredicate[P](f: P => Boolean) extends Strategy[P] {
+    def apply(p: P): RewriteResult[P] =
+      if (f(p)) Success(p) else Failure(liftPredicate(f))
+    override def toString = s"liftPredicate($f)"
+  }
 }
