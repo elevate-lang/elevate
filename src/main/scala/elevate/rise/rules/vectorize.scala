@@ -98,7 +98,7 @@ object vectorize {
   // a |> map (zip b) |> map (reduce f init) |> asVector
   // -> a |> transpose |> map(asVector) |> transpose |> ..
   def beforeMapDot: Strategy[Rise] = {
-    case e @ App(v, App(App(Map(), App(r @ App(ReduceMaybeSeq(), f), init)),
+    case e @ App(v, App(App(Map(), App(r @ App(ReduceX(), f), init)),
       App(App(Map(), App(Zip(), b)), a)
     )) if isAsVector(v) && isScalarFun(f.t) =>
       val aV = typed(a) |> transpose |> map(untyped(v)) |> transpose

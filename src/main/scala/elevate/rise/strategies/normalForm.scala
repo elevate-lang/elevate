@@ -21,8 +21,8 @@ object normalForm {
     override def toString = "BENF"
   }
 
-  // Lambda-Calculus-Normal-Form
-  case object LCNF extends Strategy[Rise] {
+  // Data-Flow-Normal-Form
+  case object DFNF extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] =
       (BENF `;`
         // there is no argument of a map which is not eta-abstracted, i.e., every argument of a map is a lambda
@@ -42,7 +42,7 @@ object normalForm {
 
   // Rewrite-Normal-Form (Fission all maps)
   case object RNF extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = (normalize.apply(LCNF `;` mapLastFission) `;` LCNF)(e)
+    def apply(e: Rise): RewriteResult[Rise] = (normalize.apply(DFNF `;` mapLastFission) `;` DFNF)(e)
     override def toString = "RNF"
   }
 
