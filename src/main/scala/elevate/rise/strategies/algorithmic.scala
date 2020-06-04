@@ -9,7 +9,7 @@ import elevate.rise.rules.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
 import elevate.rise.rules.algorithmic.fuseReduceMap
-import elevate.rise.rules.movement.{liftReduce, mapFBeforeSlide}
+import elevate.rise.rules.movement._
 import elevate.rise.rules.traversal.{argument, argumentOf, body, function}
 import elevate.rise.strategies.normalForm.{DFNF, RNF}
 import elevate.rise.strategies.predicate.{isApplied, isMap, isReduceSeq}
@@ -70,7 +70,7 @@ object algorithmic {
 
   //scalastyle:off
   val normForReorder =
-    (mapFBeforeSlide `@` topDown[Rise]) `;;`
+    (slideBeforeMap `@` topDown[Rise]) `;;`
     (fuseReduceMap `@` topDown[Rise]) `;;`
     (fuseReduceMap `@` topDown[Rise]) `;;` RNF
 

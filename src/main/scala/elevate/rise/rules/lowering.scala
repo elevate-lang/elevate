@@ -4,7 +4,7 @@ import elevate.core.strategies.basic._
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
-import elevate.rise.{ReduceX, Rise}
+import elevate.rise._
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
@@ -14,6 +14,7 @@ import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.types._
+import arithexpr.arithmetic.Cst
 
 object lowering {
 
@@ -70,8 +71,8 @@ object lowering {
   // todo shall we allow lowering from an already lowered reduceSeq?
   case object reduceSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Reduce() | ReduceSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
-      case _                      => Failure(reduceSeqUnroll)
+      case ReduceX() => Success(TypedDSL.reduceSeqUnroll :: e.t)
+      case _ => Failure(reduceSeqUnroll)
     }
     override def toString: String = "reduceSeqUnroll"
   }
@@ -92,6 +93,25 @@ object lowering {
       case m@Lambda(_, App(App(Map(), f), arg)) => isMappingZip(f)
       case _ => Failure(isMappingZip)
     }
+  }
+
+  // TODO: load identity instead, then change with other rules?
+  case class circularBuffer(load: Expr) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
+        TypedDSL.circularBuffer(sz)(sz)(untyped(load)) :: e.t)
+      case _ => Failure(circularBuffer(load))
+    }
+    override def toString = s"circularBuffer($load)"
+  }
+
+  case class rotateValues(write: Expr) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
+        TypedDSL.rotateValues(sz)(untyped(write)) :: e.t)
+      case _ => Failure(rotateValues(write))
+    }
+    override def toString = s"rotateValues($write)"
   }
 
   def containsComputation: Strategy[Rise] = topDown(isComputation)
@@ -304,6 +324,56 @@ object lowering {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll)
       case _ => Failure(unroll)
+    }
+  }
+
+  object ocl {
+    import rise.openCL.TypedDSL
+    import rise.openCL.primitives._
+    import rise.core.types.AddressSpace
+
+    case class reduceSeqUnroll(a: AddressSpace) extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case ReduceX() => Success(TypedDSL.oclReduceSeqUnroll(a) :: e.t)
+        case _ => Failure(reduceSeqUnroll(a))
+      }
+      override def toString = "reduceSeqUnroll"
+    }
+
+    case class circularBuffer(a: AddressSpace)
+      extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
+          Success(
+            TypedDSL.oclCircularBuffer(a)(n)(n)(fun(x => x))
+            :: e.t)
+        case _ => Failure(circularBuffer(a))
+      }
+      override def toString = s"circularBuffer($a)"
+    }
+
+    case object circularBufferLoadFusion extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case App(App(
+          cb @ DepApp(DepApp(DepApp(OclCircularBuffer(), _), _), _),
+          load), App(App(Map(), f), in)
+        ) =>
+          Success(untyped(cb)(typed(f) >> load, in) :: e.t)
+        case _ => Failure(circularBufferLoadFusion)
+      }
+      override def toString = s"circularBufferLoadFusion"
+    }
+
+    case class rotateValues(a: AddressSpace, write: Expr)
+      extends Strategy[Rise] {
+      def apply(e: Rise): RewriteResult[Rise] = e match {
+        case DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
+          Success(
+            TypedDSL.oclRotateValues(a)(n)(untyped(write))
+              :: e.t)
+        case _ => Failure(rotateValues(a, write))
+      }
+      override def toString = s"rotateValues($a, $write)"
     }
   }
 }
