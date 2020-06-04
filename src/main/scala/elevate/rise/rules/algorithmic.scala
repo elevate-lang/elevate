@@ -101,7 +101,11 @@ object algorithmic {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(Map(), Lambda(x, App(f, gx)))
         if !contains[Rise](x).apply(f) && !isIdentifier(gx) =>
-        Success((app(map, lambda(untyped(x), gx)) >> map(f)) :: e.t)
+        gx.t match {
+          case _: DataType =>
+            Success((app(map, lambda(untyped(x), gx)) >> map(f)) :: e.t)
+          case _ => Failure(mapLastFission)
+        }
       case _ => Failure(mapLastFission)
     }
     override def toString: String = s"mapLastFission"
@@ -143,6 +147,9 @@ object algorithmic {
     }
     override def toString: String = "createTransposePair"
   }
+
+  // _-> T >> T
+  def transposePairAfter: Strategy[Rise] = idAfter `;` createTransposePair
 
   def removeTransposePair: Strategy[Rise] = `T >> T -> `
   case object `T >> T -> ` extends Strategy[Rise]  {
