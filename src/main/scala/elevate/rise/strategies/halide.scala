@@ -32,7 +32,7 @@ object halide {
         shiftDimension(transposes) `;`
         moveTowardsArgument(transposes)(fmap(reorder(
           perm.tail.map(y => if(y > x) y-1 else y ))))
-    }) `;` RNF `;` LCNF // normalize at the very end
+    }) `;` RNF `;` DFNF // normalize at the very end
   }
 
 }

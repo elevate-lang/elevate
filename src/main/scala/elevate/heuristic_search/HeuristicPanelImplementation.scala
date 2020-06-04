@@ -1,10 +1,7 @@
 package elevate.heuristic_search
 
 import elevate.core.strategies.basic
-import elevate.core.strategies.traversal.oncetd
 import elevate.core.{Failure, Strategy, Success}
-import elevate.rise.Rise
-import elevate.rise.strategies.normalForm.LCNF
 
 
 // encapsulates definition of neighbourhood
