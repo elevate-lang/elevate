@@ -1,7 +1,7 @@
 package elevate.core.strategies
 
 import elevate.core._
-import elevate.core.strategies.traversal.oncetd
+import elevate.core.strategies.traversal.topDown
 
 /* Inspired by:
 
@@ -63,7 +63,7 @@ object basic {
   // Normalize
 
   def normalize[P: Traversable]: Strategy[P] => Strategy[P] =
-    s => repeat(oncetd.apply(s))
+    s => repeat(topDown.apply(s))
 
   // Strategy Factories
 

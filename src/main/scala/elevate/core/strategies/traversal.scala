@@ -39,20 +39,20 @@ object traversal {
 
   // generic complete traversal strategies
 
-  case class oncetd[P: Traversable](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = (s <+ one(oncetd(s))) (p)
+  case class topDown[P: Traversable](s: Strategy[P]) extends Strategy[P] {
+    def apply(p: P): RewriteResult[P] = (s <+ one(topDown(s))) (p)
   }
 
-  case class topdown[P: Traversable](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = (s `;` all(topdown(s))) (p)
+  case class allTopdown[P: Traversable](s: Strategy[P]) extends Strategy[P] {
+    def apply(p: P): RewriteResult[P] = (s `;` all(allTopdown(s))) (p)
   }
 
   case class tryAll[P: Traversable](s: Strategy[P]) extends Strategy[P] {
     def apply(p: P): RewriteResult[P] = (all(tryAll(`try`(s))) `;` `try`(s)) (p)
   }
 
-  case class bottomup[P: Traversable](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = (all(bottomup(s)) `;` s) (p)
+  case class allBottomup[P: Traversable](s: Strategy[P]) extends Strategy[P] {
+    def apply(p: P): RewriteResult[P] = (all(allBottomup(s)) `;` s) (p)
   }
 
   case class downup[P: Traversable](s: Strategy[P]) extends Strategy[P] {
@@ -63,8 +63,8 @@ object traversal {
     def apply(p: P): RewriteResult[P] = (s1 `;` (all(downup2(s1, s2)) `;` s2)) (p)
   }
 
-  case class oncebu[P: Traversable](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = (one(oncebu(s)) <+ s)(p)
+  case class bottomUp[P: Traversable](s: Strategy[P]) extends Strategy[P] {
+    def apply(p: P): RewriteResult[P] = (one(bottomUp(s)) <+ s)(p)
   }
 
   case class alltd[P: Traversable](s: Strategy[P]) extends Strategy[P] {
