@@ -23,7 +23,7 @@ object lowering {
   case object mapSeq extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeq()(m.t) :: e.t)
-      case _       => Failure(mapSeq)
+      case _ => Failure(mapSeq)
     }
     override def toString: String = "mapSeq"
   }
@@ -47,7 +47,7 @@ object lowering {
   case object mapSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
-      case _       => Failure(mapSeqUnroll)
+      case _ => Failure(mapSeqUnroll)
     }
     override def toString: String = "mapSeqUnroll"
   }
@@ -63,7 +63,7 @@ object lowering {
   case object reduceSeq extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Reduce() => Success(TypedDSL.reduceSeq :: e.t)
-      case _        => Failure(reduceSeq)
+      case _ => Failure(reduceSeq)
     }
     override def toString: String = "reduceSeq"
   }
@@ -120,15 +120,15 @@ object lowering {
   case object isComputation extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       // unary function (map)
-      case l@Lambda(_,_) if isId(l) => Success(l)
-      case l@Lambda(_,_) =>
+      case l@Lambda(_, _) if isId(l) => Success(l)
+      case l@Lambda(_, _) =>
         l.t match {
           // unary function
           case FunType(in, out) if
-            isPairOrBasicType(in) && isPairOrBasicType(out) => Success(l)
+          isPairOrBasicType(in) && isPairOrBasicType(out) => Success(l)
           // binary function
           case FunType(in, FunType(in2, out)) if
-            isPairOrBasicType(in) && isPairOrBasicType(in2) &&
+          isPairOrBasicType(in) && isPairOrBasicType(in2) &&
             isPairOrBasicType(out) => Success(l)
           case _ => Failure(containsComputation)
         }
@@ -137,8 +137,8 @@ object lowering {
     }
 
     private def isPairOrBasicType(t: Type): Boolean = t match {
-      case _:BasicType => true
-      case PairType(a,b) => isPairOrBasicType(a) && isPairOrBasicType(b)
+      case _: BasicType => true
+      case PairType(a, b) => isPairOrBasicType(a) && isPairOrBasicType(b)
       case _ => false
     }
   }
@@ -184,15 +184,15 @@ object lowering {
   val materializeGenerate: Strategy[Rise] =
     normalize.apply(
       argument(function(isGenerate)) `;`
-      not(isCopy) `;`
-      argument(copyAfterGenerate)
+        not(isCopy) `;`
+        argument(copyAfterGenerate)
     )
 
   // adds explicit copies for every init value in reductions
   val materializeInitOfReduce: Strategy[Rise] =
     normalize.apply(
       function(function(isReduceX)) `;`
-      argument(not(isCopy) `;` insertCopyAfter)
+        argument(not(isCopy) `;` insertCopyAfter)
     )
 
   case object insertCopyAfter extends Strategy[Rise] {
@@ -246,7 +246,7 @@ object lowering {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case reduceResult@App(App(App(ReduceX(), _),_),_) =>
+      case reduceResult@App(App(App(ReduceX(), _), _), _) =>
         Success(constructCopy(reduceResult.t) $ reduceResult)
       case _ => Failure(copyAfterReduce)
     }
@@ -271,7 +271,7 @@ object lowering {
   case object copyAfterGenerate extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
-      case _:BasicType => fun(x => x)
+      case _: BasicType => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
