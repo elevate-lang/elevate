@@ -28,34 +28,36 @@ object RuleMacro {
     }
 
     def fromDefDef: DefDef => Tree = {
-      case q"def $name: Strategy[Rise] = { case ..$cases }" =>
-        makeRuleObject(name.asInstanceOf[TermName], cases.asInstanceOf[List[CaseDef]])
-      case q"def $name: Strategy[Rise] = (..$e) => $body" if e.length == 1 =>
-        makeRuleObject(name.asInstanceOf[TermName], e.head.asInstanceOf[ValDef], body)
+      case q"def $name: Strategy[..$targs] = { case ..$cases }" if targs.length == 1 =>
+        makeRuleObject(name.asInstanceOf[TermName], targs.head, cases.asInstanceOf[List[CaseDef]])
+      case q"def $name: Strategy[..$targs] = (..$e) => $body" if targs.length == 1 && e.length == 1 =>
+        makeRuleObject(name.asInstanceOf[TermName], targs.head, e.head.asInstanceOf[ValDef], body)
 
-      case q"def $name(...$params): Strategy[Rise] = { case ..$cases }"
-        if params.length == 1 =>
+      case q"def $name(...$params): Strategy[..$targs] = { case ..$cases }"
+        if targs.length == 1 && params.length == 1 =>
           makeRuleClass(name.asInstanceOf[TermName],
+            targs.head,
             params.head.asInstanceOf[List[ValDef]],
             cases.asInstanceOf[List[CaseDef]])
-      case q"def $name(...$params): Strategy[Rise] = (..$e) => $body"
-        if params.length == 1 && e.length == 1 =>
+      case q"def $name(...$params): Strategy[..$targs] = (..$e) => $body"
+        if targs.length == 1 && params.length == 1 && e.length == 1 =>
           makeRuleClass(name.asInstanceOf[TermName],
+            targs.head,
             params.head.asInstanceOf[List[ValDef]],
             e.head.asInstanceOf[ValDef],
             body)
 
       case _ =>
         c.abort(c.enclosingPosition, "expected a valid rule definition:\n" +
-          "1. def rule: Strategy[Rise] = { case pattern => replacement }\n" +
-          "2. def rule: Strategy[Rise] = e => body\n" +
-          "3. def rule(params): Strategy[Rise] = { case pattern => replacement }\n" +
-          "4. def rule(params): Strategy[Rise] = e => body\n")
+          "1. def rule: Strategy[P] = { case pattern => replacement }\n" +
+          "2. def rule: Strategy[P] = e => body\n" +
+          "3. def rule(params): Strategy[P] = { case pattern => replacement }\n" +
+          "4. def rule(params): Strategy[P] = e => body\n")
     }
 
-    def makeRuleObject(name: TermName, cases: List[CaseDef]): Tree = {
-      val c = q"""final case object $name extends Strategy[Rise] {
-        override def apply(e_internal: Rise): RewriteResult[Rise] = e_internal match {
+    def makeRuleObject(name: TermName, tparam: Tree, cases: List[CaseDef]): Tree = {
+      val c = q"""final case object $name extends Strategy[$tparam] {
+        override def apply(e_internal: $tparam): RewriteResult[$tparam] = e_internal match {
           case ..${makeCases(cases, q"Failure($name)")}
         }
 
@@ -65,11 +67,11 @@ object RuleMacro {
       c
     }
 
-    def makeRuleObject(name: TermName, e: ValDef, body: Tree): Tree = {
-      val c = q"""final case object $name extends Strategy[Rise] {
-        override def apply(e_internal: Rise): RewriteResult[Rise] =
-            ((${e.name} : Rise) => {
-              val res_internal: RewriteResult[Rise] = $body
+    def makeRuleObject(name: TermName, tparam: Tree, e: ValDef, body: Tree): Tree = {
+      val c = q"""final case object $name extends Strategy[$tparam] {
+        override def apply(e_internal: $tparam): RewriteResult[$tparam] =
+            ((${e.name} : $tparam) => {
+              val res_internal: RewriteResult[$tparam] = $body
               res_internal
             }).apply(e_internal)
 
@@ -79,10 +81,11 @@ object RuleMacro {
       c
     }
 
-    def makeRuleClass(name: TermName, params: List[ValDef], cases: List[CaseDef]): Tree = {
+    def makeRuleClass(name: TermName, tparam: Tree, params: List[ValDef],
+                      cases: List[CaseDef]): Tree = {
       val c = q"""
-        final case class ${TypeName(name.toString)}(..$params) extends Strategy[Rise] {
-          override def apply(e_internal: Rise): RewriteResult[Rise] = e_internal match {
+        final case class ${TypeName(name.toString)}(..$params) extends Strategy[$tparam] {
+          override def apply(e_internal: $tparam): RewriteResult[$tparam] = e_internal match {
             case ..${makeCases(cases, q"Failure($name(..${params.map{
               case ValDef(_, name, _, _) => q"$name"
               }}))")}
@@ -96,12 +99,13 @@ object RuleMacro {
       c
     }
 
-    def makeRuleClass(name: TermName, params: List[ValDef], e: ValDef, body: Tree): Tree = {
+    def makeRuleClass(name: TermName, tparam: Tree, params: List[ValDef],
+                      e: ValDef, body: Tree): Tree = {
       val c = q"""
-        final case class ${TypeName(name.toString)}(..$params) extends Strategy[Rise] {
-          override def apply(e_internal: Rise): RewriteResult[Rise] =
-            ((${e.name} : Rise) => {
-              val res_internal: RewriteResult[Rise] = $body
+        final case class ${TypeName(name.toString)}(..$params) extends Strategy[$tparam] {
+          override def apply(e_internal: $tparam): RewriteResult[$tparam] =
+            ((${e.name} : $tparam) => {
+              val res_internal: RewriteResult[$tparam] = $body
               res_internal
             }).apply(e_internal)
 
