@@ -88,7 +88,7 @@ object RuleMacro {
 
     def makeRuleObject(name: TermName, resType: Tree, cases: List[CaseDef]): Tree = {
       val c = q"""final case object $name extends Strategy[$resType] {
-        override def apply(e_internal: $resType): RewriteResult[$resType] = e_internal match {
+        override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
           case ..${makeCases(cases, q"Failure($name)")}
         }
 
@@ -100,9 +100,9 @@ object RuleMacro {
 
     def makeRuleObject(name: TermName, resType: Tree, e: ValDef, body: Tree): Tree = {
       val c = q"""final case object $name extends Strategy[$resType] {
-        override def apply(e_internal: $resType): RewriteResult[$resType] = {
+        override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = {
             ((${e.name} : $resType) => {
-              val res_internal: RewriteResult[$resType] = $body
+              val res_internal: elevate.core.RewriteResult[$resType] = $body
               res_internal
             }).apply(e_internal)
         }
@@ -115,7 +115,7 @@ object RuleMacro {
 
     def makeRuleObject(name: TermName, resType: Tree, body: Tree): Tree = {
       val c = q"""final case object $name extends Strategy[$resType] {
-        override def apply(e_internal: $resType): RewriteResult[$resType] = {
+        override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = {
             ($body).apply(e_internal)
         }
 
@@ -150,7 +150,7 @@ object RuleMacro {
             q"def $name[..$tparams](..$params): Strategy[$resType] = $makeClass"
         }}
         """
-      println(c)
+//      println(c)
       c
     }
 
@@ -159,7 +159,7 @@ object RuleMacro {
                       cases: List[CaseDef]): Tree = {
       makeRuleClass(name, tparams, resType, params)(makeClass =>
         q"""
-          override def apply(e_internal: $resType): RewriteResult[$resType] = e_internal match {
+          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
             case ..${makeCases(cases, q"Failure($makeClass)")}
           }
 
@@ -173,9 +173,9 @@ object RuleMacro {
                       e: ValDef, body: Tree): Tree = {
       makeRuleClass(name, tparams, resType, params)(_ =>
         q"""
-          override def apply(e_internal: $resType): RewriteResult[$resType] =
+          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
             ((${e.name} : $resType) => {
-              val res_internal: RewriteResult[$resType] = $body
+              val res_internal: elevate.core.RewriteResult[$resType] = $body
               res_internal
             }).apply(e_internal)
 
@@ -189,7 +189,7 @@ object RuleMacro {
                       body: Tree): Tree = {
       makeRuleClass(name, tparams, resType, params)(_ =>
         q"""
-          override def apply(e_internal: $resType): RewriteResult[$resType] =
+          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
             ($body).apply(e_internal)
 
           ..${makeToString(name, params)}

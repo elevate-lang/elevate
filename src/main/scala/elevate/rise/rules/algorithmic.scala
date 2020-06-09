@@ -1,18 +1,18 @@
 package elevate.rise.rules
 
+import arithexpr.arithmetic.{ArithExpr, Cst}
 import elevate.core._
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal.tryAll
-import elevate.rise.strategies.predicate._
-import elevate.rise.rules.traversal._
+import elevate.macros.RuleMacro.rule
 import elevate.rise._
+import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
-import rise.core._
+import elevate.rise.strategies.predicate._
 import rise.core.TypedDSL._
+import rise.core._
 import rise.core.primitives._
 import rise.core.types._
-import arithexpr.arithmetic.{ArithExpr, Cst}
-import elevate.macros.RuleMacro.rule
 
 // noinspection MutatorLikeMethodIsParameterless
 object algorithmic {

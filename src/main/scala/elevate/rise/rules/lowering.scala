@@ -1,124 +1,89 @@
 package elevate.rise.rules
 
+import arithexpr.arithmetic.Cst
 import elevate.core.strategies.basic._
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal._
-import elevate.core.{Failure, RewriteResult, Strategy, Success}
+import elevate.core.{Failure, Strategy, Success}
+import elevate.macros.RuleMacro.rule
 import elevate.rise._
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
 import elevate.rise.strategies.predicate.isVectorizeablePrimitive.isVectorArray
-import rise.openMP.TypedDSL.mapPar
+import rise.core.TypedDSL._
 import rise.core._
 import rise.core.primitives._
-import rise.core.TypedDSL._
 import rise.core.types._
-import arithexpr.arithmetic.Cst
+import rise.openMP.TypedDSL.mapPar
 
 object lowering {
 
   // Straight-forward Lowering
 
-  case object mapSeq extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case m@Map() => Success(MapSeq()(m.t) :: e.t)
-      case _ => Failure(mapSeq)
-    }
-    override def toString: String = "mapSeq"
+  @rule def mapSeq: Strategy[Rise] = {
+    case m@Map() => Success(MapSeq()(m.t) :: m.t)
   }
 
-  case object mapStream extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case m@Map() => Success(MapStream()(m.t) :: e.t)
-      case _       => Failure(mapStream)
-    }
-    override def toString = "mapStream"
+  @rule def mapStream: Strategy[Rise] = {
+    case m@Map() => Success(MapStream()(m.t) :: m.t)
   }
 
-  case object iterateStream extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case m@Map() => Success(IterateStream()(m.t) :: e.t)
-      case _       => Failure(iterateStream)
-    }
-    override def toString = "iterateStream"
+  @rule def iterateStream: Strategy[Rise] = {
+    case m@Map() => Success(IterateStream()(m.t) :: m.t)
   }
 
-  case object mapSeqUnroll extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case m@Map() => Success(MapSeqUnroll()(m.t) :: e.t)
-      case _ => Failure(mapSeqUnroll)
-    }
-    override def toString: String = "mapSeqUnroll"
+  @rule def mapSeqUnroll: Strategy[Rise] = {
+    case m@Map() => Success(MapSeqUnroll()(m.t) :: m.t)
   }
 
-  case class mapGlobal(dim: Int = 0) extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Map() => Success(rise.openCL.TypedDSL.mapGlobal(dim) :: e.t)
-      case _       => Failure(mapGlobal(dim))
-    }
-    override def toString: String = "mapGlobal"
+  @rule def mapGlobal(dim: Int = 0): Strategy[Rise] = {
+    case m@Map() => Success(rise.openCL.TypedDSL.mapGlobal(dim) :: m.t)
   }
 
-  case object reduceSeq extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case Reduce() => Success(TypedDSL.reduceSeq :: e.t)
-      case _ => Failure(reduceSeq)
-    }
-    override def toString: String = "reduceSeq"
+  @rule def reduceSeq: Strategy[Rise] = {
+    case e@Reduce() => Success(TypedDSL.reduceSeq :: e.t)
   }
 
   // todo shall we allow lowering from an already lowered reduceSeq?
-  case object reduceSeqUnroll extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case ReduceX() => Success(TypedDSL.reduceSeqUnroll :: e.t)
-      case _ => Failure(reduceSeqUnroll)
-    }
-    override def toString: String = "reduceSeqUnroll"
+  @rule def reduceSeqUnroll: Strategy[Rise] = {
+    case e@ReduceX() => Success(TypedDSL.reduceSeqUnroll :: e.t)
   }
 
   // Specialized Lowering
 
-  case object mapSeqCompute extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Map(), f) if containsComputation(f) && not(isMappingZip)(f) =>
-        Success(TypedDSL.mapSeq(f))
-      case _ => Failure(mapSeqCompute)
-    }
+  @rule def mapSeqCompute: Strategy[Rise] = {
+    case App(Map(), f) if containsComputation(f) && not(isMappingZip)(f) =>
+      Success(TypedDSL.mapSeq(f))
   }
 
-  case object isMappingZip extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case l@Lambda(_, App(App(Zip(), a), b)) => Success(l)
-      case m@Lambda(_, App(App(Map(), f), arg)) => isMappingZip(f)
-      case _ => Failure(isMappingZip)
-    }
+  @rule def isMappingZip: Strategy[Rise] = {
+    case l@Lambda(_, App(App(Zip(), a), b)) => Success(l)
+    case m@Lambda(_, App(App(Map(), f), arg)) => isMappingZip(f)
   }
 
   // TODO: load identity instead, then change with other rules?
-  case class circularBuffer(load: Expr) extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
-        TypedDSL.circularBuffer(sz)(sz)(untyped(load)) :: e.t)
-      case _ => Failure(circularBuffer(load))
-    }
-    override def toString = s"circularBuffer($load)"
+  @rule def circularBuffer(load: Expr): Strategy[Rise] = {
+    case e@DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
+      TypedDSL.circularBuffer(sz)(sz)(untyped(load)) :: e.t)
   }
 
-  case class rotateValues(write: Expr) extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
-        TypedDSL.rotateValues(sz)(untyped(write)) :: e.t)
-      case _ => Failure(rotateValues(write))
-    }
-    override def toString = s"rotateValues($write)"
+  @rule def rotateValues(write: Expr): Strategy[Rise] = {
+    case e@DepApp(DepApp(Slide(), sz: Nat), Cst(1)) => Success(
+      TypedDSL.rotateValues(sz)(untyped(write)) :: e.t)
   }
 
-  def containsComputation: Strategy[Rise] = topDown(isComputation)
+  @rule def containsComputation: Strategy[Rise] = topDown(isComputation)
 
   // requires type information!
-  case object isComputation extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
+  @rule def isComputation: Strategy[Rise] = e => {
+    def isPairOrBasicType(t: Type): Boolean = t match {
+      case _: BasicType => true
+      case PairType(a, b) => isPairOrBasicType(a) && isPairOrBasicType(b)
+      case _ => false
+    }
+
+    e match {
       // unary function (map)
       case l@Lambda(_, _) if isId(l) => Success(l)
       case l@Lambda(_, _) =>
@@ -134,12 +99,6 @@ object lowering {
         }
       case f@ForeignFunction(_) => Success(f)
       case _ => Failure(containsComputation)
-    }
-
-    private def isPairOrBasicType(t: Type): Boolean = t match {
-      case _: BasicType => true
-      case PairType(a, b) => isPairOrBasicType(a) && isPairOrBasicType(b)
-      case _ => false
     }
   }
 
@@ -157,25 +116,16 @@ object lowering {
   // writing to memory
 
   // TODO: think about more complex cases
-  case object mapSeqUnrollWrite extends Strategy[Rise] {
-    import rise.core.types._
-    def apply(e: Rise): RewriteResult[Rise] = e.t match {
-      case ArrayType(_, _: BasicType) =>
-        Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
-      case _ =>
-        Failure(mapSeqUnrollWrite)
-    }
-    override def toString: String = s"mapSeqUnrollWrite"
+  @rule def mapSeqUnrollWrite: Strategy[Rise] = e => e.t match {
+    case ArrayType(_, _: BasicType) =>
+      Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
+    case _ =>
+      Failure(mapSeqUnrollWrite)
   }
 
-  case object toMemAfterMapSeq extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] =
-      e match {
-        case a@App(App(MapSeq(), _), _) =>
-          Success((typed(a) |> TypedDSL.toMem) :: a.t)
-        case _ => Failure(toMemAfterMapSeq)
-      }
-    override def toString = "toMemAfterMapSeq"
+  @rule def toMemAfterMapSeq: Strategy[Rise] = {
+    case a@App(App(MapSeq(), _), _) =>
+      Success((typed(a) |> TypedDSL.toMem) :: a.t)
   }
 
   // Lowerings used in PLDI submission
@@ -195,33 +145,26 @@ object lowering {
         argument(not(isCopy) `;` insertCopyAfter)
     )
 
-  case object insertCopyAfter extends Strategy[Rise] {
+  @rule def insertCopyAfter: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
       case _: BasicType => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case a => Success(constructCopy(a.t) $ a)
-    }
+    Success(constructCopy(e.t) $ e)
   }
-
 
   // todo currently only works for mapSeq
-  case object isCopy extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case c@App(Let(), id) if isId(id) => Success(c)
-      case c@App(App(MapSeq(), id), etaInput) if isId(id) => Success(c)
-      case App(App(MapSeq(), Lambda(_, f)), etaInput) => isCopy(f)
-      case c@App(id, _) if isId(id) => Success(c)
-      case _ => Failure(isCopy)
-    }
+  @rule def isCopy: Strategy[Rise] = {
+    case c@App(Let(), id) if isId(id) => Success(c)
+    case c@App(App(MapSeq(), id), etaInput) if isId(id) => Success(c)
+    case App(App(MapSeq(), Lambda(_, f)), etaInput) => isCopy(f)
+    case c@App(id, _) if isId(id) => Success(c)
   }
 
-  def isId: Strategy[Rise] = {
+  @rule def isId: Strategy[Rise] = {
     case l@Lambda(x1, x2) if x1 == x2 => Success(l)
-    case _ => Failure(isId)
   }
 
   // requires expr to be in LCNF
@@ -237,7 +180,7 @@ object lowering {
 
 
   // todo currently only works for mapSeq
-  case object copyAfterReduce extends Strategy[Rise] {
+  @rule def copyAfterReduce: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case _: BasicType => let(fun(x => x))
       case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
@@ -245,14 +188,14 @@ object lowering {
       case _ => ??? // shouldn't happen?
     }
 
-    def apply(e: Rise): RewriteResult[Rise] = e match {
+    e match {
       case reduceResult@App(App(App(ReduceX(), _), _), _) =>
         Success(constructCopy(reduceResult.t) $ reduceResult)
       case _ => Failure(copyAfterReduce)
     }
   }
 
-  case object copyAfterReduceInit extends Strategy[Rise] {
+  @rule def copyAfterReduceInit: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case _: BasicType => let(fun(x => x))
       case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
@@ -260,7 +203,7 @@ object lowering {
       case x => println(x) ; ??? // shouldn't happen?
     }
 
-    def apply(e: Rise): RewriteResult[Rise] = e match {
+    e match {
       case App(a@App(ReduceSeqUnroll(), _), init) =>
         Success(TDSL(a) $ (constructCopy(init.t) $ init))
       case _ => Failure(copyAfterReduce)
@@ -268,32 +211,21 @@ object lowering {
   }
 
   // todo currently only works for mapSeq
-  case object copyAfterGenerate extends Strategy[Rise] {
+  @rule def copyAfterGenerate: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
       case _: BasicType => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
-    def apply(e: Rise): RewriteResult[Rise] = e match {
+    e match {
       case a@App(Generate(), _) => Success(constructCopy(a.t) $ a)
       case _ => Failure(copyAfterGenerate)
     }
   }
 
-  case class vectorize(n: Nat) extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case a@App(App(Map(), f), input) if
-      isComputation(f) && !isVectorArray(a.t) =>
-
-        val newF = untyped(f)
-        Success(
-          (asScalar o map(newF)) $ (vectorizeArrayBasedOnType(input.t) $ input)
-        )
-      case _ => Failure(vectorize(n))
-    }
-
-    private def vectorizeArrayBasedOnType(t: Type): TDSL[Rise] = {
+  @rule def vectorize(n: Nat): Strategy[Rise] = e => {
+    def vectorizeArrayBasedOnType(t: Type): TDSL[Rise] = {
       def generateUnZips(dt: Type): TDSL[Rise] = {
         dt match {
           case _: BasicType => asVectorAligned(n)
@@ -308,72 +240,58 @@ object lowering {
         case _ => ??? // shouldnt happen
       }
     }
+
+    e match {
+      case a@App(App(Map(), f), input) if
+      isComputation(f) && !isVectorArray(a.t) =>
+
+        val newF = untyped(f)
+        Success(
+          (asScalar o map(newF)) $ (vectorizeArrayBasedOnType(input.t) $ input)
+        )
+      case _ => Failure(vectorize(n))
+    }
   }
 
-  def untype: Strategy[Rise] = p => Success(p.setType(TypePlaceholder))
+  @rule def untype: Strategy[Rise] = p => Success(p.setType(TypePlaceholder))
 
-  case object parallel extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Map(), f) if containsComputation(f) => Success(mapPar(f))
-      case _ => Failure(parallel)
-    }
-    override def toString = "parallel"
+  @rule def parallel: Strategy[Rise] = {
+    case App(Map(), f) if containsComputation(f) => Success(mapPar(f))
   }
 
-  case object unroll extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll)
-      case _ => Failure(unroll)
-    }
+  @rule def unroll: Strategy[Rise] = {
+    case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll)
   }
 
   object ocl {
+    import rise.core.types.AddressSpace
     import rise.openCL.TypedDSL
     import rise.openCL.primitives._
-    import rise.core.types.AddressSpace
 
-    case class reduceSeqUnroll(a: AddressSpace) extends Strategy[Rise] {
-      def apply(e: Rise): RewriteResult[Rise] = e match {
-        case ReduceX() => Success(TypedDSL.oclReduceSeqUnroll(a) :: e.t)
-        case _ => Failure(reduceSeqUnroll(a))
-      }
-      override def toString = "reduceSeqUnroll"
+    @rule def reduceSeqUnroll(a: AddressSpace): Strategy[Rise] = {
+      case e@ReduceX() => Success(TypedDSL.oclReduceSeqUnroll(a) :: e.t)
     }
 
-    case class circularBuffer(a: AddressSpace)
-      extends Strategy[Rise] {
-      def apply(e: Rise): RewriteResult[Rise] = e match {
-        case DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
-          Success(
-            TypedDSL.oclCircularBuffer(a)(n)(n)(fun(x => x))
+    @rule def circularBuffer(a: AddressSpace): Strategy[Rise] = {
+      case e@DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
+        Success(
+          TypedDSL.oclCircularBuffer(a)(n)(n)(fun(x => x))
             :: e.t)
-        case _ => Failure(circularBuffer(a))
-      }
-      override def toString = s"circularBuffer($a)"
     }
 
-    case object circularBufferLoadFusion extends Strategy[Rise] {
-      def apply(e: Rise): RewriteResult[Rise] = e match {
-        case App(App(
-          cb @ DepApp(DepApp(DepApp(OclCircularBuffer(), _), _), _),
-          load), App(App(Map(), f), in)
-        ) =>
-          Success(untyped(cb)(typed(f) >> load, in) :: e.t)
-        case _ => Failure(circularBufferLoadFusion)
-      }
-      override def toString = s"circularBufferLoadFusion"
+    @rule def circularBufferLoadFusion: Strategy[Rise] = {
+      case e@App(App(
+        cb @ DepApp(DepApp(DepApp(OclCircularBuffer(), _), _), _),
+        load), App(App(Map(), f), in)
+      ) =>
+        Success(untyped(cb)(typed(f) >> load, in) :: e.t)
     }
 
-    case class rotateValues(a: AddressSpace, write: Expr)
-      extends Strategy[Rise] {
-      def apply(e: Rise): RewriteResult[Rise] = e match {
-        case DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
-          Success(
-            TypedDSL.oclRotateValues(a)(n)(untyped(write))
-              :: e.t)
-        case _ => Failure(rotateValues(a, write))
-      }
-      override def toString = s"rotateValues($a, $write)"
+    @rule def rotateValues(a: AddressSpace, write: Expr): Strategy[Rise] = {
+      case e@DepApp(DepApp(Slide(), n: Nat), Cst(1)) =>
+        Success(
+          TypedDSL.oclRotateValues(a)(n)(untyped(write))
+            :: e.t)
     }
   }
 }
