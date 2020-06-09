@@ -81,7 +81,7 @@ class traversals extends elevate.test_util.Tests {
 
   test("id traversals") {
     val expr = fun(f => fun(g => map(f) >> map(g)))
-    val id = elevate.core.strategies.basic.id[Rise]()
+    val id = elevate.core.strategies.basic.id[Rise]
 
     assert(
       List(

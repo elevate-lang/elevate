@@ -46,14 +46,14 @@ class rewriteExamples extends elevate.test_util.Tests {
 
     println("\n-- step1: inlining + fusing")
     // funToLet2 required because of matrixEye + vectorHot definition
-    val strategy0 = normalize.apply(funToLet <+ funToLet2 <+ letPartialEvaluation <+ buildGet <+ lengthBuild)
+    val strategy0 = normalize.apply(funToLet <+ funToLet <+ letPartialEvaluation <+ buildGet <+ lengthBuild)
     //                       | ---- INLINING ------------------------------- | ----- FUSION ---------- |
     val step1 = strategy0.apply(inputFixed)
     println(step1)
 
     println("\n-- step2: conditional rules + ring structure rules")
     // conditionApplication2 handles binary functions
-    val strategy1 = normalize.apply(conditionApplication2 <+ multiplicationZero <+ multiplicationOne <+ additionZero)
+    val strategy1 = normalize.apply(conditionApplication <+ multiplicationZero <+ multiplicationOne <+ additionZero)
     val step2 = strategy1.apply(step1.get)
     println(step2)
 

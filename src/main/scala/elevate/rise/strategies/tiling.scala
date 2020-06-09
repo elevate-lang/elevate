@@ -19,7 +19,7 @@ object tiling {
   def tileNDList: List[Int] => Strategy[Rise] =
 
     n => n.size match {
-        case x if x <= 0 => id()
+        case x if x <= 0 => id
         // ((map f) arg)
         case 1 => function(splitJoin(n.head))      // loop-blocking
         case i => fmap(tileNDList(n.tail)) `;`     // recurse

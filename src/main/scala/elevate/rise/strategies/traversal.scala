@@ -73,7 +73,7 @@ object traversal {
   })
 
   def blocking: Strategy[Rise] = {
-    id[Rise]() `@` outermost(mapNest(2))
-    id[Rise]() `@` outermost(isReduce)
+    id `@` outermost(mapNest(2))
+    id `@` outermost(isReduce)
   }
 }

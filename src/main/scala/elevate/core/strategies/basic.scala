@@ -2,6 +2,7 @@ package elevate.core.strategies
 
 import elevate.core._
 import elevate.core.strategies.traversal.topDown
+import elevate.macros.RuleMacro.rule
 
 /* Inspired by:
 
@@ -21,15 +22,9 @@ object basic {
 
   // Naive Strategies
 
-  case class id[P]() extends Strategy[P] {
-    def apply(p: P) = Success(p)
-    override def toString: String = "id"
-  }
+  @rule def id[P]: Strategy[P] = p => Success(p)
 
-  case class fail[P]() extends Strategy[P] {
-    def apply(p: P) = Failure(fail())
-    override def toString: String = "fail"
-  }
+  @rule def fail[P]: Strategy[P] = _ => Failure(fail)
 
   // Basic Strategy Combinators
 
@@ -46,7 +41,7 @@ object basic {
   // Basic Strategies
 
   case class `try`[P](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = (s <+ id())(p)
+    def apply(p: P): RewriteResult[P] = (s <+ id)(p)
     override def toString: String = s"try($s)"
   }
 
@@ -56,7 +51,7 @@ object basic {
   }
 
   case class repeatNTimes[P](n: Int, s: Strategy[P]) extends Strategy[P] {
-    def apply(p :P): RewriteResult[P] = if (n > 0) {(s `;` repeatNTimes(n - 1, s))(p)} else { id()(p) }
+    def apply(p :P): RewriteResult[P] = if (n > 0) {(s `;` repeatNTimes(n - 1, s))(p)} else { id(p) }
     override def toString: String = "repeat" + n + s"times($s)"
   }
 

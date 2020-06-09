@@ -82,7 +82,7 @@ object algorithmic {
 
     // pos = how far nested is the reduction?
     def moveReductionUp(pos: Int): Strategy[Rise] = {
-      if (pos <= 1) id[Rise]()
+      if (pos <= 1) id
       else
         applyNTimes(pos-2)(stepDown)(function(liftReduce)) `;` DFNF `;` RNF `;`  moveReductionUp(pos-1)
     }
@@ -99,10 +99,10 @@ object algorithmic {
           stepDown(reorderRec(xs.map(y => if (y>pos) y-1 else y )))) <+
           // other case: is it a map?
           applyNTimes(pos-1)(stepDown)(isFullyAppliedMap) `;`
-          basic.fail()
+          basic.fail
         )(e)
       }
-      case Nil => id[Rise]()(e)
+      case Nil => id(e)
       case _ => Failure(reorderRec(l))
     }
 

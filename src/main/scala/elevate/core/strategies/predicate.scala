@@ -26,10 +26,10 @@ object predicate {
   def ifThenElse[P](p: Strategy[P],
                     t: Strategy[P],
                     e: Strategy[P]): Strategy[P] =
-    (p `;` (t <+ basic.id[P]())) <+ e
+    (p `;` (t <+ basic.id)) <+ e
 
   def `if`[P]: Strategy[P] => Strategy[P] => Strategy[P] = p => t =>
-    ifThenElse(p,t,basic.id[P]())
+    ifThenElse(p,t,basic.id)
 
   def ![P](s: Strategy[P]): Strategy[P] = not(s)
 

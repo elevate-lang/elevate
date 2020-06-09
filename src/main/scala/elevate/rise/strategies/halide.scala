@@ -22,7 +22,7 @@ object halide {
     assert(perm.forall(_ > 0 ))
     assert(perm.sum == (1 to perm.length).sum)
 
-    if(perm.length == 1) return id()
+    if(perm.length == 1) return id
 
     // which dimension comes first?
     (perm.head match {

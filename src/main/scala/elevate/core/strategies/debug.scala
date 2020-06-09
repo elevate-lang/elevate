@@ -1,21 +1,16 @@
 package elevate.core.strategies
 
 import elevate.core.{RewriteResult, Strategy, Success}
+import elevate.macros.RuleMacro.rule
 
 object debug {
 
-  case class peek[P](f: P => Unit) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = { f(p); Success(p) }
-    override def toString: String = s"peek(f)"
-  }
+  @rule("peek(f)") def peek[P](f: P => Unit): Strategy[P] =
+    p => { f(p); Success(p) }
 
-  case class debug[P](msg: String) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = peek[P](x => println(msg + "\n" + x))(p)
-    override def toString: String = "debug"
-  }
+  @rule def debug[P](msg: String): Strategy[P] =
+    peek[P](x => println(msg + "\n" + x))
 
-  case class echo[P](msg: String) extends Strategy[P] {
-    def apply(e: P): RewriteResult[P] = peek[P](_ => println(msg))(e)
-    override def toString: String = "println"
-  }
+  @rule("println") def echo[P](msg: String): Strategy[P] =
+    peek[P](_ => println(msg))
 }
