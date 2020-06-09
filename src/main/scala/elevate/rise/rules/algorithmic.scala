@@ -518,11 +518,11 @@ object algorithmic {
       init), arg) if yT == outT =>
       // avoid having two lambdas using the same identifiers
       val freshOp = tryAll(freshLambdaIdentifier).apply(op).get
-      Success(DFNF(
+      DFNF(
         (reduceSeq(fun((acc, y) =>
           typed(op)(acc, reduce(freshOp)(init)(y))))(init) o
           split(n)) $ arg
-      ))
+      )
   }
 
   

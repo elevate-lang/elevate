@@ -89,7 +89,7 @@ object RuleMacro {
     def makeRuleObject(name: TermName, resType: Tree, cases: List[CaseDef]): Tree = {
       val c = q"""final case object $name extends Strategy[$resType] {
         override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
-          case ..${makeCases(cases, q"Failure($name)")}
+          case ..${makeCases(cases, q"elevate.core.Failure($name)")}
         }
 
          ..${makeToString(name)}
@@ -160,7 +160,7 @@ object RuleMacro {
       makeRuleClass(name, tparams, resType, params)(makeClass =>
         q"""
           override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
-            case ..${makeCases(cases, q"Failure($makeClass)")}
+            case ..${makeCases(cases, q"elevate.core.Failure($makeClass)")}
           }
 
           ..${makeToString(name, params)}

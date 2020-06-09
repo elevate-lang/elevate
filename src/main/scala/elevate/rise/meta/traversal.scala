@@ -2,7 +2,7 @@ package elevate.rise.meta
 
 import elevate.core.strategies.basic._
 import elevate.core.strategies.traversal._
-import elevate.core.{Failure, MetaStrategy, RewriteResult, Strategy, Success}
+import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
 import elevate.rise.rules.traversal._
 
@@ -55,7 +55,7 @@ object traversal {
 
   // Meta-Rise-specific Traversals
 
-  case class inBody(s: MetaStrategy[Rise]) extends MetaStrategy[Rise] {
+  case class inBody(s: Strategy[Strategy[Rise]]) extends Strategy[Strategy[Rise]] {
     def apply(e: Strategy[Rise]): RewriteResult[Strategy[Rise]] = e match {
       case body(x: Strategy[Rise]) => s(x).mapSuccess(body)
       case _ => Failure(s)
