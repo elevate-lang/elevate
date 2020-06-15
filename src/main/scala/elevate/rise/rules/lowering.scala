@@ -132,7 +132,7 @@ object lowering {
 
   // adds copy after every generate
   val materializeGenerate: Strategy[Rise] =
-    normalize.apply(
+    normalize(
       argument(function(isGenerate)) `;`
         not(isCopy) `;`
         argument(copyAfterGenerate)
@@ -140,7 +140,7 @@ object lowering {
 
   // adds explicit copies for every init value in reductions
   val materializeInitOfReduce: Strategy[Rise] =
-    normalize.apply(
+    normalize(
       function(function(isReduceX)) `;`
         argument(not(isCopy) `;` insertCopyAfter)
     )
@@ -169,7 +169,7 @@ object lowering {
 
   // requires expr to be in LCNF
   val specializeSeq: Strategy[Rise] =
-    normalize.apply(lowering.mapSeqCompute <+ lowering.reduceSeq)
+    normalize(lowering.mapSeqCompute <+ lowering.reduceSeq)
 
   val addRequiredCopies: Strategy[Rise] =
     // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce

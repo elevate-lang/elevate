@@ -9,7 +9,7 @@ import elevate.rise.strategies.tiling._
 
 object halide {
 
-  def reorder(perm: Seq[Int]): Strategy[Rise] = {
+  def reorder(perm: scala.collection.Seq[Int]): Strategy[Rise] = {
 
     def shiftDimension(i: Int): Strategy[Rise] = {
       i match {

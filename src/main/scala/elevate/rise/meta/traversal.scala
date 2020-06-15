@@ -19,11 +19,11 @@ object traversal {
     override def oneUsingState: Strategy[Strategy[Rise]] => Strategy[Strategy[Rise]] = oneHandlingState(true)
 
     def oneHandlingState: Boolean => Strategy[Strategy[Rise]] => Strategy[Strategy[Rise]] = carryOverState => s => {
-      case seq(first,second) => s(first) match {
-        case Success(x: Strategy[Rise]) => Success(seq(x, second))
+      case Seq(first,second) => s(first) match {
+        case Success(x: Strategy[Rise]) => Success(seq(x)(second))
         case Failure(state) => if (carryOverState)
-          state(second).mapSuccess(seq(first,_)) else
-          s(second).mapSuccess(seq(first,_))
+          state(second).mapSuccess(seq(first)(_)) else
+          s(second).mapSuccess(seq(first)(_))
       }
       case downup2(p1,p2) => ???
       case all(s) => ???

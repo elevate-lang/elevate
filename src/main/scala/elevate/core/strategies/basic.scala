@@ -2,6 +2,7 @@ package elevate.core.strategies
 
 import elevate.core._
 import elevate.core.strategies.traversal.topDown
+import elevate.macros.CombinatorMacro.combinator
 import elevate.macros.RuleMacro.rule
 
 /* Inspired by:
@@ -28,35 +29,29 @@ object basic {
 
   // Basic Strategy Combinators
 
-  case class seq[P](f: Strategy[P], s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = f(p).flatMapSuccess(s)
-    override def toString: String = s"$f `;` $s"
-  }
+  @combinator
+  def seq[P]: Strategy[P] => Strategy[P] => Strategy[P] =
+    fs => ss => p => fs(p).flatMapSuccess(ss)
 
-  case class leftChoice[P](f: Strategy[P], s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = f(p).flatMapFailure(_ => s(p))
-    override def toString: String = s"$f <+ $s"
-  }
+  @combinator
+  def leftChoice[P]: Strategy[P] => Strategy[P] => Strategy[P] =
+    fs => ss => p => fs(p).flatMapFailure(_ => ss(p))
 
   // Basic Strategies
 
-  case class `try`[P](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = (s <+ id)(p)
-    override def toString: String = s"try($s)"
-  }
+  @combinator
+  def `try`[P]: Strategy[P] => Strategy[P] = s => s <+ id
 
-  case class repeat[P](s: Strategy[P]) extends Strategy[P] {
-    def apply(p: P): RewriteResult[P] = `try`(s `;` repeat(s))(p)
-    override def toString: String = s"repeat($s)"
-  }
+  @combinator
+  def repeat[P]: Strategy[P] => Strategy[P] = s => `try`(s `;` repeat(s))
 
-  case class repeatNTimes[P](n: Int, s: Strategy[P]) extends Strategy[P] {
-    def apply(p :P): RewriteResult[P] = if (n > 0) {(s `;` repeatNTimes(n - 1, s))(p)} else { id(p) }
-    override def toString: String = "repeat" + n + s"times($s)"
-  }
+  @combinator
+  def repeatNTimes[P](n: Int): Strategy[P] => Strategy[P] = s =>
+    p => if (n > 0) {(s `;` repeatNTimes(n - 1)(s))(p)} else { id(p) }
 
   // Normalize
 
+  @combinator
   def normalize[P: Traversable]: Strategy[P] => Strategy[P] =
     s => repeat(topDown.apply(s))
 

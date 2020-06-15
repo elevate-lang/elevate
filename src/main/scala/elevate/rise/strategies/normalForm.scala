@@ -18,19 +18,19 @@ object normalForm {
 
   // Beta-Eta-Normal-Form
   @strategy def BENF: Strategy[Rise] =
-    normalize.apply(etaReduction <+ betaReduction)
+    normalize(etaReduction <+ betaReduction)
 
   // Data-Flow-Normal-Form
   @strategy def DFNF: Strategy[Rise] =
     (BENF `;`
       // there is no argument of a map which is not eta-abstracted, i.e., every argument of a map is a lambda
-      normalize.apply(argumentOf(Map()(), (not(isLambda) `;` etaAbstraction))) `;`
+      normalize(argumentOf(Map()(), (not(isLambda) `;` etaAbstraction))) `;`
       // a reduce always contains two lambdas declaring y and acc
-      normalize.apply(argumentOf(Reduce()(), (not(isLambda) `;` etaAbstraction))) `;`
-      normalize.apply(argumentOf(Reduce()(), body((not(isLambda) `;` etaAbstraction)))) `;`
+      normalize(argumentOf(Reduce()(), (not(isLambda) `;` etaAbstraction))) `;`
+      normalize(argumentOf(Reduce()(), body((not(isLambda) `;` etaAbstraction)))) `;`
       // there is no map(f) without an argument == there is no way to get to a map without visiting two applies
       // same for reduce and three applies
-      normalize.apply(
+      normalize(
         one(function(isMap) <+ one(function(isReduce))) `;`                  // there is a map in two hops, i.e, Something(Apply(map, f))
           not(isApply) `;`                                                      // and the current node is not an Apply i.e. Something != Apply
           one((function(isMap) <+ one(function(isReduce))) `;` etaAbstraction)   // eta-abstract the inner Apply
@@ -38,9 +38,9 @@ object normalForm {
 
   // Rewrite-Normal-Form (Fission all maps)
   @strategy def RNF: Strategy[Rise] =
-    normalize.apply(DFNF `;` mapLastFission) `;` DFNF
+    normalize(DFNF `;` mapLastFission) `;` DFNF
 
   // Codegen-Normal-Form (Fuse all maps)
   @strategy def CNF: Strategy[Rise] =
-    normalize.apply(mapFusion)
+    normalize(mapFusion)
 }

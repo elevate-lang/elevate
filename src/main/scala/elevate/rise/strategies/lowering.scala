@@ -8,6 +8,7 @@ import rise.core._
 import elevate.rise.rules.traversal._
 
 object lowering {
+
   def storeInMemory(what: Strategy[Rise],
                     how: Strategy[Rise]): Strategy[Rise] = { p =>
     extract(what)(p) >>= (extracted => {
