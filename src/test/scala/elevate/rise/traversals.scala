@@ -2,13 +2,12 @@ package elevate.rise
 
 import elevate.core.strategies.basic._
 import elevate.core.strategies.traversal._
-import elevate.rise.meta.fission._
+import elevate.rise.meta.fission.bodyFission
 import elevate.rise.meta.traversal.inBody
 import elevate.rise.rules.algorithmic._
 import elevate.rise.rules.movement._
 import elevate.rise.rules.traversal.{argument, argumentOf, body, function, _}
-import elevate.rise.strategies.normalForm._
-import elevate.rise.strategies.tiling._
+import elevate.rise.rules.traversal.default._
 import elevate.rise.strategies.util._
 import elevate.util._
 import rise.core.TypedDSL._
@@ -17,6 +16,11 @@ import rise.core.primitives._
 
 
 class traversals extends elevate.test_util.Tests {
+
+  def tileND = elevate.rise.strategies.tiling.tileND(RiseTraversable)
+  val DFNF = elevate.rise.strategies.normalForm.DFNF()(RiseTraversable)
+  val RNF = elevate.rise.strategies.normalForm.RNF()(RiseTraversable)
+  val FNF = elevate.rise.meta.fission.FNF(elevate.rise.meta.traversal.MetaRiseTraversable(RiseTraversable))
 
   test("rewrite simple elevate strategy") {
     val expr = fun(f => fun(g => map(f) >> map(g)))

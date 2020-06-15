@@ -1,5 +1,6 @@
 package elevate
 
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.basic._
 import elevate.rise.Rise
 import elevate.rise.strategies.normalForm._
@@ -18,8 +19,8 @@ package object core {
   }
 
   // scalastyle:off
-  implicit class NormalizedThen(f: Strategy[Rise]) {
-    def `;;`(s: Strategy[Rise]): Strategy[Rise] = f `;` DFNF `;` s
+  implicit class NormalizedThen(f: Strategy[Rise])(implicit ev: Traversable[Rise]) {
+    def `;;`(s: Strategy[Rise]): Strategy[Rise] = f `;` DFNF() `;` s
   }
   // scalastyle:on
 

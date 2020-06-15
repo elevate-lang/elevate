@@ -8,13 +8,14 @@ import elevate.rise._
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
-import elevate.rise.strategies.predicate.isVectorizeablePrimitive.isVectorArray
+import elevate.rise.strategies.predicate.isVectorArray
 import rise.openMP.TypedDSL.mapPar
 import rise.core._
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.types._
 import arithexpr.arithmetic.Cst
+import elevate.core.strategies.Traversable
 
 object lowering {
 
@@ -79,11 +80,12 @@ object lowering {
 
   // Specialized Lowering
 
-  case object mapSeqCompute extends Strategy[Rise] {
+  case class mapSeqCompute()(implicit ev: Traversable[Rise])
+    extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Map(), f) if containsComputation(f) && not(isMappingZip)(f) =>
+      case App(Map(), f) if containsComputation(ev)(f) && not(isMappingZip)(f) =>
         Success(TypedDSL.mapSeq(f))
-      case _ => Failure(mapSeqCompute)
+      case _ => Failure(mapSeqCompute())
     }
   }
 
@@ -114,10 +116,11 @@ object lowering {
     override def toString = s"rotateValues($write)"
   }
 
-  def containsComputation: Strategy[Rise] = topDown(isComputation)
+  def containsComputation(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    topDown(isComputation())(ev)
 
   // requires type information!
-  case object isComputation extends Strategy[Rise] {
+  case class isComputation()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       // unary function (map)
       case l@Lambda(_, _) if isId(l) => Success(l)
@@ -181,7 +184,7 @@ object lowering {
   // Lowerings used in PLDI submission
 
   // adds copy after every generate
-  val materializeGenerate: Strategy[Rise] =
+  def materializeGenerate(implicit ev: Traversable[Rise]): Strategy[Rise] =
     normalize.apply(
       argument(function(isGenerate)) `;`
         not(isCopy) `;`
@@ -189,7 +192,7 @@ object lowering {
     )
 
   // adds explicit copies for every init value in reductions
-  val materializeInitOfReduce: Strategy[Rise] =
+  def materializeInitOfReduce(implicit ev: Traversable[Rise]): Strategy[Rise] =
     normalize.apply(
       function(function(isReduceX)) `;`
         argument(not(isCopy) `;` insertCopyAfter)
@@ -225,15 +228,16 @@ object lowering {
   }
 
   // requires expr to be in LCNF
-  val specializeSeq: Strategy[Rise] =
-    normalize.apply(lowering.mapSeqCompute <+ lowering.reduceSeq)
+  def specializeSeq(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    normalize.apply(lowering.mapSeqCompute() <+ lowering.reduceSeq)
 
-  val addRequiredCopies: Strategy[Rise] =
+  def addRequiredCopies(implicit ev: Traversable[Rise]): Strategy[Rise] =
     // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce
-    tryAll(copyAfterReduce) `;` DFNF `;` materializeInitOfReduce
+    tryAll(copyAfterReduce) `;` DFNF() `;` materializeInitOfReduce
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
-  val lowerToC: Strategy[Rise] = addRequiredCopies `;` `try`(bottomUp(copyAfterReduceInit)) `;` specializeSeq
+  def lowerToC(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    addRequiredCopies `;` `try`(bottomUp(copyAfterReduceInit)) `;` specializeSeq
 
 
   // todo currently only works for mapSeq
@@ -281,10 +285,11 @@ object lowering {
     }
   }
 
-  case class vectorize(n: Nat) extends Strategy[Rise] {
+  case class vectorize(n: Nat)(implicit ev: Traversable[Rise])
+    extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case a@App(App(Map(), f), input) if
-      isComputation(f) && !isVectorArray(a.t) =>
+      isComputation()(ev)(f) && !isVectorArray(a.t) =>
 
         val newF = untyped(f)
         Success(
@@ -312,10 +317,10 @@ object lowering {
 
   def untype: Strategy[Rise] = p => Success(p.setType(TypePlaceholder))
 
-  case object parallel extends Strategy[Rise] {
+  case class parallel()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Map(), f) if containsComputation(f) => Success(mapPar(f))
-      case _ => Failure(parallel)
+      case App(Map(), f) if containsComputation(ev)(f) => Success(mapPar(f))
+      case _ => Failure(parallel())
     }
     override def toString = "parallel"
   }

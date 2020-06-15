@@ -1,5 +1,6 @@
 package elevate.rise.strategies
 
+import elevate.core.strategies.Traversable
 import elevate.core.{RewriteResult, Strategy}
 import elevate.core.strategies.basic._
 import elevate.core.strategies.predicate._
@@ -11,20 +12,21 @@ import elevate.rise.rules._
 import elevate.rise.rules.algorithmic._
 import elevate.rise.rules.traversal.{argumentOf, body, function}
 import rise.core.primitives._
+import elevate.rise.strategies.traversal._
 
 // todo think about better names!
 object normalForm {
 
   // Beta-Eta-Normal-Form
-  case object BENF extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = normalize.apply(etaReduction <+ betaReduction)(e)
+  case class BENF()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = normalize.apply(etaReduction() <+ betaReduction)(e)
     override def toString = "BENF"
   }
 
   // Data-Flow-Normal-Form
-  case object DFNF extends Strategy[Rise] {
+  case class DFNF()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] =
-      (BENF `;`
+      (BENF() `;`
         // there is no argument of a map which is not eta-abstracted, i.e., every argument of a map is a lambda
         normalize.apply(argumentOf(Map()(), (not(isLambda) `;` etaAbstraction))) `;`
         // a reduce always contains two lambdas declaring y and acc
@@ -41,13 +43,13 @@ object normalForm {
   }
 
   // Rewrite-Normal-Form (Fission all maps)
-  case object RNF extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = (normalize.apply(DFNF `;` mapLastFission) `;` DFNF)(e)
+  case class RNF()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = (normalize.apply(DFNF() `;` mapLastFission) `;` DFNF())(e)
     override def toString = "RNF"
   }
 
   // Codegen-Normal-Form (Fuse all maps)
-  case object CNF extends Strategy[Rise] {
+  case class CNF()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = normalize.apply(mapFusion)(e)
     override def toString = "CNF"
   }

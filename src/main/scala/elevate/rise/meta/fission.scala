@@ -1,9 +1,9 @@
 package elevate.rise.meta
 
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.basic._
 import elevate.core.{Failure, MetaStrategy, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
-import traversal._
 import elevate.rise.rules.traversal.{argument, argumentOf, body, function}
 
 object fission {
@@ -44,5 +44,5 @@ object fission {
 
 
   // Fissioned-Normal-Form: Every single strategy application starts from the root
-  def FNF: MetaStrategy[Rise] = normalize.apply(bodyFission <+ functionFission <+ argumentFission <+ argumentOfFission)
+  def FNF(implicit ev: Traversable[Strategy[Rise]]): MetaStrategy[Rise] = normalize.apply(bodyFission <+ functionFission <+ argumentFission <+ argumentOfFission)
 }

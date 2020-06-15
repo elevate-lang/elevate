@@ -1,30 +1,31 @@
 package elevate.rise.strategies
 
-import elevate.core.{RewriteResult, Strategy}
+import elevate.core.Strategy
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.basic._
 import elevate.rise.Rise
 import elevate.rise.rules.algorithmic._
 import elevate.rise.rules.movement._
 import elevate.rise.rules.traversal.{argument, function}
-import elevate.rise.strategies.traversal._
 import elevate.rise.strategies.normalForm._
+import elevate.rise.strategies.traversal._
 
 object tiling {
 
-  def tileND: Int => Int => Strategy[Rise] = d => n => tileNDList(List.tabulate(d)(_ => n))
+  def tileND(implicit ev: Traversable[Rise]): Int => Int => Strategy[Rise] = d => n => tileNDList(ev)(List.tabulate(d)(_ => n))
 
   // special syntax for 2D case - for ICFP'20 paper
-  def tile(x: Int, y: Int): Strategy[Rise] = tileNDList(List(x,y))
+  def tile(x: Int, y: Int)(implicit ev: Traversable[Rise]): Strategy[Rise] = tileNDList(ev)(List(x,y))
 
-  def tileNDList: List[Int] => Strategy[Rise] =
+  def tileNDList(implicit ev: Traversable[Rise]): List[Int] => Strategy[Rise] =
 
     n => n.size match {
         case x if x <= 0 => id()
         // ((map f) arg)
         case 1 => function(splitJoin(n.head))      // loop-blocking
-        case i => fmap(tileNDList(n.tail)) `;`     // recurse
+        case i => fmap(tileNDList(ev)(n.tail)) `;`     // recurse
                   function(splitJoin(n.head)) `;`  // loop-blocking
-                  interchange(i)                      // loop-interchange
+                  interchange(ev)(i)                      // loop-interchange
       }
 
 
@@ -39,31 +40,31 @@ object tiling {
   //    A.a.B.C.b.c => A.B.C.a.b.c
   //    (******f => *T o **T o ******f o **T o *T)
   // dim == 4 -> shift three levels ...
-  def interchange: Int => Strategy[Rise] =
+  def interchange(implicit ev: Traversable[Rise]): Int => Strategy[Rise] =
     d => {
       val joins = d
       val transposes = (1 to d-2).sum
-      RNF `;` shiftDimRec(joins + transposes)(d-1)
+      RNF() `;` shiftDimRec(ev)(joins + transposes)(d-1)
     }
 
   // position: how far to move right until we reach maps
   // level:    how deep transpose pairs are nested in maps
-  def shiftDimRec: Int => Int => Strategy[Rise] =
-    position => level => DFNF `;`
+  def shiftDimRec(implicit ev: Traversable[Rise]): Int => Int => Strategy[Rise] =
+    position => level => DFNF() `;`
       (level match {
-      case 1 => moveTowardsArgument(position)(loopInterchangeAtLevel(1))
-      case l => shiftDimRec(position)(l - 1) `;` RNF `;`
-        moveTowardsArgument(position + l - 1)(loopInterchangeAtLevel(l))
+      case 1 => moveTowardsArgument(position)(loopInterchangeAtLevel(ev)(1))
+      case l => shiftDimRec(ev)(position)(l - 1) `;` RNF() `;`
+        moveTowardsArgument(position + l - 1)(loopInterchangeAtLevel(ev)(l))
     })
 
   // in front of **f, creating transpose pairs, move one transpose over **f
-  def loopInterchange: Strategy[Rise] =
-      idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)
+  def loopInterchange(implicit ev: Traversable[Rise]): Strategy[Rise] =
+      idAfter `;` createTransposePair `;` DFNF() `;` argument(mapMapFBeforeTranspose)
 
   // level == 0: A.B.C.D => A.B.D.C
   //             ^ ^        ^ ^
   // level == 1: A.B.C.D => A.C.B.D
   //               ^ ^        ^ ^   ... and so on
-  def loopInterchangeAtLevel: Int => Strategy[Rise] =
-    level => applyNTimes(level)((e: Strategy[Rise]) => fmap(e))(loopInterchange) `;` RNF
+  def loopInterchangeAtLevel(implicit ev: Traversable[Rise]): Int => Strategy[Rise] =
+    level => applyNTimes(level)((e: Strategy[Rise]) => fmap(e))(loopInterchange) `;` RNF()
 }

@@ -1,17 +1,18 @@
 package elevate.rise.rules
 
+import arithexpr.arithmetic.{ArithExpr, Cst}
 import elevate.core._
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal.tryAll
-import elevate.rise.strategies.predicate._
-import elevate.rise.rules.traversal._
 import elevate.rise._
+//import elevate.rise.rules.traversal.default._
 import elevate.rise.strategies.normalForm.DFNF
-import rise.core._
+import elevate.rise.strategies.predicate._
 import rise.core.TypedDSL._
+import rise.core._
 import rise.core.primitives._
 import rise.core.types._
-import arithexpr.arithmetic.{ArithExpr, Cst}
+import elevate.core.strategies.Traversable
 
 // noinspection MutatorLikeMethodIsParameterless
 object algorithmic {
@@ -111,7 +112,7 @@ object algorithmic {
     override def toString: String = "reduceMapFusion"
   }
 
-  case object reduceMapFission extends Strategy[Rise] {
+  case class reduceMapFission()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(App(ReduceX(), Lambda(acc, Lambda(y,
       App(App(op, acc2), f@App(_, y2))))), init) if
@@ -119,15 +120,15 @@ object algorithmic {
         Success((reduce(op)(init) o
           map(lambda(TDSL[Identifier](y), typed(f)))) :: e.t
         )
-      case _ => Failure(reduceMapFission)
+      case _ => Failure(reduceMapFission())
     }
     override def toString: String = "reduceMapFission"
   }
 
 
   // fission of the last function to be applied inside a map
-  def mapLastFission: Strategy[Rise] = `*(g >> .. >> f) -> *(g >> ..) >> *f`
-  case object `*(g >> .. >> f) -> *(g >> ..) >> *f` extends Strategy[Rise] {
+  def mapLastFission(implicit ev: Traversable[Rise]): Strategy[Rise] = `*(g >> .. >> f) -> *(g >> ..) >> *f`()
+  case class `*(g >> .. >> f) -> *(g >> ..) >> *f`()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     // this is an example where we don't want to fission if gx == Identifier:
     // (map λe4. (((((zip: (K.float -> (K.float -> K.(float, float))))
     // (e3: K.float)): (K.float -> K.(float, float)))
@@ -167,10 +168,10 @@ object algorithmic {
   }
 
 
-  def liftId: Strategy[Rise] = `id -> *id`
-  case object `id -> *id` extends Strategy[Rise] {
+  def liftId(implicit ev: Traversable[Rise]): Strategy[Rise] = `id -> *id`()
+  case class `id -> *id`()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Id() ::: FunType(ArrayType(_, _), _), arg) => Success(DFNF((map(id) $ arg)).get)
+      case App(Id() ::: FunType(ArrayType(_, _), _), arg) => Success(DFNF()(ev)((map(id) $ arg)).get)
       case _ => Failure(liftId)
     }
     override def toString: String = "liftId"
@@ -355,7 +356,7 @@ object algorithmic {
 
   // generate (i => select t (map f e) (map g e))
   // -> e |> map (x => generate (i => select t (f x) (g x))) |> transpose
-  def mapOutsideGenerateSelect: Strategy[Rise] = {
+  def mapOutsideGenerateSelect(implicit ev: Traversable[Rise]): Strategy[Rise] = {
     case expr @ App(Generate(), Lambda(i, App(App(App(Select(), t),
       App(App(Map(), f), e)),
       App(App(Map(), g), e2))))
@@ -571,7 +572,7 @@ object algorithmic {
   // FIXME: this is very specific
   // map (p => g (fst p) (snd p)) (zip (fst/snd e) (fst/snd e))
   // -> map (p => g (fst/snd p) (fst/snd p)) (zip (fst e) (snd e))
-  def mapProjZipUnification: Strategy[Rise] = {
+  def mapProjZipUnification(implicit ev: Traversable[Rise]): Strategy[Rise] = {
     case e @ App(App(Map(),
       Lambda(p, App(App(g, App(Fst(), p1)), App(Snd(), p2)))),
       App(App(Zip(),
@@ -587,7 +588,7 @@ object algorithmic {
 
   // TODO: should not be in this file?
   // broadly speaking, f(x) -> x |> fun(y => f(y))
-  case class subexpressionElimination(find: Strategy[Rise]) extends Strategy[Rise] {
+  case class subexpressionElimination(find: Strategy[Rise])(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     import elevate.core.strategies.traversal._
     def apply(e: Rise): RewriteResult[Rise] = {
       var typedX: Rise = null // Hack to get the typed version of X
@@ -604,7 +605,7 @@ object algorithmic {
 
   // the inner strategies shouldn't be accessible from the outside
   // because they might change the semantics of a program
-  case object freshLambdaIdentifier extends Strategy[Rise] {
+  case class freshLambdaIdentifier()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     case object freshIdentifier extends Strategy[Rise] {
       def apply(e: Rise): RewriteResult[Rise] = e match {
         case Identifier(name) ::: t =>
@@ -627,20 +628,20 @@ object algorithmic {
         val newE = tryAll(replaceIdentifier(x, newX)).apply(e).get
         Success(Lambda(newX, newE)(t))
       }
-      case _ => Failure(freshLambdaIdentifier)
+      case _ => Failure(freshLambdaIdentifier())
     }
     override def toString: String = "freshLambdaIdentifier"
   }
 
   // different name for ICFP'20
-  def splitStrategy(n: Nat): Strategy[Rise] = blockedReduce(n)
-  case class blockedReduce(n: Nat) extends Strategy[Rise] {
+  def splitStrategy(n: Nat)(implicit ev: Traversable[Rise]): Strategy[Rise] = blockedReduce(n)
+  case class blockedReduce(n: Nat)(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(App(App(Reduce(), op ::: FunType(yT, FunType(initT, outT))),
       init), arg) if yT == outT =>
         // avoid having two lambdas using the same identifiers
-        val freshOp = tryAll(freshLambdaIdentifier).apply(op).get
-        Success(DFNF(
+        val freshOp = tryAll(freshLambdaIdentifier()).apply(op).get
+        Success(DFNF()(ev)(
           (reduceSeq(fun((acc, y) =>
           typed(op)(acc, reduce(freshOp)(init)(y))))(init) o
           split(n)) $ arg

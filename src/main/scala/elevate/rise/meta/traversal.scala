@@ -5,13 +5,15 @@ import elevate.core.strategies.traversal._
 import elevate.core.{Failure, MetaStrategy, RewriteResult, Strategy, Success}
 import elevate.rise.Rise
 import elevate.rise.rules.traversal._
+import elevate.core.strategies.Traversable
+// import elevate.rise.rules.traversal.default._
 
 // implementing elevate.core.strategies.Traversable for Strategy[Rise]
 
 object traversal {
 
   // implemented just enough to get allow using FNF (see meta.rules.fission)
-  implicit object MetaRiseTraversable extends elevate.core.strategies.Traversable[Strategy[Rise]] {
+  implicit class MetaRiseTraversable(ev: Traversable[Rise]) extends Traversable[Strategy[Rise]] {
     override def all: Strategy[Strategy[Rise]] => Strategy[Strategy[Rise]] = s => ???
     override def some: Strategy[Strategy[Rise]] => Strategy[Strategy[Rise]] = s => ???
 
@@ -36,15 +38,15 @@ object traversal {
       case argument(p) => s(p).mapSuccess(argument)
       case argumentOf(x,p) => s(p).mapSuccess(argumentOf(x,_))
 
-      case topDown(p) => s(p).mapSuccess(topDown[Rise](_))
-      case allTopdown(p) => s(p).mapSuccess(allTopdown[Rise](_))
-      case tryAll(p) => s(p).mapSuccess(tryAll[Rise](_))
-      case allBottomup(p) => s(p).mapSuccess(allBottomup[Rise](_))
-      case downup(p) => s(p).mapSuccess(downup[Rise](_))
-      case bottomUp(p) => s(p).mapSuccess(bottomUp[Rise](_))
-      case alltd(p) => s(p).mapSuccess(alltd[Rise](_))
-      case sometd(p) => s(p).mapSuccess(sometd[Rise](_))
-      case somebu(p) => s(p).mapSuccess(somebu[Rise](_))
+      case topDown(p) => s(p).mapSuccess(topDown[Rise](_)(ev))
+      case allTopdown(p) => s(p).mapSuccess(allTopdown[Rise](_)(ev))
+      case tryAll(p) => s(p).mapSuccess(tryAll[Rise](_)(ev))
+      case allBottomup(p) => s(p).mapSuccess(allBottomup[Rise](_)(ev))
+      case downup(p) => s(p).mapSuccess(downup[Rise](_)(ev))
+      case bottomUp(p) => s(p).mapSuccess(bottomUp[Rise](_)(ev))
+      case alltd(p) => s(p).mapSuccess(alltd[Rise](_)(ev))
+      case sometd(p) => s(p).mapSuccess(sometd[Rise](_)(ev))
+      case somebu(p) => s(p).mapSuccess(somebu[Rise](_)(ev))
       case position(i) => ???
       case skip(n) => ???
 

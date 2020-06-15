@@ -1,12 +1,12 @@
 package elevate.rise
 
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal._
-import elevate.rise.rules.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
+import rise.core.TypedDSL._
 import rise.core._
 import rise.core.types._
-import rise.core.TypedDSL._
 
 package object rules {
 
@@ -21,29 +21,29 @@ package object rules {
     override def toString = "betaReduction"
   }
 
-  def containsAtLeast(n: Int, x: Rise): Strategy[Rise] =
+  def containsAtLeast(n: Int, x: Rise)(implicit ev: Traversable[Rise]): Strategy[Rise] =
     skip(n)(isEqualTo(x))
 
   // TODO: express as a combination of strategies
-  case object gentleBetaReduction extends Strategy[Rise] {
+  case class gentleBetaReduction()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(Lambda(x, b), v: Identifier) =>
         Success(substitute.exprInExpr(v, `for` = x, in = b))
       case App(Lambda(x, b), v @ App(App(primitives.Pair(), _), _)) =>
         Success(substitute.exprInExpr(v, `for` = x, in = b))
-      case App(Lambda(x, b), v) if !containsAtLeast(1, x)(b) =>
+      case App(Lambda(x, b), v) if !containsAtLeast(1, x)(ev)(b) =>
         Success(substitute.exprInExpr(v, `for` = x, in = b))
       case DepApp(DepLambda(x, b), v) =>
         Success(substitute.kindInExpr(v, `for` = x, in = b))
-      case _ => Failure(gentleBetaReduction)
+      case _ => Failure(gentleBetaReduction())
     }
     override def toString = "gentleBetaReduction"
   }
 
-  case object etaReduction extends Strategy[Rise]  {
+  case class etaReduction()(implicit ev: Traversable[Rise]) extends Strategy[Rise]  {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case Lambda(x1, App(f, x2)) if x1 == x2 && !contains[Rise](x1).apply(f) => Success(f :: e.t)
-      case _                                                                  => Failure(etaReduction)
+      case _                                                                  => Failure(etaReduction())
     }
     override def toString = "etaReduction"
   }
@@ -59,9 +59,9 @@ package object rules {
   }
 
   case object idxReduction extends Strategy[Rise] {
+    import arithexpr.arithmetic._
     import rise.core.primitives._
     import rise.core.semantics._
-    import arithexpr.arithmetic._
 
     def isMakeArray(e: Rise): Boolean = e match {
       case MakeArray(_) => true
