@@ -49,15 +49,15 @@ class Path[P](program:P,
 
     while (tmp != null) {
       // write to file
-      full += "\" "+ tmp.program.hashCode() + " \" [label = \" " + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
-      reduced += "\" "+ tmp.program.hashCode() + " \" [label = \" " + tmp.program.hashCode() + "\n" + tmp.value + " \"]; \n"
+      full += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
+      reduced += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + Integer.toHexString(tmp.program.hashCode()) + "\n" + tmp.value + " \"]; \n"
       tmp = tmp.successor
     }
 
     tmp = initial.successor
     while(tmp != null){
-      full += "\" "+ tmp.predecessor.program.hashCode() + " \" -- \" " + tmp.program.hashCode() + " \"  [label = \" " + tmp.strategy + " \"]; \n"
-      reduced += "\" "+ tmp.predecessor.program.hashCode() + " \" -- \" " + tmp.program.hashCode() + " \"  [label = \" " + tmp.strategy + " \"]; \n"
+      full += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
+      reduced += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
 
       tmp = tmp.successor
     }
@@ -92,12 +92,12 @@ class Path[P](program:P,
 
     do {
       // get unique filename
-      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + tmp.program.hashCode().toString, 0)
+      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + Integer.toHexString(tmp.program.hashCode()), 0)
       // create folder
       (s"mkdir ${uniqueFilename}" !!)
 
       // create file for expression
-      val pwProgram = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/" + tmp.program.hashCode().toString), false))
+      val pwProgram = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/" + Integer.toHexString(tmp.program.hashCode())), false))
 
       // create file for strategies
       val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
