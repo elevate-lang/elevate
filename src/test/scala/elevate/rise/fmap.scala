@@ -82,8 +82,8 @@ class fmap extends elevate.test_util.Tests {
     // ...or we could simply "find" the place automatically
     testMultiple(
       List(
-        oncetd(mapped(`**f >> T -> T >> **f`)).apply(λ(f => ***(f) >> *(T) >> *(S))),
-        oncetd(fmapRNF(`**f >> T -> T >> **f`)).apply(λ(f => ***(f) >> *(T) >> *(S)))
+        topDown(mapped(`**f >> T -> T >> **f`)).apply(λ(f => ***(f) >> *(T) >> *(S))),
+        topDown(fmapRNF(`**f >> T -> T >> **f`)).apply(λ(f => ***(f) >> *(T) >> *(S)))
       ), λ(f => *(T) >> ***(f) >> *(S))
     )
 
@@ -106,8 +106,8 @@ class fmap extends elevate.test_util.Tests {
 
     testMultiple(
       List(
-        oncetd(mapped(`**f >> T -> T >> **f`)).apply(λ(f => ****(f) >> **(T) >> *(S))),
-        oncetd(fmapRNF(fmapRNF(`**f >> T -> T >> **f`))).apply(λ(f => ****(f) >> **(T) >> *(S)))
+        topDown(mapped(`**f >> T -> T >> **f`)).apply(λ(f => ****(f) >> **(T) >> *(S))),
+        topDown(fmapRNF(fmapRNF(`**f >> T -> T >> **f`))).apply(λ(f => ****(f) >> **(T) >> *(S)))
       ), λ(f => **(T) >> ****(f) >> *(S))
     )
   }

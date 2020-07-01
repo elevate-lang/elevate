@@ -38,7 +38,7 @@ object traversal {
     }
 
   // For Rise, the only AST node that contains multiple subexpressions is App!
-  implicit object LiftTraversable
+  implicit object RiseTraversable
     extends elevate.core.strategies.Traversable[Rise] {
 
     override def all: Strategy[Rise] => Strategy[Rise] = s => {
@@ -60,12 +60,20 @@ object traversal {
 
   private def oneHandlingState: Boolean => Strategy[Rise] => Strategy[Rise] =
       carryOverState => s => {
-        case a @ App(f, e) => s(f) match {
-          case Success(x: Rise) => Success(App(x, e)(a.t))
+        // (option 1) traverse to argument first
+        case a @ App(f, e) => s(e) match {
+          case Success(x: Rise) => Success(App(f, x)(a.t))
           case Failure(state)   => if (carryOverState)
-            state(e).mapSuccess(App(f, _)(a.t)) else
-                s(e).mapSuccess(App(f, _)(a.t))
+            state(f).mapSuccess(App(_, e)(a.t)) else
+                s(f).mapSuccess(App(_, e)(a.t))
         }
+        // (option 2) traverse to function first
+        //case a @ App(f, e) => s(f) match {
+        //  case Success(x: Rise) => Success(App(x, e)(a.t))
+        //  case Failure(state)   => if (carryOverState)
+        //    state(e).mapSuccess(App(f, _)(a.t)) else
+        //        s(e).mapSuccess(App(f, _)(a.t))
+        //}
 
         // Push s further down the AST.
         // If there are no subexpressions (None),
@@ -107,6 +115,16 @@ object traversal {
       case DepLambda(x: NatToDataIdentifier, f) =>
         s(f).mapSuccess(DepLambda[NatToDataKind](x, _)(e.t))
       case _ => Failure(s)
+    }
+    override def toString = s"body($s)"
+  }
+
+  case class lambdaBodyWithName(
+    s: Identifier => Strategy[Rise]
+  ) extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case Lambda(x, f) => s(x)(f).mapSuccess(Lambda(x, _)(e.t))
+      case _ => Failure(lambdaBodyWithName(s))
     }
     override def toString = s"body($s)"
   }
