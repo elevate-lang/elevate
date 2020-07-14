@@ -72,7 +72,7 @@ object lowering {
   // todo shall we allow lowering from an already lowered reduceSeq?
   case object reduceSeqUnroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case ReduceX() => Success(TypedDSL.reduceSeqUnroll :: e.t)
+      case Reduce() => Success(TypedDSL.reduceSeqUnroll :: e.t)
       case _ => Failure(reduceSeqUnroll)
     }
     override def toString: String = "reduceSeqUnroll"
