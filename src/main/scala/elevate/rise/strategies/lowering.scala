@@ -1,20 +1,20 @@
 package elevate.rise.strategies
 
+import elevate.core.strategies.Traversable
 import elevate.core.{Failure, Strategy, Success}
 import elevate.core.strategies.traversal.tryAll
 import elevate.rise.Rise
 import rise.core.TypedDSL.{TDSL, lambda, let}
 import rise.core._
-import elevate.rise.rules.traversal._
 
 object lowering {
   def storeInMemory(what: Strategy[Rise],
-                    how: Strategy[Rise]): Strategy[Rise] = { p =>
+                    how: Strategy[Rise])(implicit ev: Traversable[Rise]): Strategy[Rise] = { p =>
     extract(what)(p) >>= (extracted => {
       how(extracted) >>= (storedSubExpr => {
         val idx = Identifier(freshName("x"))(extracted.t)
 
-        replaceAll(what, idx)(p) match {
+        replaceAll(what, idx)(ev)(p) match {
           case Success(replaced) => Success(toMem(storedSubExpr)(lambda(TDSL(idx), replaced)))
           case Failure(_) => Failure(storeInMemory(what, how))
         }
@@ -23,7 +23,7 @@ object lowering {
   }
 
 
-  def replaceAll(exprPredicate: Strategy[Rise], withExpr: Rise): Strategy[Rise] =
+  def replaceAll(exprPredicate: Strategy[Rise], withExpr: Rise)(implicit ev: Traversable[Rise]): Strategy[Rise] =
     p => tryAll(exprPredicate `;` insert(withExpr)).apply(p)
 
   def toMem(e: Rise)(f: TDSL[Lambda]): TDSL[App] = let(f)(e)

@@ -3,8 +3,7 @@ package elevate.rise
 import elevate.core.strategies.predicate.rewriteResultToBoolean
 import elevate.core.strategies.traversal._
 import elevate.rise.rules.movement._
-import elevate.rise.rules.traversal._
-import elevate.rise.strategies.normalForm._
+import elevate.rise.rules.traversal.default._
 import elevate.util._
 import rise.core._
 import rise.core.TypedDSL._
@@ -14,6 +13,9 @@ import rise.core.types.f32
 class movement extends elevate.test_util.Tests {
 
   // transpose
+
+  val BENF = elevate.rise.strategies.normalForm.BENF()(RiseTraversable)
+  val DFNF = elevate.rise.strategies.normalForm.DFNF()(RiseTraversable)
 
   def betaEtaEquals(a: Rise, b: Rise): Boolean = {
     val na = BENF(a).get
@@ -29,7 +31,7 @@ class movement extends elevate.test_util.Tests {
       List(
         DFNF(λ(f => *(λ(x => *(f)(x))) >> T)).get,
         toExpr(λ(f => **(f) >> T))
-      ).map((topDown(`**f >> T -> T >> **f`)).apply(_).get), gold
+      ).map((topDown(`**f >> T -> T >> **f`()(RiseTraversable))).apply(_).get), gold
     )
   }
 
@@ -70,7 +72,7 @@ class movement extends elevate.test_util.Tests {
 
   test("****f >> T -> T >> ****f") {
     assert(betaEtaEquals(
-      topDown(`**f >> T -> T >> **f`).apply(λ(f => ****(f) >> T)),
+      topDown(`**f >> T -> T >> **f`()(RiseTraversable)).apply(λ(f => ****(f) >> T)),
       λ(f => T >> ****(f)))
     )
   }

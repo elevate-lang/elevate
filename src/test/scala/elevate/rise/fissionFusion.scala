@@ -2,17 +2,18 @@ package elevate.rise
 
 import elevate.core.Strategy
 import elevate.core.strategies.basic._
-import elevate.core.strategies.traversal.{topDown, position}
+import elevate.core.strategies.traversal.{position, topDown}
 import elevate.rise.rules.algorithmic.{mapFusion, mapLastFission}
-import elevate.rise.rules.traversal._
+import elevate.rise.rules.traversal.default._
 import elevate.rise.strategies.algorithmic.{mapFirstFission, mapFullFission}
-import elevate.rise.strategies.normalForm.BENF
+import elevate.util._
 import rise.core.TypedDSL._
 import rise.core._
-import elevate.util._
 
 
 class fissionFusion extends elevate.test_util.Tests {
+
+  val BENF = elevate.rise.strategies.normalForm.BENF()(RiseTraversable)
 
   def eq(a: Expr, b: Expr): Unit = {
     if (BENF(a).get != BENF(b).get) {

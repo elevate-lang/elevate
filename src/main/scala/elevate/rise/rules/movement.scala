@@ -1,5 +1,6 @@
 package elevate.rise.rules
 
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.predicate._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise._
@@ -27,8 +28,8 @@ object movement {
 
   // transpose
 
-  def mapMapFBeforeTranspose: Strategy[Rise] = `**f >> T -> T >> **f`
-  case object `**f >> T -> T >> **f` extends Strategy[Rise] {
+  def mapMapFBeforeTranspose(implicit ev: Traversable[Rise]): Strategy[Rise] = `**f >> T -> T >> **f`()
+  case class `**f >> T -> T >> **f`()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(
         Transpose(),
@@ -42,7 +43,7 @@ object movement {
       f, _))), _))),
       arg
       )
-      ) if etaReduction(lamA) && etaReduction(lamB) =>
+      ) if etaReduction()(ev)(lamA) && etaReduction()(ev)(lamB) =>
         // Success((typed(arg) |> transpose |> map(map(f))) :: e.t)
         Success((typed(arg) |> transpose |> map(fun(a => map(fun(b => typed(f)(b)))(a)))) :: e.t)
       case _ => Failure(mapMapFBeforeTranspose)

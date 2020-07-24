@@ -20,7 +20,7 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 
         // check rewriting result and it add to neighbourhood set
         result match {
-          case _:Success[P] => neighbours.add(result.get,strategy) //add to neighbourhood
+          case _:Success[P] => neighbours.add( (result.get,strategy) ) //add to neighbourhood
           case _:Failure[P] => //nothing
         }
       }catch{
