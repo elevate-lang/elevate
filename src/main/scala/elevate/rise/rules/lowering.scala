@@ -142,7 +142,7 @@ object lowering {
     }
 
     private def isPairOrBasicType(t: Type): Boolean = t match {
-      case _: BasicType => true
+      case _: ScalarType | _: VectorType => true
       case PairType(a, b) => isPairOrBasicType(a) && isPairOrBasicType(b)
       case _ => false
     }
@@ -165,7 +165,7 @@ object lowering {
   case object mapSeqUnrollWrite extends Strategy[Rise] {
     import rise.core.types._
     def apply(e: Rise): RewriteResult[Rise] = e.t match {
-      case ArrayType(_, _: BasicType) =>
+      case ArrayType(_, _: ScalarType | _: VectorType) =>
         Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
       case _ =>
         Failure(mapSeqUnrollWrite)
@@ -203,7 +203,7 @@ object lowering {
   case object insertCopyAfter extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
-      case _: BasicType => fun(x => x)
+      case _: ScalarType | _: VectorType => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
@@ -248,8 +248,8 @@ object lowering {
   // todo currently only works for mapSeq
   case object copyAfterReduce extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _: BasicType => fun(x => x)
-      case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
+      case _: ScalarType | _: VectorType => fun(x => x)
+      case ArrayType(_, _: ScalarType | _: VectorType) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case _ => ??? // shouldn't happen?
     }
@@ -263,8 +263,8 @@ object lowering {
 
   case object copyAfterReduceInit extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _: BasicType => fun(x => x)
-      case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
+      case _: ScalarType | _: VectorType => fun(x => x)
+      case ArrayType(_, _: ScalarType | _: VectorType) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case x => println(x) ; ??? // shouldn't happen?
     }
@@ -280,7 +280,7 @@ object lowering {
   case object copyAfterGenerate extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
-      case _: BasicType => fun(x => x)
+      case _: ScalarType | _: VectorType => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
@@ -307,7 +307,7 @@ object lowering {
     private def vectorizeArrayBasedOnType(t: Type): TDSL[Rise] = {
       def generateUnZips(dt: Type): TDSL[Rise] = {
         dt match {
-          case _: BasicType => asVectorAligned(n)
+          case _: ScalarType | _: VectorType => asVectorAligned(n)
           case PairType(aT, bT) => fun(x =>
             zip(generateUnZips(aT) $ x._1)(generateUnZips(bT) $ x._2)) o unzip
           case x => println(x) ; ???
