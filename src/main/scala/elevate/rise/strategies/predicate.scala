@@ -70,7 +70,15 @@ object predicate {
     override def toString = "isReduce"
   }
 
-  def isReduceX: Strategy[Rise] = (isReduce <+ isReduceSeq)
+  case object isReduceSeqUnroll extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case r@ReduceSeqUnroll() => Success(r)
+      case _                   => Failure(isReduceSeqUnroll)
+    }
+    override def toString = "isReduce"
+  }
+
+  def isReduceX: Strategy[Rise] = (isReduce <+ isReduceSeq <+ isReduceSeqUnroll)
 
   case object isArray extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {

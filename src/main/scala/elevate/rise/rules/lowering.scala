@@ -10,12 +10,13 @@ import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
 import elevate.rise.strategies.predicate.isVectorArray
 import rise.openMP.TypedDSL.mapPar
-import rise.core._
+import rise.core.{TypedDSL, _}
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.types._
 import arithexpr.arithmetic.Cst
 import elevate.core.strategies.Traversable
+import elevate.core.strategies.debug.{debug, peek}
 
 object lowering {
 
@@ -84,12 +85,13 @@ object lowering {
     extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case App(Map(), f) if containsComputation(ev)(f) && not(isMappingZip)(f) =>
-        Success(TypedDSL.mapSeq(f))
+        Success(TypedDSL.mapSeq(f) :: e.t)
       case _ => Failure(mapSeqCompute())
     }
   }
 
   case object isMappingZip extends Strategy[Rise] {
+    @scala.annotation.tailrec
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case l@Lambda(_, App(App(Zip(), a), b)) => Success(l)
       case m@Lambda(_, App(App(Map(), f), arg)) => isMappingZip(f)
@@ -213,10 +215,11 @@ object lowering {
 
   // todo currently only works for mapSeq
   case object isCopy extends Strategy[Rise] {
+    @scala.annotation.tailrec
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case c@App(Let(), id) if isId(id) => Success(c)
-      case c@App(App(MapSeq(), id), etaInput) if isId(id) => Success(c)
-      case App(App(MapSeq(), Lambda(_, f)), etaInput) => isCopy(f)
+      case c@App(App(MapSeq(), id), _) if isId(id) => Success(c)
+      case App(App(MapSeq(), Lambda(_, f)), _) => isCopy(f)
       case c@App(id, _) if isId(id) => Success(c)
       case _ => Failure(isCopy)
     }
@@ -237,13 +240,15 @@ object lowering {
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
   def lowerToC(implicit ev: Traversable[Rise]): Strategy[Rise] =
-    addRequiredCopies `;` `try`(bottomUp(copyAfterReduceInit)) `;` specializeSeq
+    debug[Rise]("before lowering") `;`
+    addRequiredCopies `;` specializeSeq `;` debug("after lowering")
+  // `try`(bottomUp(copyAfterReduceInit)) `;`
 
 
   // todo currently only works for mapSeq
   case object copyAfterReduce extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _: BasicType => let(fun(x => x))
+      case _: BasicType => fun(x => x)
       case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case _ => ??? // shouldn't happen?
@@ -251,23 +256,23 @@ object lowering {
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
       case reduceResult@App(App(App(ReduceX(), _), _), _) =>
-        Success(constructCopy(reduceResult.t) $ reduceResult)
+        Success((typed(e) |> constructCopy(reduceResult.t) ) :: e.t)
       case _ => Failure(copyAfterReduce)
     }
   }
 
   case object copyAfterReduceInit extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _: BasicType => let(fun(x => x))
+      case _: BasicType => fun(x => x)
       case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case x => println(x) ; ??? // shouldn't happen?
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(a@App(ReduceSeqUnroll(), _), init) =>
-        Success(TDSL(a) $ (constructCopy(init.t) $ init))
-      case _ => Failure(copyAfterReduce)
+      case App(a@App(ReduceX(), _), init) =>
+        Success((typed(init) |> constructCopy(init.t) |> a) :: e.t)
+      case _ => Failure(copyAfterReduceInit)
     }
   }
 
@@ -280,7 +285,8 @@ object lowering {
     }
 
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case a@App(Generate(), _) => Success(constructCopy(a.t) $ a)
+      case a@App(Generate(), _) =>
+        Success((typed(a) |> constructCopy(a.t)) :: e.t)
       case _ => Failure(copyAfterGenerate)
     }
   }
@@ -303,7 +309,7 @@ object lowering {
         dt match {
           case _: BasicType => asVectorAligned(n)
           case PairType(aT, bT) => fun(x =>
-            zip((generateUnZips(aT) $ x._1))(generateUnZips(bT) $ x._2)) o unzip
+            zip(generateUnZips(aT) $ x._1)(generateUnZips(bT) $ x._2)) o unzip
           case x => println(x) ; ???
         }
       }
@@ -319,7 +325,8 @@ object lowering {
 
   case class parallel()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(Map(), f) if containsComputation(ev)(f) => Success(mapPar(f))
+      case App(Map(), f) if containsComputation(ev)(f) =>
+        Success(mapPar(f) :: e.t)
       case _ => Failure(parallel())
     }
     override def toString = "parallel"
@@ -327,7 +334,7 @@ object lowering {
 
   case object unroll extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll)
+      case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
       case _ => Failure(unroll)
     }
   }
