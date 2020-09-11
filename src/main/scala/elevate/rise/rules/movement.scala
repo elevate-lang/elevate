@@ -5,6 +5,7 @@ import elevate.core.strategies.predicate._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.rise._
 import rise.core._
+import rise.core.types._
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
