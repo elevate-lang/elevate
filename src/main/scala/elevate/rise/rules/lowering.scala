@@ -251,7 +251,7 @@ object lowering {
   // todo currently only works for mapSeq
   case object copyAfterReduce extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _ if typeHasTrivialCopy(t) => let(fun(x => x))
+      case _ if typeHasTrivialCopy(t) => letf(fun(x => x))
       case ArrayType(_, b) if typeHasTrivialCopy(b) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case _ => ??? // shouldn't happen?
@@ -266,7 +266,7 @@ object lowering {
 
   case object copyAfterReduceInit extends Strategy[Rise] {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _ if typeHasTrivialCopy(t) => let(fun(x => x))
+      case _ if typeHasTrivialCopy(t) => letf(fun(x => x))
       case ArrayType(_, b) if typeHasTrivialCopy(b) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case x => println(x) ; ??? // shouldn't happen?
