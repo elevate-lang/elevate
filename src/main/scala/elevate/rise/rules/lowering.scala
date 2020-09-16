@@ -248,9 +248,7 @@ object lowering {
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
   def lowerToC(implicit ev: Traversable[Rise]): Strategy[Rise] =
-    debug[Rise]("before lowering") `;`
-    addRequiredCopies `;` specializeSeq `;` debug("after lowering")
-  // `try`(bottomUp(copyAfterReduceInit)) `;`
+    addRequiredCopies `;` specializeSeq
 
 
   // todo currently only works for mapSeq

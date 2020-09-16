@@ -96,18 +96,6 @@ object movement {
     override def toString = "slideBeforeMap"
   }
 
-//  def mapFBeforeSlide: Strategy[Rise] = `*f >> S -> S >> **f`
-//  case object `*f >> S -> S >> **f` extends Strategy[Rise] {
-//    def apply(e: Rise): RewriteResult[Rise] = e match {
-//      case App(
-//      s,
-//      App(App(Map(), f), y)) if isSplitOrSlide(s) =>
-//        Success((typed(y) |> untyped(s) |> map(map(f))) :: e.t)
-//      case _ => Failure(mapFBeforeSlide)
-//    }
-//    override def toString = "mapFBeforeSlide"
-//  }
-
   // *f >> S -> S >> **f
   case object splitBeforeMap extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
