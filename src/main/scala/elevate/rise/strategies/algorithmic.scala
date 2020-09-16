@@ -3,6 +3,7 @@ package elevate.rise.strategies
 import com.github.ghik.silencer.silent
 import elevate.core.strategies.{Traversable, basic}
 import elevate.core.strategies.basic.{applyNTimes, id}
+import elevate.core.strategies.debug.debug
 import elevate.core.strategies.traversal._
 import elevate.rise.strategies.traversal._
 //import elevate.rise.rules.traversal.default._
@@ -69,12 +70,13 @@ object algorithmic {
   }
 
   //scalastyle:off
-  def normForReorder(implicit ev: Traversable[Rise]) =
-    (slideBeforeMap `@` topDown[Rise]) `;;`
+  def normForReorder(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    (splitBeforeMap `@` topDown[Rise]) `;;`
     (fuseReduceMap `@` topDown[Rise]) `;;`
     (fuseReduceMap `@` topDown[Rise]) `;;` RNF()
 
-  def reorder(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = normForReorder `;` (reorderRec(l) `@` topDown[Rise])
+  def reorder(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    normForReorder `;` (reorderRec(l) `@` topDown[Rise])
   case class reorderRec(l: List[Int])(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     val isFullyAppliedReduceSeq: Strategy[Rise] = isApplied(isApplied(isApplied(isReduceSeq))) <+
       argument(isApplied(isApplied(isApplied(isReduceSeq)))) // weird reduce special case
