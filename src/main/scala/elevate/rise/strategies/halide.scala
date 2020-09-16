@@ -1,6 +1,7 @@
 package elevate.rise.strategies
 
 import elevate.core.Strategy
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.basic._
 import elevate.rise.Rise
 import elevate.rise.strategies.traversal._
@@ -9,12 +10,12 @@ import elevate.rise.strategies.tiling._
 
 object halide {
 
-  def reorder(perm: scala.collection.Seq[Int]): Strategy[Rise] = {
+  def reorder(perm: scala.collection.Seq[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = {
 
     def shiftDimension(i: Int): Strategy[Rise] = {
       i match {
         case 1 => loopInterchange
-        case x => loopInterchangeAtLevel(x-1) `;` moveTowardsArgument(1)(shiftDimension(i-1))
+        case x => loopInterchangeAtLevel(ev)(x-1) `;` moveTowardsArgument(1)(shiftDimension(i-1))
       }
     }
 
@@ -32,7 +33,7 @@ object halide {
         shiftDimension(transposes) `;`
         moveTowardsArgument(transposes)(fmap(reorder(
           perm.tail.map(y => if(y > x) y-1 else y ))))
-    }) `;` RNF `;` DFNF // normalize at the very end
+    }) `;` RNF() `;` DFNF() // normalize at the very end
   }
 
 }

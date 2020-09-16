@@ -2,6 +2,7 @@ package elevate.rise.strategies
 
 import elevate.core.strategies.predicate._
 import elevate.core._
+import elevate.core.strategies.Traversable
 import elevate.rise._
 import elevate.rise.rules.lowering.isComputation
 import rise.core.primitives._
@@ -69,7 +70,15 @@ object predicate {
     override def toString = "isReduce"
   }
 
-  def isReduceX: Strategy[Rise] = (isReduce <+ isReduceSeq)
+  case object isReduceSeqUnroll extends Strategy[Rise] {
+    def apply(e: Rise): RewriteResult[Rise] = e match {
+      case r@ReduceSeqUnroll() => Success(r)
+      case _                   => Failure(isReduceSeqUnroll)
+    }
+    override def toString = "isReduce"
+  }
+
+  def isReduceX: Strategy[Rise] = (isReduce <+ isReduceSeq <+ isReduceSeqUnroll)
 
   case object isArray extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
@@ -159,16 +168,16 @@ object predicate {
     }
   }
 
-  case object isVectorizeablePrimitive extends Strategy[Rise] {
+  case class isVectorizeablePrimitive()(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
     def apply(e: Rise): RewriteResult[Rise] = e match {
-      case a@App(App(Map(), f), input) if isComputation(f) && !isVectorArray(a.t) => Success(a)
-      case r@App(App(App(Reduce(), op), init), input) if isComputation(op) => Success(r)
-      case _ => Failure(isVectorizeablePrimitive)
+      case a@App(App(Map(), f), input) if isComputation()(ev)(f) && !isVectorArray(a.t) => Success(a)
+      case r@App(App(App(Reduce(), op), init), input) if isComputation()(ev)(op) => Success(r)
+      case _ => Failure(isVectorizeablePrimitive())
     }
+  }
 
-    def isVectorArray(t: Type): Boolean = t match {
-      case ArrayType(_, VectorType(_,_)) => true
-      case _ => false
-    }
+  def isVectorArray(t: Type): Boolean = t match {
+    case ArrayType(_, VectorType(_,_)) => true
+    case _ => false
   }
 }

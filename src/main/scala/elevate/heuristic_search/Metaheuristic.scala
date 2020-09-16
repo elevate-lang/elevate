@@ -3,8 +3,6 @@ package elevate.heuristic_search
 import java.io.{File, FileOutputStream, PrintWriter}
 
 import elevate.core.Strategy
-import elevate.heuristic_search.heuristics.Random
-import elevate.heuristic_search._
 import elevate.heuristic_search.util.Path
 
 

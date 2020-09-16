@@ -2,17 +2,18 @@ package elevate.rise
 
 import elevate.core.Strategy
 import elevate.core.strategies.basic._
-import elevate.core.strategies.traversal.{topDown, position}
+import elevate.core.strategies.traversal.{position, topDown}
 import elevate.rise.rules.algorithmic.{mapFusion, mapLastFission}
-import elevate.rise.rules.traversal._
+import elevate.rise.rules.traversal.default._
 import elevate.rise.strategies.algorithmic.{mapFirstFission, mapFullFission}
-import elevate.rise.strategies.normalForm.BENF
+import elevate.util._
 import rise.core.TypedDSL._
 import rise.core._
-import elevate.util._
 
 
 class fissionFusion extends elevate.test_util.Tests {
+
+  val BENF = elevate.rise.strategies.normalForm.BENF()(RiseTraversable)
 
   def eq(a: Expr, b: Expr): Unit = {
     if (BENF(a).get != BENF(b).get) {
@@ -32,7 +33,7 @@ class fissionFusion extends elevate.test_util.Tests {
   test("last fission, chain of 2") {
     check(
       fun(f1 => fun(f2 => map(f1 >> f2))),
-      position(2)(mapLastFission),
+      position(2)(mapLastFission()),
       fun(f1 => fun(f2 => map(f1) >> map(f2))),
       topDown(mapFusion))
   }
@@ -40,7 +41,7 @@ class fissionFusion extends elevate.test_util.Tests {
   test("last fission, chain of 3") {
     check(
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2 >> f3)))),
-      position(3)(mapLastFission),
+      position(3)(mapLastFission()),
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2) >> map(f3)))),
       topDown(mapFusion))
   }
@@ -74,6 +75,6 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2 >> f3)))),
       position(3)(mapFullFission),
       fun(f1 => fun(f2 => fun(f3 => map(f1) >> map(f2) >> map(f3)))),
-      normalize(mapFusion))
+      normalize(RiseTraversable)(mapFusion))
   }
 }

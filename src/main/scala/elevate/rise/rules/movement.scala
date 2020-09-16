@@ -1,14 +1,16 @@
 package elevate.rise.rules
 
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.predicate._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.macros.RuleMacro.rule
 import elevate.rise._
 import rise.core._
+import rise.core.types._
 import rise.core.primitives._
 import rise.core.TypedDSL._
 import rise.core.TypeLevelDSL._
-import rise.core.types.{ArrayType, DataType, FunType, IndexType, PairType}
+import rise.core.types.{ArrayType, DataType, FunType, IndexType, Nat, PairType}
 
 // Describing possible movements between pairs of rise primitives
 // (potentially nested in maps)
@@ -28,8 +30,8 @@ object movement {
 
   // transpose
 
-  def mapMapFBeforeTranspose: Strategy[Rise] = `**f >> T -> T >> **f`
-  @rule def `**f >> T -> T >> **f`: Strategy[Rise] = {
+  def mapMapFBeforeTranspose()(implicit ev: Traversable[Rise]): Strategy[Rise] = `**f >> T -> T >> **f`()(ev)
+  @rule def `**f >> T -> T >> **f`()(implicit ev: Traversable[Rise]): Strategy[Rise] = {
     case e@App(
       Transpose(),
       App(App(Map(), App(Map(), f)), y)) =>
@@ -40,7 +42,7 @@ object movement {
       App(Map(), lamA @ Lambda(_, App(
               App(Map(), lamB @ Lambda(_, App(f, _))), _))),
       arg)
-    ) if etaReduction(lamA) && etaReduction(lamB) =>
+    ) if etaReduction()(ev)(lamA) && etaReduction()(ev)(lamB) =>
       // Success((typed(arg) |> transpose |> map(map(f))) :: e.t)
       Success((typed(arg) |> transpose |> map(fun(a => map(fun(b => typed(f)(b)))(a)))) :: e.t)
   }

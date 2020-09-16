@@ -1,11 +1,12 @@
 package elevate.rise.strategies
 
 import com.github.ghik.silencer.silent
-import elevate.core.strategies.basic
+import elevate.core.strategies.{Traversable, basic}
 import elevate.core.strategies.basic.{applyNTimes, id}
+import elevate.core.strategies.debug.debug
 import elevate.core.strategies.traversal._
 import elevate.rise.strategies.traversal._
-import elevate.rise.rules.traversal._
+//import elevate.rise.rules.traversal.default._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.macros.StrategyMacro.strategy
 import elevate.rise.Rise
@@ -69,14 +70,14 @@ object algorithmic {
   }
 
   //scalastyle:off
-  val normForReorder =
-    (slideBeforeMap `@` topDown[Rise]) `;;`
+  def normForReorder(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    (splitBeforeMap `@` topDown[Rise]) `;;`
     (fuseReduceMap `@` topDown[Rise]) `;;`
-    (fuseReduceMap `@` topDown[Rise]) `;;` RNF
+    (fuseReduceMap `@` topDown[Rise]) `;;` RNF()
 
-  @strategy def reorder(l: List[Int]): Strategy[Rise] = normForReorder `;` (reorderRec(l) `@` topDown[Rise])
+  @strategy def reorder(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = normForReorder `;` (reorderRec(l) `@` topDown[Rise])
 
-  @strategy def reorderRec(l: List[Int]): Strategy[Rise] = e => {
+  @strategy def reorderRec(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = e => {
 
     def freduce(s: Strategy[Rise]): Strategy[Rise] =
       function(function(argumentOf(ReduceSeq()(), body(body(s)))))
@@ -92,7 +93,7 @@ object algorithmic {
     def moveReductionUp(pos: Int): Strategy[Rise] = {
       if (pos <= 1) id
       else
-        applyNTimes(pos-2)(stepDown)(function(liftReduce)) `;` DFNF `;` RNF `;`  moveReductionUp(pos-1)
+        applyNTimes(pos-2)(stepDown)(function(liftReduce)) `;` DFNF() `;` RNF() `;`  moveReductionUp(pos-1)
     }
 
     l match {

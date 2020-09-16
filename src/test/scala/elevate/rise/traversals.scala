@@ -2,13 +2,12 @@ package elevate.rise
 
 import elevate.core.strategies.basic._
 import elevate.core.strategies.traversal._
-import elevate.rise.meta.fission._
+import elevate.rise.meta.fission.bodyFission
 import elevate.rise.meta.traversal.inBody
 import elevate.rise.rules.algorithmic._
 import elevate.rise.rules.movement._
 import elevate.rise.rules.traversal.{argument, argumentOf, body, function, _}
-import elevate.rise.strategies.normalForm._
-import elevate.rise.strategies.tiling._
+import elevate.rise.rules.traversal.default._
 import elevate.rise.strategies.util._
 import elevate.util._
 import rise.core.TypedDSL._
@@ -18,9 +17,14 @@ import rise.core.primitives._
 
 class traversals extends elevate.test_util.Tests {
 
+  def tileND = elevate.rise.strategies.tiling.tileND(RiseTraversable)
+  val DFNF = elevate.rise.strategies.normalForm.DFNF()(RiseTraversable)
+  val RNF = elevate.rise.strategies.normalForm.RNF()(RiseTraversable)
+  val FNF = elevate.rise.meta.fission.FNF(elevate.rise.meta.traversal.MetaRiseTraversable(RiseTraversable))
+
   test("rewrite simple elevate strategy") {
     val expr = fun(f => fun(g => map(f) >> map(g)))
-    val strategy = body(body(body(mapFusion `;` function(mapLastFission))))
+    val strategy = body(body(body(mapFusion `;` function(mapLastFission()))))
 
     val metaStrategy = inBody(inBody(bodyFission))(strategy)
     val newStrategy = metaStrategy.get
@@ -37,7 +41,7 @@ class traversals extends elevate.test_util.Tests {
       function(argumentOf(Map()(), body(function(splitJoin(4)) `;` DFNF `;` RNF))) `;`
         function(splitJoin(4)) `;`
         DFNF `;` RNF `;` DFNF `;` RNF `;` DFNF `;`
-        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)))) `;` DFNF `;` RNF)) `;`
+        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose())))) `;` DFNF `;` RNF)) `;`
         DFNF `;` RNF `;` DFNF `;` RNF `;` RNF
     ))
 
@@ -45,7 +49,7 @@ class traversals extends elevate.test_util.Tests {
       function(argumentOf(Map()(), body(function(splitJoin(4))))) `;`
         function(splitJoin(4)) `;`
         RNF `;` DFNF `;`
-        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)))) `;` RNF))))
+        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose())))) `;` RNF))))
 
     val normalized = FNF(simplified).get
     println(normalized)
@@ -63,7 +67,7 @@ class traversals extends elevate.test_util.Tests {
       inferType `;`
       body(body(argument(argument(function(argumentOf(Map()(), body(DFNF))))))) `;`
       inferType `;`
-      body(body(argument(argument(function(argumentOf(Map()(), body(argument(mapMapFBeforeTranspose)))))))) `;`
+      body(body(argument(argument(function(argumentOf(Map()(), body(argument(mapMapFBeforeTranspose())))))))) `;`
       inferType `;`
       body(body(argument(argument(RNF))))
 

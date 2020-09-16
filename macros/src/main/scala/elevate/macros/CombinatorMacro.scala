@@ -37,7 +37,7 @@ object CombinatorMacro {
         }
 
         makeCombinatorClass(name.asInstanceOf[TermName], tparams.asInstanceOf[List[TypeDef]],
-          t2.head, List(List(sdef)), List(List(sdef)), body)
+          t2.head, List(List(sdef)), List(List()), List(List(sdef)), List(List()), body)
 
       case q"def $name[..$tparams]: Strategy[..$t1] => Strategy[..$t2] => Strategy[..$t3] = (..$s1) => (..$s2) => $body"
         if s1.length == 1 && s2.length == 1 && t1.length == 1 && t2.length == 1 && t3.length == 1 =>
@@ -52,7 +52,7 @@ object CombinatorMacro {
         }
 
         makeCombinatorClass(name.asInstanceOf[TermName], tparams.asInstanceOf[List[TypeDef]], t3.head,
-          List(List(s1def, s2def)), List(List(s1def), List(s2def)), body)
+          List(List(s1def, s2def)), List(List()), List(List(s1def), List(s2def)), List(List()), body)
 
       case q"def $name[..$tparams]: Strategy[..$t1] => Strategy[..$t2] => Strategy[..$t3] => Strategy[..$t4] = (..$s1) => (..$s2) => (..$s3) => $body"
         if s1.length == 1 && s2.length == 1 && s3.length == 1 &&
@@ -72,7 +72,7 @@ object CombinatorMacro {
         }
 
         makeCombinatorClass(name.asInstanceOf[TermName], tparams.asInstanceOf[List[TypeDef]], t4.head,
-          List(List(s1def, s2def, s3def)), List(List(s1def), List(s2def), List(s3def)), body)
+          List(List(s1def, s2def, s3def)), List(List()), List(List(s1def), List(s2def), List(s3def)), List(List()), body)
 
       case q"def $name[..$tparams](...$paramLists): Strategy[..$t1] => Strategy[..$t2] = (..$s) => $body"
         if s.length == 1 && t1.length == 1 && t2.length == 1 =>
@@ -84,17 +84,17 @@ object CombinatorMacro {
         // split regular and implicit parameters
         val (regularParamLists, implicitParamLists) =
           paramLists.asInstanceOf[List[List[ValDef]]].span { params =>
+            params.nonEmpty &&
             !params.head.mods.hasFlag(c.universe.Flag.IMPLICIT)
           }
         // append new parameter list to the regular, but before the implicit once
         val extendedClassParams =
           (List(regularParamLists.flatten :+ sdef) ++ implicitParamLists).filterNot(_.isEmpty)
 
-        val extendedFunParams =
-          (regularParamLists ++ List(List(sdef)) ++ implicitParamLists).filterNot(_.isEmpty)
+        val regularNonEmptyParamLists = regularParamLists.filterNot(_.isEmpty)
 
         makeCombinatorClass(name.asInstanceOf[TermName], tparams.asInstanceOf[List[TypeDef]], t2.head,
-          extendedClassParams, extendedFunParams, body)
+          extendedClassParams, regularNonEmptyParamLists, List(List(sdef)), implicitParamLists, body)
 
       case q"def $name[..$tparams](...$paramLists): Strategy[..$t1] => Strategy[..$t2] => Strategy[..$t3] = (..$s1) => (..$s2) => $body"
         if s1.length == 1 && s2.length == 1 && t1.length == 1 && t2.length == 1 && t3.length == 1 =>
@@ -110,17 +110,18 @@ object CombinatorMacro {
         // split regular and implicit parameters
         val (regularParamLists, implicitParamLists) =
           paramLists.asInstanceOf[List[List[ValDef]]].span { params =>
+            params.nonEmpty &&
             !params.head.mods.hasFlag(c.universe.Flag.IMPLICIT)
           }
         // append new parameter list to the regular, but before the implicit once
         val extendedClassParams =
           (regularParamLists ++ List(List(s1def), List(s2def)) ++ implicitParamLists).filterNot(_.isEmpty)
 
-        val extendedFunParams =
-          (List(regularParamLists.flatten :+ s1def :+ s2def) ++ implicitParamLists).filterNot(_.isEmpty)
+        val regularNonEmptyParamLists = regularParamLists.filterNot(_.isEmpty)
 
         makeCombinatorClass(name.asInstanceOf[TermName], tparams.asInstanceOf[List[TypeDef]],
-          t3.head, extendedClassParams, extendedFunParams, body)
+          t3.head, extendedClassParams,
+          regularNonEmptyParamLists, List(List(s1def), List(s2def)), implicitParamLists, body)
 
       case q"def $name[..$tparams](...$paramLists): Strategy[..$t1] => Strategy[..$t2] => Strategy[..$t3] => Strategy[..$t4] = (..$s1) => (..$s2) => (..$s3) => $body"
         if s1.length == 1 && s2.length == 1 && s3.length == 1 &&
@@ -141,17 +142,18 @@ object CombinatorMacro {
         // split regular and implicit parameters
         val (regularParamLists, implicitParamLists) =
           paramLists.asInstanceOf[List[List[ValDef]]].span { params =>
+            params.nonEmpty &&
             !params.head.mods.hasFlag(c.universe.Flag.IMPLICIT)
           }
         // append new parameter list to the regular, but before the implicit once
         val extendedClassParams =
           (regularParamLists ++ List(List(s1def), List(s2def), List(s3def)) ++ implicitParamLists).filterNot(_.isEmpty)
 
-        val extendedFunParams =
-          (List(regularParamLists.flatten :+ s1def :+ s2def :+ s3def) ++ implicitParamLists).filterNot(_.isEmpty)
+        val regularNonEmptyParamLists = regularParamLists.filterNot(_.isEmpty)
 
         makeCombinatorClass(name.asInstanceOf[TermName], tparams.asInstanceOf[List[TypeDef]],
-          t4.head, extendedClassParams, extendedFunParams, body)
+          t4.head, extendedClassParams, regularNonEmptyParamLists,
+          List(List(s1def), List(s2def), List(s3def)), implicitParamLists, body)
 
       case _ =>
         c.abort(c.enclosingPosition, "expected a valid combinator:\n" +
@@ -165,24 +167,28 @@ object CombinatorMacro {
 
     def makeCombinatorClass(name: TermName, tparams: List[TypeDef], t: Tree,
                             classParamLists: List[List[ValDef]],
+                            regularParamLists: List[List[ValDef]],
                             funParamLists: List[List[ValDef]],
+                            funImplParamLists: List[List[ValDef]],
                             body: Tree): Tree = {
       val className = if (name.toString.charAt(0).isLetterOrDigit) {
         name.toString.capitalize
       } else {
         name.toString + "_class"
       }
-      val c = q"""
+      val code = q"""
         final case class ${TypeName(className)}[..$tparams](...$classParamLists) extends Strategy[$t] {
           ..${makeApply(t, body)}
 
           ..${makeToString(name, classParamLists)}
         }
 
-        ..${makeCompanionFunction(name, className, tparams, t, classParamLists, funParamLists)}
+        ..${makeCompanionFunction(name, className, tparams, t, classParamLists,
+                                  regularParamLists, funParamLists, funImplParamLists)}
         """
-//            println(c)
-      c
+      c.info(c.enclosingPosition,
+        s"generated `${name.toString}'\n$code", force = false)
+      code
     }
 
     def makeApply(t: Tree, body: Tree): Tree = {
@@ -231,7 +237,9 @@ object CombinatorMacro {
                               tparams: List[TypeDef],
                               t: Tree,
                               classParamLists: List[List[ValDef]],
-                              funParamLists: List[List[ValDef]]): Tree = {
+                              regularParamLists: List[List[ValDef]],
+                              funParamLists: List[List[ValDef]],
+                              funImplParamLists: List[List[ValDef]]): Tree = {
       val argLists: List[List[Tree]] = classParamLists.map{ params => params.map {
         case ValDef(_, name, _, _) => q"$name"
       }}
@@ -241,9 +249,43 @@ object CombinatorMacro {
         q"""def $name[..$tparams]: Strategy[$t] =
            new ${TypeName(className)}[..$targs](...$argLists)"""
       } else {
-        q"""def $name[..$tparams](...$funParamLists): Strategy[$t] =
-           new ${TypeName(className)}[..$targs](...$argLists)"""
+      // else if (funImplParamLists.isEmpty || funImplParamLists.head.isEmpty) {
+        val returnType = funParamLists.map(p => p.map {
+          case ValDef(_, _, tpt, _) => tpt
+        }).foldRight(tq"Strategy[$t]")((a, b) =>
+          a match {
+            case List(tpt) => tq"$tpt => $b"
+            case ts => q"(..$ts) => $b"
+          }
+        )
+
+        val initBody: Tree = q"new ${TypeName(className)}[..$targs](...$argLists)"
+
+        val body: Tree = funParamLists.foldRight(initBody)((a, b) =>
+          a match {
+            case List(p) => q"($p) => $b"
+            case ps => q"(..$ps) => $b"
+          }
+        )
+        if (regularParamLists.isEmpty || regularParamLists.head.isEmpty) {
+          if (funImplParamLists.isEmpty || funImplParamLists.head.isEmpty) {
+            q"def $name[..$tparams]: $returnType = $body"
+          } else {
+            q"def $name[..$tparams](...$funImplParamLists): $returnType = $body"
+          }
+        } else {
+          if (funImplParamLists.isEmpty || funImplParamLists.head.isEmpty) {
+            q"def $name[..$tparams](...$regularParamLists): $returnType = $body"
+          } else {
+            q"def $name[..$tparams](...$regularParamLists)(...$funImplParamLists): $returnType = $body"
+          }
+        }
       }
+//      else {
+//
+//        q"""def $name[..$tparams](...$regularParamLists)(...$funImplParamLists): Strategy[$t] =
+//           new ${TypeName(className)}[..$targs](...$argLists)"""
+//      }
     }
 
   }

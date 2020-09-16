@@ -1,12 +1,14 @@
 package elevate.rise.strategies
 
 import elevate.core._
+import elevate.core.strategies.Traversable
 import rise.core.primitives._
 import elevate.rise.rules.algorithmic._
 import elevate.core.strategies.traversal._
 import elevate.core.strategies.basic._
 import elevate.rise.Rise
 import elevate.rise.rules.traversal._
+//import elevate.rise.rules.traversal.default._
 import elevate.rise.strategies.algorithmic._
 import elevate.rise.strategies.normalForm._
 import elevate.rise.strategies.predicate.isReduce
@@ -22,14 +24,14 @@ object traversal {
 
   // fmap applied for expressions in rewrite normal form:
   // fuse -> fmap -> fission
-  def fmapRNF: Strategy[Rise] => Strategy[Rise] =
-    s => DFNF `;` mapFusion `;`
-         DFNF `;` fmap(s) `;`
-         DFNF `;` one(mapFullFission)
+  def fmapRNF(implicit ev: Traversable[Rise]): Strategy[Rise] => Strategy[Rise] =
+    s => DFNF() `;` mapFusion `;`
+         DFNF() `;` fmap(s) `;`
+         DFNF() `;` one(mapFullFission)
 
   // applying a strategy to an expression nested in one or multiple lift `map`s
-  def mapped: Strategy[Rise] => Strategy[Rise] =
-    s => s <+ (e => fmapRNF(mapped(s))(e))
+  def mapped(implicit ev: Traversable[Rise]): Strategy[Rise] => Strategy[Rise] =
+    s => s <+ (e => fmapRNF(ev)(mapped(ev)(s))(e))
 
   // moves along RNF-normalized expression
   // e.g., expr == ***f o ****g o *h
@@ -50,15 +52,15 @@ object traversal {
   }
 
 
-  def outermostTraversal: Traversal[Rise] => Traversal[Rise] = {
+  def outermostTraversal(implicit ev: Traversable[Rise]): Traversal[Rise] => Traversal[Rise] = {
     traversal => s => topDown(traversal(s))
   }
 
-  def outermost: Strategy[Rise] => Strategy[Rise] => Strategy[Rise] = {
+  def outermost(implicit ev: Traversable[Rise]): Strategy[Rise] => Strategy[Rise] => Strategy[Rise] = {
     predicate => s => topDown(predicate `;` s)
   }
 
-  def innermost: Strategy[Rise] => Strategy[Rise] => Strategy[Rise] = {
+  def innermost(implicit ev: Traversable[Rise]): Strategy[Rise] => Strategy[Rise] => Strategy[Rise] = {
     predicate => s => bottomUp(predicate `;` s)
   }
 
@@ -72,8 +74,8 @@ object traversal {
     case _ => fmap(mapNest(d-1))(p)
   })
 
-  def blocking: Strategy[Rise] = {
-    id `@` outermost(mapNest(2))
-    id `@` outermost(isReduce)
+  def blocking(implicit ev: Traversable[Rise]): Strategy[Rise] = {
+    id `@` outermost(ev)(mapNest(2))
+    id `@` outermost(ev)(isReduce)
   }
 }

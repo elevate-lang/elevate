@@ -10,16 +10,27 @@ import elevate.rise._
 import elevate.rise.rules.traversal._
 import elevate.rise.strategies.normalForm.DFNF
 import elevate.rise.strategies.predicate._
-import elevate.rise.strategies.predicate.isVectorizeablePrimitive.isVectorArray
+import elevate.rise.strategies.predicate.isVectorArray
 import rise.core.TypedDSL._
-import rise.core._
+import rise.core.{TypedDSL, _}
 import rise.core.primitives._
 import rise.core.types._
+import arithexpr.arithmetic.Cst
+import elevate.core.strategies.Traversable
+import elevate.core.strategies.debug.{debug, peek}
 import rise.openMP.TypedDSL.mapPar
 
 object lowering {
 
   // Straight-forward Lowering
+
+  def typeHasTrivialCopy(t: Type): Boolean = t match {
+    case _: ScalarType => true
+    case NatType => true
+    case _: IndexType => true
+    case _: VectorType => true
+    case _ => false
+  }
 
   @rule def mapSeq: Strategy[Rise] = {
     case m@Map() => Success(MapSeq()(m.t) :: m.t)
@@ -52,8 +63,8 @@ object lowering {
 
   // Specialized Lowering
 
-  @rule def mapSeqCompute: Strategy[Rise] = {
-    case App(Map(), f) if containsComputation(f) && not(isMappingZip)(f) =>
+  @rule def mapSeqCompute()(implicit ev: Traversable[Rise]): Strategy[Rise] = {
+    case App(Map(), f) if containsComputation()(ev)(f) && not(isMappingZip)(f) =>
       Success(TypedDSL.mapSeq(f))
   }
 
@@ -73,12 +84,13 @@ object lowering {
       TypedDSL.rotateValues(sz)(untyped(write)) :: e.t)
   }
 
-  @rule def containsComputation: Strategy[Rise] = topDown(isComputation)
+  @rule def containsComputation()(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    topDown(isComputation())(ev)
 
   // requires type information!
-  @rule def isComputation: Strategy[Rise] = e => {
+  @rule def isComputation()(implicit ev: Traversable[Rise]): Strategy[Rise] = e => {
     def isPairOrBasicType(t: Type): Boolean = t match {
-      case _: BasicType => true
+      case _ if typeHasTrivialCopy(t) => true
       case PairType(a, b) => isPairOrBasicType(a) && isPairOrBasicType(b)
       case _ => false
     }
@@ -95,10 +107,10 @@ object lowering {
           case FunType(in, FunType(in2, out)) if
           isPairOrBasicType(in) && isPairOrBasicType(in2) &&
             isPairOrBasicType(out) => Success(l)
-          case _ => Failure(containsComputation)
+          case _ => Failure(containsComputation())
         }
       case f@ForeignFunction(_) => Success(f)
-      case _ => Failure(containsComputation)
+      case _ => Failure(containsComputation())
     }
   }
 
@@ -117,7 +129,7 @@ object lowering {
 
   // TODO: think about more complex cases
   @rule def mapSeqUnrollWrite: Strategy[Rise] = e => e.t match {
-    case ArrayType(_, _: BasicType) =>
+    case ArrayType(_, t) if typeHasTrivialCopy(t) =>
       Success(app(TypedDSL.mapSeqUnroll(fun(x => x)), typed(e)) :: e.t)
     case _ =>
       Failure(mapSeqUnrollWrite)
@@ -131,16 +143,16 @@ object lowering {
   // Lowerings used in PLDI submission
 
   // adds copy after every generate
-  val materializeGenerate: Strategy[Rise] =
-    normalize(
+  def materializeGenerate()(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    normalize(ev)(
       argument(function(isGenerate)) `;`
         not(isCopy) `;`
         argument(copyAfterGenerate)
     )
 
   // adds explicit copies for every init value in reductions
-  val materializeInitOfReduce: Strategy[Rise] =
-    normalize(
+  def materializeInitOfReduce()(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    normalize(ev)(
       function(function(isReduceX)) `;`
         argument(not(isCopy) `;` insertCopyAfter)
     )
@@ -148,7 +160,7 @@ object lowering {
   @rule def insertCopyAfter: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
-      case _: BasicType => fun(x => x)
+      case _ if typeHasTrivialCopy(t) => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
@@ -168,45 +180,46 @@ object lowering {
   }
 
   // requires expr to be in LCNF
-  val specializeSeq: Strategy[Rise] =
-    normalize(lowering.mapSeqCompute <+ lowering.reduceSeq)
+  def specializeSeq()(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    normalize(ev)(lowering.mapSeqCompute() <+ lowering.reduceSeq)
 
-  val addRequiredCopies: Strategy[Rise] =
+  def addRequiredCopies()(implicit ev: Traversable[Rise]): Strategy[Rise] =
     // `try`(oncetd(copyAfterReduce)) `;` LCNF `;` materializeInitOfReduce
-    tryAll(copyAfterReduce) `;` DFNF `;` materializeInitOfReduce
+    tryAll(copyAfterReduce) `;` DFNF() `;` materializeInitOfReduce()
 
   // todo gotta use a normalform for introducing copies! e.g., if we have two reduce primitives
-  val lowerToC: Strategy[Rise] = addRequiredCopies `;` `try`(bottomUp(copyAfterReduceInit)) `;` specializeSeq
+  def lowerToC(implicit ev: Traversable[Rise]): Strategy[Rise] =
+    addRequiredCopies `;` specializeSeq()
 
 
   // todo currently only works for mapSeq
   @rule def copyAfterReduce: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _: BasicType => let(fun(x => x))
-      case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
+      case _ if typeHasTrivialCopy(t) => letf(fun(x => x))
+      case ArrayType(_, b) if typeHasTrivialCopy(b) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case _ => ??? // shouldn't happen?
     }
 
     e match {
       case reduceResult@App(App(App(ReduceX(), _), _), _) =>
-        Success(constructCopy(reduceResult.t) $ reduceResult)
+        Success((typed(e) |> constructCopy(reduceResult.t) ) :: e.t)
       case _ => Failure(copyAfterReduce)
     }
   }
 
   @rule def copyAfterReduceInit: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
-      case _: BasicType => let(fun(x => x))
-      case ArrayType(_, _: BasicType) => TypedDSL.mapSeq(fun(x => x))
+      case _ if typeHasTrivialCopy(t) => letf(fun(x => x))
+      case ArrayType(_, b) if typeHasTrivialCopy(b) => TypedDSL.mapSeq(fun(x => x))
       case ArrayType(_, a: ArrayType) => TypedDSL.mapSeq(fun(x => constructCopy(a) $ x))
       case x => println(x) ; ??? // shouldn't happen?
     }
 
     e match {
-      case App(a@App(ReduceSeqUnroll(), _), init) =>
-        Success(TDSL(a) $ (constructCopy(init.t) $ init))
-      case _ => Failure(copyAfterReduce)
+      case App(a@App(ReduceX(), _), init) =>
+        Success((typed(init) |> constructCopy(init.t) |> a) :: e.t)
+      case _ => Failure(copyAfterReduceInit)
     }
   }
 
@@ -214,53 +227,52 @@ object lowering {
   @rule def copyAfterGenerate: Strategy[Rise] = e => {
     def constructCopy(t: Type): TDSL[Rise] = t match {
       case ArrayType(_, dt) => TypedDSL.mapSeq(fun(x => constructCopy(dt) $ x))
-      case _: BasicType => fun(x => x)
+      case _ if typeHasTrivialCopy(t) => fun(x => x)
       case _ => ??? // shouldn't happen?
     }
 
     e match {
-      case a@App(Generate(), _) => Success(constructCopy(a.t) $ a)
+      case a@App(Generate(), _) =>
+        Success((typed(a) |> constructCopy(a.t)) :: e.t)
       case _ => Failure(copyAfterGenerate)
     }
   }
 
-  @rule def vectorize(n: Nat): Strategy[Rise] = e => {
-    def vectorizeArrayBasedOnType(t: Type): TDSL[Rise] = {
-      def generateUnZips(dt: Type): TDSL[Rise] = {
-        dt match {
-          case _: BasicType => asVectorAligned(n)
-          case PairType(aT, bT) => fun(x =>
-            zip((generateUnZips(aT) $ x._1))(generateUnZips(bT) $ x._2)) o unzip
-          case x => println(x) ; ???
+  @rule def vectorize(n: Nat)(implicit ev: Traversable[Rise]): Strategy[Rise] = {
+    case a@App(App(Map(), f), input) if
+      isComputation()(ev)(f) && !isVectorArray(a.t) =>
+
+      def vectorizeArrayBasedOnType(t: Type): TDSL[Rise] = {
+        def generateUnZips(dt: Type): TDSL[Rise] = {
+          dt match {
+            case _ if typeHasTrivialCopy(dt) => asVectorAligned(n)
+            case PairType(aT, bT) => fun(x =>
+              zip(generateUnZips(aT) $ x._1)(generateUnZips(bT) $ x._2)) o unzip
+            case x => println(x) ; ???
+          }
+        }
+
+        t match {
+          case ArrayType(_, dt) => generateUnZips(dt) // remove first array layer
+          case _ => ??? // shouldnt happen
         }
       }
 
-      t match {
-        case ArrayType(_, dt) => generateUnZips(dt) // remove first array layer
-        case _ => ??? // shouldnt happen
-      }
-    }
-
-    e match {
-      case a@App(App(Map(), f), input) if
-      isComputation(f) && !isVectorArray(a.t) =>
-
-        val newF = untyped(f)
-        Success(
-          (asScalar o map(newF)) $ (vectorizeArrayBasedOnType(input.t) $ input)
-        )
-      case _ => Failure(vectorize(n))
-    }
+      val newF = untyped(f)
+      Success(
+        (asScalar o map(newF)) $ (vectorizeArrayBasedOnType(input.t) $ input)
+      )
+    case _ => Failure(vectorize(n))
   }
 
   @rule def untype: Strategy[Rise] = p => Success(p.setType(TypePlaceholder))
 
-  @rule def parallel: Strategy[Rise] = {
-    case App(Map(), f) if containsComputation(f) => Success(mapPar(f))
+  @rule def parallel()(implicit ev: Traversable[Rise]): Strategy[Rise] = {
+    case e@App(Map(), f) if containsComputation()(ev)(f) => Success(mapPar(f) :: e.t)
   }
 
   @rule def unroll: Strategy[Rise] = {
-    case ReduceSeq() => Success(TypedDSL.reduceSeqUnroll)
+    case e@ReduceSeq() => Success(TypedDSL.reduceSeqUnroll :: e.t)
   }
 
   object ocl {

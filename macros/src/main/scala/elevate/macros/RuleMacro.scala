@@ -40,13 +40,13 @@ object RuleMacro {
             }"""
           )
         } else {
-          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List())(makeClass =>
+          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List()))(makeClass =>
             q"""
             override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
               case ..${addDefaultCase(cases.asInstanceOf[List[CaseDef]], q"elevate.core.Failure($makeClass)")}
             }
 
-            ..${makeToString(name, List())}
+            ..${makeToString(name)}
             """
           )
         }
@@ -66,7 +66,7 @@ object RuleMacro {
               }).apply(e_internal)
             }""")
         } else {
-          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List())(_ =>
+          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List()))(_ =>
             q"""
             override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
               ((${e.name} : $resType) => {
@@ -74,7 +74,7 @@ object RuleMacro {
                 res_internal
               }).apply(e_internal)
 
-            ..${makeToString(name, List())}
+            ..${makeToString(name)}
             """
           )
         }
@@ -90,12 +90,12 @@ object RuleMacro {
               ($body).apply(e_internal)
             }""")
         } else {
-          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List())(_ =>
+          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List()))(_ =>
             q"""
           override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
             ($body).apply(e_internal)
 
-          ..${makeToString(name, List())}
+          ..${makeToString(name)}
         """
           )
         }
@@ -103,9 +103,9 @@ object RuleMacro {
         // def foo (3, 4, 5)(6, 7, 8)
         // paramLists = List( List(Tree, Tree, Tree), List(Tree, Tree, Tree) )
       case q"def ${name: TermName}[..$tparams](...$paramLists): Strategy[..$resTypes] = { case ..$cases }"
-        if paramLists.length == 1 && resTypes.length == 1 =>
+        if /*paramLists.length == 1 &&*/ resTypes.length == 1 =>
 
-          val params = paramLists.head.asInstanceOf[List[ValDef]]
+          val params = paramLists.asInstanceOf[List[List[ValDef]]]
           val resType = resTypes.head.asInstanceOf[Tree]
           makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(makeClass =>
             q"""
@@ -118,9 +118,9 @@ object RuleMacro {
           )
 
       case q"def ${name: TermName}[..$tparams](...$paramLists): Strategy[..$resTypes] = (..$es) => $body"
-        if paramLists.length == 1 && resTypes.length == 1 && es.length == 1 =>
+        if /*paramLists.length == 1 &&*/ resTypes.length == 1 && es.length == 1 =>
 
-        val params = paramLists.head.asInstanceOf[List[ValDef]]
+        val params = paramLists.asInstanceOf[List[List[ValDef]]]
         val resType = resTypes.head.asInstanceOf[Tree]
         val e = es.head.asInstanceOf[ValDef]
         makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(_ =>
@@ -137,9 +137,9 @@ object RuleMacro {
 
 
       case q"def ${name: TermName}[..$tparams](...$paramLists): Strategy[..$resTypes] = $body"
-        if paramLists.length == 1 && resTypes.length == 1 =>
+        if /*paramLists.length == 1 &&*/ resTypes.length == 1 =>
 
-        val params = paramLists.head.asInstanceOf[List[ValDef]]
+        val params = paramLists.asInstanceOf[List[List[ValDef]]]
         val resType = resTypes.head.asInstanceOf[Tree]
         makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(_ =>
           q"""
@@ -161,42 +161,44 @@ object RuleMacro {
     }
 
     def makeRuleObject(name: TermName, resType: Tree, apply: Tree): Tree = {
-      val c = q"""final case object $name extends Strategy[$resType] {
+      val code = q"""final case object $name extends Strategy[$resType] {
         ..$apply
 
         ..${makeToString(name)}
       }"""
-      //      println(c)
-      c
+      c.info(c.enclosingPosition,
+        s"generated `${name.toString}'\n$code", force = false)
+      code
     }
 
     def makeRuleClass(name: TermName, tparams: List[TypeDef],
-                      resType: Tree, params: List[ValDef])
+                      resType: Tree, params: List[List[ValDef]])
                      (body: Tree => Tree): Tree = {
-      val className = if (name.toString.charAt(0).isLetterOrDigit) {
+      val className = if (name.toString.charAt(0).isLetterOrDigit && name.toString.charAt(0).isLower) {
         name.toString.capitalize
       } else {
         name.toString + "_class"
       }
       val makeClass = q"${TermName(className)}[..${tparams.map{
         case TypeDef(_, name, _, _) => tq"$name"
-      }}](..${params.map{
+      }}](...${params.map(p => p.map {
         case ValDef(_, name, _, _) => q"$name"
-      }})"
+      })})"
 
-      val c = q"""
-        final case class ${TypeName(className)}[..$tparams](..$params) extends Strategy[$resType] {
+      val code = q"""
+        final case class ${TypeName(className)}[..$tparams](...$params) extends Strategy[$resType] {
           ..${body(makeClass)}
         }
 
-        ${if (params.isEmpty) {
+        ${if (params.size == 1 && params.head.isEmpty) {
             q"def $name[..$tparams]: Strategy[$resType] = $makeClass"
           } else {
-            q"def $name[..$tparams](..$params): Strategy[$resType] = $makeClass"
+            q"def $name[..$tparams](...$params): Strategy[$resType] = $makeClass"
         }}
         """
-//      println(c)
-      c
+      c.info(c.enclosingPosition,
+        s"generated `${name.toString}'\n$code", force = false)
+      code
     }
 
     def addDefaultCase(cases: List[CaseDef], default: Tree): List[CaseDef] = {
@@ -221,19 +223,19 @@ object RuleMacro {
       }
     }
 
-    def makeToString(name: TermName, params: List[ValDef] = List()): Tree = {
+    def makeToString(name: TermName, params: List[List[ValDef]] = List(List())): Tree = {
       c.prefix.tree match {
         case q"new rule($docTree)" =>
           q"override def toString: String = ${c.eval[String](c.Expr(docTree))}"
         case q"new rule(doc = $docTree)" =>
           q"override def toString: String = ${c.eval[String](c.Expr(docTree))}"
         case _ =>
-          if (params.isEmpty) {
+          if (params.head.isEmpty) {
             q"override def toString: String = ${name.toString}"
           } else {
             q"""
         override def toString: String = ${name.toString} + ${
-              params.map {
+              params.head.map{
                 case ValDef(_, name, _, _) => q"$name.toString"
               }
             }.mkString("(", ",", ")")

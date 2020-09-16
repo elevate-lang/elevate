@@ -1,13 +1,13 @@
 package elevate.rise
 
+import elevate.core.strategies.Traversable
 import elevate.core.strategies.predicate._
 import elevate.core.strategies.traversal._
-import elevate.rise.rules.traversal._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.macros.RuleMacro.rule
+import rise.core.TypedDSL._
 import rise.core._
 import rise.core.types._
-import rise.core.TypedDSL._
 
 package object rules {
 
@@ -18,22 +18,22 @@ package object rules {
       Success(substitute.kindInExpr(v, `for` = x, in = b))
   }
 
-  @rule def containsAtLeast(n: Int, x: Rise): Strategy[Rise] =
+  @rule def containsAtLeast(n: Int, x: Rise)(implicit ev: Traversable[Rise]): Strategy[Rise] =
     skip(n)(isEqualTo(x))
 
   // TODO: express as a combination of strategies
-  @rule def gentleBetaReduction: Strategy[Rise] = {
+  @rule def gentleBetaReduction()(implicit ev: Traversable[Rise]): Strategy[Rise] = {
     case App(Lambda(x, b), v: Identifier) =>
       Success(substitute.exprInExpr(v, `for` = x, in = b))
     case App(Lambda(x, b), v @ App(App(primitives.Pair(), _), _)) =>
       Success(substitute.exprInExpr(v, `for` = x, in = b))
-    case App(Lambda(x, b), v) if !containsAtLeast(1, x)(b) =>
+    case App(Lambda(x, b), v) if !containsAtLeast(1, x)(ev)(b) =>
       Success(substitute.exprInExpr(v, `for` = x, in = b))
     case DepApp(DepLambda(x, b), v) =>
       Success(substitute.kindInExpr(v, `for` = x, in = b))
   }
 
-  @rule def etaReduction: Strategy[Rise] = {
+  @rule def etaReduction()(implicit ev: Traversable[Rise]): Strategy[Rise] = {
     case e@Lambda(x1, App(f, x2)) if x1 == x2 && !contains[Rise](x1).apply(f) => Success(f :: e.t)
   }
 
@@ -45,9 +45,9 @@ package object rules {
   }
 
   @rule def idxReduction: Strategy[Rise] = e => {
+    import arithexpr.arithmetic._
     import rise.core.primitives._
     import rise.core.semantics._
-    import arithexpr.arithmetic._
 
     @scala.annotation.tailrec
     def isMakeArray(e: Rise): Boolean = e match {
