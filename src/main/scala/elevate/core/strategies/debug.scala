@@ -11,6 +11,6 @@ object debug {
   @rule def debug[P](msg: String): Strategy[P] =
     peek[P](x => println(msg + "\n" + x))
 
-  @rule("println") def echo[P](msg: String): Strategy[P] =
+  @rule def echo[P](msg: String): Strategy[P] =
     peek[P](_ => println(msg))
 }

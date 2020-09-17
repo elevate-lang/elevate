@@ -249,7 +249,6 @@ object CombinatorMacro {
         q"""def $name[..$tparams]: Strategy[$t] =
            new ${TypeName(className)}[..$targs](...$argLists)"""
       } else {
-      // else if (funImplParamLists.isEmpty || funImplParamLists.head.isEmpty) {
         val returnType = funParamLists.map(p => p.map {
           case ValDef(_, _, tpt, _) => tpt
         }).foldRight(tq"Strategy[$t]")((a, b) =>
@@ -281,11 +280,6 @@ object CombinatorMacro {
           }
         }
       }
-//      else {
-//
-//        q"""def $name[..$tparams](...$regularParamLists)(...$funImplParamLists): Strategy[$t] =
-//           new ${TypeName(className)}[..$targs](...$argLists)"""
-//      }
     }
 
   }

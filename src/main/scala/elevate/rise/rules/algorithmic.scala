@@ -99,6 +99,7 @@ object algorithmic {
 
 
   // fission of the last function to be applied inside a map
+  // *(g >> .. >> f) -> *(g >> ..) >> *f
   @rule def mapLastFission()(implicit ev: Traversable[Rise]): Strategy[Rise] = {
     // this is an example where we don't want to fission if gx == Identifier:
     // (map λe4. (((((zip: (K.float -> (K.float -> K.(float, float))))
@@ -152,11 +153,12 @@ object algorithmic {
 
   // slide widening
 
+  // slide n 1 >> drop l -> slide (n+l) 1 >> map(drop l)
   @rule def dropInSlide: Strategy[Rise] = {
     case e@App(DepApp(Drop(), l: Nat), App(DepApp(DepApp(Slide(), n: Nat), Cst(1)), in)) =>
       Success(app(map(drop(l)), app(slide(n + l)(1), typed(in))) :: e.t)
   }
-
+  // slide n 1 >> take (N - r) -> slide (n+r) 1 >> map(take (n - r))
   @rule def takeInSlide: Strategy[Rise] = {
     case e@App(t@DepApp(Take(), rem: Nat), App(DepApp(DepApp(Slide(), n: Nat), Cst(1)), in)) =>
       t.t match {
@@ -186,6 +188,7 @@ object algorithmic {
     case expr @ App(Map(), Lambda(x1, x2)) if x1 == x2 => Success(fun(x => x) :: expr.t)
   }
 
+  // x -> join (slide 1 1 x)
   @rule def slideAfter: Strategy[Rise] = e => Success(join(slide(1)(1)(e)) :: e.t)
 
   @rule def slideAfter2: Strategy[Rise] = e => Success(map(fun(x => x `@` lidx(0, 1)), slide(1)(1)(e)) :: e.t)
@@ -202,6 +205,7 @@ object algorithmic {
       Success(map(fst, zip(f, s)) :: f.t)
   }
 
+  // J >> drop d -> drop (d / m) >> J >> drop (d % m)
   @rule def dropBeforeJoin: Strategy[Rise] = {
     case e @ App(DepApp(Drop(), d: Nat), App(Join(), in)) => in.t match {
       case ArrayType(_, ArrayType(m, _)) =>
