@@ -12,12 +12,6 @@ package object core {
     def `;`(s: Strategy[P]): Strategy[P] = seq[P](f)(s) //scalastyle:ignore
   }
 
-  // scalastyle:off
-//   implicit class NormalizedThen(f: Strategy[Rise])(implicit ev: Traversable[Rise]) {
-//     def `;;`(s: Strategy[Rise]): Strategy[Rise] = f `;` DFNF() `;` s
-//   }
-  // scalastyle:on
-
   implicit class LeftChoice[P](f: Strategy[P]) {
     def <+(s: Strategy[P]): Strategy[P] = leftChoice(f)(s)
   }
