@@ -75,7 +75,7 @@ object traversal {
   })
 
   def blocking(implicit ev: Traversable[Rise]): Strategy[Rise] = {
-    id[Rise]() `@` outermost(ev)(mapNest(2))
-    id[Rise]() `@` outermost(ev)(isReduce)
+    id `@` outermost(ev)(mapNest(2))
+    id `@` outermost(ev)(isReduce)
   }
 }

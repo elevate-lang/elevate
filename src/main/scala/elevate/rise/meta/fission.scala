@@ -2,47 +2,31 @@ package elevate.rise.meta
 
 import elevate.core.strategies.Traversable
 import elevate.core.strategies.basic._
-import elevate.core.{Failure, MetaStrategy, RewriteResult, Strategy, Success}
+import elevate.core.{Strategy, Success}
+import elevate.macros.RuleMacro.rule
 import elevate.rise.Rise
+import elevate.rise.meta.traversal._
 import elevate.rise.rules.traversal.{argument, argumentOf, body, function}
 
 object fission {
 
-  case object bodyFission extends MetaStrategy[Rise] {
-    def apply(e: Strategy[Rise]): RewriteResult[Strategy[Rise]] = e match {
-      case body(seq(f,s)) => Success(seq(body(f),body(s)))
-      case _ =>              Failure(bodyFission)
-    }
-    override def toString = "bodyFission"
+  @rule def bodyFission: Strategy[Strategy[Rise]] = {
+    case body(Seq(f, s)) => Success(seq(body(f))(body(s)))
   }
 
-  case object functionFission extends MetaStrategy[Rise] {
-    def apply(e: Strategy[Rise]): RewriteResult[Strategy[Rise]] = e match {
-      case function(seq(f,s)) => Success(seq(function(f),function(s)))
-      case _                  => Failure(functionFission)
-    }
-    override def toString = "functionFission"
+  @rule def functionFission: Strategy[Strategy[Rise]] = {
+    case function(Seq(f,s)) => Success(seq(function(f))(function(s)))
   }
 
-  case object argumentFission extends Strategy[Strategy[Rise]] {
-    def apply(e: Strategy[Rise]): RewriteResult[Strategy[Rise]] = e match {
-      case argument(seq(f,s)) => Success(seq(argument(f),argument(s)))
-      case _                  => Failure(argumentFission)
-    }
-    override def toString = "argumentFission"
+  @rule def argumentFission: Strategy[Strategy[Rise]] = {
+    case argument(Seq(f,s)) => Success(seq(argument(f))(argument(s)))
   }
 
-  case object argumentOfFission extends Strategy[Strategy[Rise]] {
-    def apply(e: Strategy[Rise]): RewriteResult[Strategy[Rise]] = e match {
-      case argumentOf(x,seq(f,s)) => Success(seq(argumentOf(x,f), argumentOf(x,s)))
-      case _                      => Failure(argumentFission)
-    }
-    override def toString = "argumentFission"
+  @rule def argumentOfFission: Strategy[Strategy[Rise]] = {
+    case argumentOf(x,Seq(f,s)) => Success(seq(argumentOf(x,f))(argumentOf(x,s)))
   }
-
-
-
 
   // Fissioned-Normal-Form: Every single strategy application starts from the root
-  def FNF(implicit ev: Traversable[Strategy[Rise]]): MetaStrategy[Rise] = normalize.apply(bodyFission <+ functionFission <+ argumentFission <+ argumentOfFission)
+  def FNF(implicit ev: Traversable[Strategy[Rise]]): Strategy[Strategy[Rise]] =
+    normalize(ev)(bodyFission <+ functionFission <+ argumentFission <+ argumentOfFission)
 }

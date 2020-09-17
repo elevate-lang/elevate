@@ -24,7 +24,7 @@ class traversals extends elevate.test_util.Tests {
 
   test("rewrite simple elevate strategy") {
     val expr = fun(f => fun(g => map(f) >> map(g)))
-    val strategy = body(body(body(mapFusion `;` function(mapLastFission))))
+    val strategy = body(body(body(mapFusion `;` function(mapLastFission()))))
 
     val metaStrategy = inBody(inBody(bodyFission))(strategy)
     val newStrategy = metaStrategy.get
@@ -41,7 +41,7 @@ class traversals extends elevate.test_util.Tests {
       function(argumentOf(Map()(), body(function(splitJoin(4)) `;` DFNF `;` RNF))) `;`
         function(splitJoin(4)) `;`
         DFNF `;` RNF `;` DFNF `;` RNF `;` DFNF `;`
-        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)))) `;` DFNF `;` RNF)) `;`
+        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose())))) `;` DFNF `;` RNF)) `;`
         DFNF `;` RNF `;` DFNF `;` RNF `;` RNF
     ))
 
@@ -49,7 +49,7 @@ class traversals extends elevate.test_util.Tests {
       function(argumentOf(Map()(), body(function(splitJoin(4))))) `;`
         function(splitJoin(4)) `;`
         RNF `;` DFNF `;`
-        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose)))) `;` RNF))))
+        argument(argument(function(argumentOf(Map()(), body(idAfter `;` createTransposePair `;` DFNF `;` argument(mapMapFBeforeTranspose())))) `;` RNF))))
 
     val normalized = FNF(simplified).get
     println(normalized)
@@ -67,7 +67,7 @@ class traversals extends elevate.test_util.Tests {
       inferType `;`
       body(body(argument(argument(function(argumentOf(Map()(), body(DFNF))))))) `;`
       inferType `;`
-      body(body(argument(argument(function(argumentOf(Map()(), body(argument(mapMapFBeforeTranspose)))))))) `;`
+      body(body(argument(argument(function(argumentOf(Map()(), body(argument(mapMapFBeforeTranspose())))))))) `;`
       inferType `;`
       body(body(argument(argument(RNF))))
 
@@ -85,7 +85,7 @@ class traversals extends elevate.test_util.Tests {
 
   test("id traversals") {
     val expr = fun(f => fun(g => map(f) >> map(g)))
-    val id = elevate.core.strategies.basic.id[Rise]()
+    val id = elevate.core.strategies.basic.id[Rise]
 
     assert(
       List(

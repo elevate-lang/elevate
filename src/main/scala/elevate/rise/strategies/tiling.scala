@@ -20,7 +20,7 @@ object tiling {
   def tileNDList(implicit ev: Traversable[Rise]): List[Int] => Strategy[Rise] =
 
     n => n.size match {
-        case x if x <= 0 => id()
+        case x if x <= 0 => id
         // ((map f) arg)
         case 1 => function(splitJoin(n.head))      // loop-blocking
         case i => fmap(tileNDList(ev)(n.tail)) `;`     // recurse
@@ -59,7 +59,7 @@ object tiling {
 
   // in front of **f, creating transpose pairs, move one transpose over **f
   def loopInterchange(implicit ev: Traversable[Rise]): Strategy[Rise] =
-      idAfter `;` createTransposePair `;` DFNF() `;` argument(mapMapFBeforeTranspose)
+      idAfter `;` createTransposePair `;` DFNF() `;` argument(mapMapFBeforeTranspose())
 
   // level == 0: A.B.C.D => A.B.D.C
   //             ^ ^        ^ ^

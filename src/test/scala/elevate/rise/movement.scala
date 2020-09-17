@@ -53,26 +53,26 @@ class movement extends elevate.test_util.Tests {
         )
       )
 
-    assert(topDown(mapMapFBeforeTranspose).apply(backward))
+    assert(topDown(mapMapFBeforeTranspose()).apply(backward))
   }
 
   test("T >> **f -> **f >> T") {
     assert(betaEtaEquals(
-      topDown(`T >> **f -> **f >> T`).apply(λ(f => T >> **(f))),
+      topDown(`T >> **f -> **f >> T`).apply(λ(f => T >> **(f))).get,
       λ(f => **(f) >> T))
     )
   }
 
   test("T >> ****f -> ****f >> T") {
     assert(betaEtaEquals(
-      topDown(`T >> **f -> **f >> T`).apply(λ(f => T >> ****(f))),
+      topDown(`T >> **f -> **f >> T`).apply(λ(f => T >> ****(f))).get,
       λ(f => ****(f) >> T))
     )
   }
 
   test("****f >> T -> T >> ****f") {
     assert(betaEtaEquals(
-      topDown(`**f >> T -> T >> **f`()(RiseTraversable)).apply(λ(f => ****(f) >> T)),
+      topDown(`**f >> T -> T >> **f`()(RiseTraversable)).apply(λ(f => ****(f) >> T)).get,
       λ(f => T >> ****(f)))
     )
   }
@@ -81,14 +81,14 @@ class movement extends elevate.test_util.Tests {
 
   test("S >> **f -> *f >> S") {
     assert(betaEtaEquals(
-      topDown(`S >> **f -> *f >> S`).apply(λ(f => S >> **(f))),
+      topDown(`S >> **f -> *f >> S`).apply(λ(f => S >> **(f))).get,
       λ(f => *(f) >> S))
     )
   }
 
   test("*f >> S -> S >> **f") {
     assert(betaEtaEquals(
-      topDown(splitBeforeMap).apply(λ(f => *(f) >> S)),
+      topDown(splitBeforeMap).apply(λ(f => *(f) >> S)).get,
       λ(f => S >> **(f)))
     )
   }
@@ -97,14 +97,14 @@ class movement extends elevate.test_util.Tests {
 
   test("J >> *f -> **f >> J") {
     assert(betaEtaEquals(
-      topDown(`J >> *f -> **f >> J`).apply(λ(f => J >> *(f))),
+      topDown(`J >> *f -> **f >> J`).apply(λ(f => J >> *(f))).get,
       λ(f => **(f) >> J)
     ))
   }
 
   test("**f >> J -> *f >> J") {
     assert(betaEtaEquals(
-      topDown(`**f >> J -> J >> *f`).apply(λ(f => **(f) >> J)),
+      topDown(`**f >> J -> J >> *f`).apply(λ(f => **(f) >> J)).get,
       λ(f => J >> *(f))
     ))
   }
@@ -113,70 +113,70 @@ class movement extends elevate.test_util.Tests {
 
   test("T >> S -> *S >> T >> *T") {
     assert(betaEtaEquals(
-      topDown(`T >> S -> *S >> T >> *T`).apply(T >> S),
+      topDown(`T >> S -> *S >> T >> *T`).apply(T >> S).get,
       *(S) >> T >> *(T)
     ))
   }
 
   test("T >> *S -> S >> *T >> T") {
     assert(betaEtaEquals(
-      topDown(`T >> *S -> S >> *T >> T`).apply(T >> *(S)),
+      topDown(`T >> *S -> S >> *T >> T`).apply(T >> *(S)).get,
       S >> *(T) >> T
     ))
   }
 
   test("*S >> T -> T >> S >> *T") {
     assert(betaEtaEquals(
-      topDown(`*S >> T -> T >> S >> *T`).apply(*(S) >> T),
+      topDown(`*S >> T -> T >> S >> *T`).apply(*(S) >> T).get,
       T >> S >> *(T)
     ))
   }
 
   test("J >> T -> *T >> T >> *J") {
     assert(betaEtaEquals(
-      topDown(`J >> T -> *T >> T >> *J`).apply(J >> T),
+      topDown(`J >> T -> *T >> T >> *J`).apply(J >> T).get,
       *(T) >> T >> *(J)
     ))
   }
 
   test("T >> *J -> *T >> J >> T") {
     assert(betaEtaEquals(
-      topDown(`T >> *J -> *T >> J >> T`).apply(T >> *(J)),
+      topDown(`T >> *J -> *T >> J >> T`).apply(T >> *(J)).get,
       *(T) >> J >> T
     ))
   }
 
   test("*T >> J -> T >> *J >> T") {
     assert(betaEtaEquals(
-      topDown(`*T >> J -> T >> *J >> T`).apply(*(T) >> J),
+      topDown(`*T >> J -> T >> *J >> T`).apply(*(T) >> J).get,
       T >> *(J) >> T
     ))
   }
 
   test("*J >> T -> T >> *T >> J") {
     assert(betaEtaEquals(
-      topDown(`*J >> T -> T >> *T >> J`).apply(*(J) >> T),
+      topDown(`*J >> T -> T >> *T >> J`).apply(*(J) >> T).get,
       T >> *(T) >> J
     ))
   }
 
   test("J >> J -> *J >> J") {
     assert(betaEtaEquals(
-      topDown(`J >> J -> *J >> J`).apply(J >> J),
+      topDown(`J >> J -> *J >> J`).apply(J >> J).get,
       *(J) >> J
     ))
   }
 
   test("*J >> J -> J >> J") {
     assert(betaEtaEquals(
-      topDown(`*J >> J -> J >> J`).apply(*(J) >> J),
+      topDown(`*J >> J -> J >> J`).apply(*(J) >> J).get,
       J >> J
     ))
   }
 
   test("slideOverSplit") {
     assert(betaEtaEquals(
-      topDown(slideBeforeSplit).apply(slide(3)(1) >> split(16)),
+      topDown(slideBeforeSplit).apply(slide(3)(1) >> split(16)).get,
       slide(16+3-1)(16) >> map(slide(3)(1))
     ))
   }

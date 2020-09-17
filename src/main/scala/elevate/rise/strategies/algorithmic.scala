@@ -8,6 +8,7 @@ import elevate.core.strategies.traversal._
 import elevate.rise.strategies.traversal._
 //import elevate.rise.rules.traversal.default._
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
+import elevate.macros.StrategyMacro.strategy
 import elevate.rise.Rise
 import elevate.rise.rules.algorithmic.fuseReduceMap
 import elevate.rise.rules.movement._
@@ -25,16 +26,11 @@ object algorithmic {
 
   // fission of the first function to be applied inside a map
   // *(g >> .. >> f) -> *g >> *(.. >> f)
-  case object mapFirstFission extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(primitives.Map(), Lambda(x, gx)) => Success(mapFirstFissionRec(x, fun(e => e), gx) :: e.t)
-      case _                                    => Failure(mapFirstFission)
-    }
-
+  @strategy def mapFirstFission: Strategy[Rise] = e => {
     // TODO: this should be expressed with elevate strategies
     @silent
     @scala.annotation.tailrec
-    private def mapFirstFissionRec(x: Identifier, f: TDSL[Rise], gx: Rise): TDSL[Rise] = {
+    def mapFirstFissionRec(x: Identifier, f: TDSL[Rise], gx: Rise): TDSL[Rise] = {
       gx match {
         case App(f2, gx2) =>
           if (gx2 == x) {
@@ -44,16 +40,16 @@ object algorithmic {
           }
       }
     }
+
+    e match {
+      case App(primitives.Map(), Lambda(x, gx)) => Success(mapFirstFissionRec(x, fun(e => e), gx) :: e.t)
+      case _                                    => Failure(mapFirstFission)
+    }
   }
 
   // fission of all the functions chained inside a map
   // *(g >> .. >> f) -> *g >> .. >> *f
-  case object mapFullFission extends Strategy[Rise] {
-    def apply(e: Rise): RewriteResult[Rise] = e match {
-      case App(primitives.Map(), Lambda(x, gx)) => Success(mapFullFissionRec(x, gx) :: e.t)
-      case _                                    => Failure(mapFullFission)
-    }
-
+  @strategy def mapFullFission: Strategy[Rise] = e => {
     // TODO: this should be expressed with elevate strategies
     @silent
     def mapFullFissionRec(x: Identifier, gx: Rise): TDSL[Rise] = {
@@ -67,6 +63,10 @@ object algorithmic {
       }
     }
 
+    e match {
+      case App(primitives.Map(), Lambda(x, gx)) => Success(mapFullFissionRec(x, gx) :: e.t)
+      case _                                    => Failure(mapFullFission)
+    }
   }
 
   //scalastyle:off
@@ -75,25 +75,32 @@ object algorithmic {
     (fuseReduceMap `@` topDown[Rise]) `;;`
     (fuseReduceMap `@` topDown[Rise]) `;;` RNF()
 
-  def reorder(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] =
-    normForReorder `;` (reorderRec(l) `@` topDown[Rise])
-  case class reorderRec(l: List[Int])(implicit ev: Traversable[Rise]) extends Strategy[Rise] {
+  @strategy def reorder(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = normForReorder `;` (reorderRec(l) `@` topDown[Rise])
+
+  @strategy def reorderRec(l: List[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = e => {
+
+    def freduce(s: Strategy[Rise]): Strategy[Rise] =
+      function(function(argumentOf(ReduceSeq()(), body(body(s)))))
+    def freduceX(s: Strategy[Rise]): Strategy[Rise] =
+      argument(function(function(argumentOf(ReduceSeq()(), body(body(s))))))
+    def stepDown(s: Strategy[Rise]): Strategy[Rise] = freduceX(s) <+ freduce(s) <+ fmap(s)
+
     val isFullyAppliedReduceSeq: Strategy[Rise] = isApplied(isApplied(isApplied(isReduceSeq))) <+
       argument(isApplied(isApplied(isApplied(isReduceSeq)))) // weird reduce special case
     val isFullyAppliedMap: Strategy[Rise] = isApplied(isApplied(isMap))
 
     // pos = how far nested is the reduction?
     def moveReductionUp(pos: Int): Strategy[Rise] = {
-      if (pos <= 1) id[Rise]()
+      if (pos <= 1) id
       else
         applyNTimes(pos-2)(stepDown)(function(liftReduce)) `;` DFNF() `;` RNF() `;`  moveReductionUp(pos-1)
     }
-    def apply(e: Rise): RewriteResult[Rise] = l match {
+
+    l match {
       // nothing to reorder, go further down
       case x :: xs if x == 1 => (stepDown(reorderRec(xs.map(y => if (y>x) y-1 else y ))))(e)
       // work to do
       case pos :: xs => (
-
         (applyNTimes(pos-1)(stepDown)(isFullyAppliedReduceSeq) `;`
           // move reduction and normalize the AST
           moveReductionUp(pos) `;`
@@ -101,15 +108,10 @@ object algorithmic {
           stepDown(reorderRec(xs.map(y => if (y>pos) y-1 else y )))) <+
           // other case: is it a map?
           applyNTimes(pos-1)(stepDown)(isFullyAppliedMap) `;`
-          basic.fail()
+          basic.fail
         )(e)
-      case Nil => id[Rise]()(e)
+      case Nil => id(e)
       case _ => Failure(reorderRec(l))
     }
-
-    def freduce(s: Strategy[Rise]) = function(function(argumentOf(ReduceSeq()(), body(body(s)))))
-    def freduceX(s: Strategy[Rise]) = argument(function(function(argumentOf(ReduceSeq()(), body(body(s))))))
-    def stepDown(s: Strategy[Rise]): Strategy[Rise] =
-      freduceX(s) <+ freduce(s) <+ fmap(s)
   }
 }

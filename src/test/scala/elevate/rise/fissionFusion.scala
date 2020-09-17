@@ -33,7 +33,7 @@ class fissionFusion extends elevate.test_util.Tests {
   test("last fission, chain of 2") {
     check(
       fun(f1 => fun(f2 => map(f1 >> f2))),
-      position(2)(mapLastFission),
+      position(2)(mapLastFission()),
       fun(f1 => fun(f2 => map(f1) >> map(f2))),
       topDown(mapFusion))
   }
@@ -41,7 +41,7 @@ class fissionFusion extends elevate.test_util.Tests {
   test("last fission, chain of 3") {
     check(
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2 >> f3)))),
-      position(3)(mapLastFission),
+      position(3)(mapLastFission()),
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2) >> map(f3)))),
       topDown(mapFusion))
   }
@@ -75,6 +75,6 @@ class fissionFusion extends elevate.test_util.Tests {
       fun(f1 => fun(f2 => fun(f3 => map(f1 >> f2 >> f3)))),
       position(3)(mapFullFission),
       fun(f1 => fun(f2 => fun(f3 => map(f1) >> map(f2) >> map(f3)))),
-      normalize.apply(mapFusion))
+      normalize(RiseTraversable)(mapFusion))
   }
 }

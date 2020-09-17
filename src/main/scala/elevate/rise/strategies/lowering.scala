@@ -8,6 +8,7 @@ import rise.core.TypedDSL._
 import rise.core._
 
 object lowering {
+
   def storeInMemory(what: Strategy[Rise], how: Strategy[Rise])
                    (implicit ev: Traversable[Rise]): Strategy[Rise] = { p =>
     extract(what)(p) >>= (extracted => {

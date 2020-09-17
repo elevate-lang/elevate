@@ -10,7 +10,7 @@ import elevate.rise.strategies.tiling._
 
 object halide {
 
-  def reorder(perm: Seq[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = {
+  def reorder(perm: scala.collection.Seq[Int])(implicit ev: Traversable[Rise]): Strategy[Rise] = {
 
     def shiftDimension(i: Int): Strategy[Rise] = {
       i match {
@@ -23,7 +23,7 @@ object halide {
     assert(perm.forall(_ > 0 ))
     assert(perm.sum == (1 to perm.length).sum)
 
-    if(perm.length == 1) return id()
+    if(perm.length == 1) return id
 
     // which dimension comes first?
     (perm.head match {
