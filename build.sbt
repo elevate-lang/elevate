@@ -24,7 +24,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val elevate = (project in file("."))
-  .dependsOn(elevateMacros, rise)
+  .dependsOn(elevateMacros)
   .settings(
     name    := "elevate",
     version := "1.0",
@@ -58,4 +58,3 @@ lazy val elevateMacros = (project in file("macros"))
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
   )
 
-lazy val rise       = (project in file("lib/rise"))
