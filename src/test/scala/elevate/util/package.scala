@@ -1,7 +1,7 @@
 package elevate
 
 import elevate.rise._
-import elevate.rise.strategies.normalForm.BENF
+import rise.elevate.strategies.normalForm.BENF
 import _root_.rise.core.primitives._
 import _root_.rise.core._
 import _root_.rise.core.types._
