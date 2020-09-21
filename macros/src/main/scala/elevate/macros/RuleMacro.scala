@@ -166,8 +166,8 @@ object RuleMacro {
 
         ..${makeToString(name)}
       }"""
-      c.info(c.enclosingPosition,
-        s"generated `${name.toString}'\n$code", force = false)
+//      c.info(c.enclosingPosition,
+//        s"generated `${name.toString}'\n$code", force = false)
       code
     }
 
