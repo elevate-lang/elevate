@@ -1,15 +1,19 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.Path
+import elevate.core.Strategy
+import elevate.heuristic_search.util.{Path, Solution}
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
 class Random[P] extends Heuristic[P] {
   // initialize global best
   var best:Option[Double] = None
 
-  def start(panel:HeuristicPanel[P], initialSolution:P, depth: Int): (P, Option[Double], Path[P]) = {
-    var solution:P = initialSolution
-    val path = new Path(solution, panel.f(solution))
+  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+    var solution = initialSolution
+
+//    var solution = new Solution[P](initialSolution, scala.collection.mutable.Seq.empty[Strategy[P]])
+
+    val path = new Path(solution.expression, panel.f(solution))
     val random = scala.util.Random
 
     for (_ <- Range(0, depth)) {
@@ -20,12 +24,12 @@ class Random[P] extends Heuristic[P] {
         j = j + 1
         val randomIndex = random.nextInt(Ns.size)
         val result = Ns.toSeq(randomIndex)
-        panel.f(result._1) match {
+        panel.f(result) match {
           case Some(value) => {
               valid = true
-              solution = result._1
+              solution = result
               //add to path
-              path.add(solution, result._2, Some(value))
+              path.add(solution.expression, result.strategies.last, Some(value))
 
             // check if new global best is found
             best match{
@@ -44,7 +48,7 @@ class Random[P] extends Heuristic[P] {
       }
     }
 
-    (solution, best, path)
+    (solution.expression, best, path)
   }
 
 }

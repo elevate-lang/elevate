@@ -3,7 +3,9 @@ package elevate.heuristic_search
 import java.io.{File, FileOutputStream, PrintWriter}
 
 import elevate.core.Strategy
-import elevate.heuristic_search.util.Path
+import elevate.heuristic_search.heuristics.Random
+import elevate.heuristic_search._
+import elevate.heuristic_search.util.{Path, Solution}
 
 
 // runner class
@@ -18,14 +20,16 @@ class Metaheuristic[P](val name:String,
 
   var counter = 0
 
-  def execute(solution: P): (P, Option[Double]) = {
+//  def execute(solution: P): (P, Option[Double]) = {
+    def execute(solution: Solution[P]): (P, Option[Double]) = {
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
     val panel = new HeuristicPanelImplementation[P](runner, strategies)
 
     // conduct heuristic using panel and configs like depth and iterations
-    var best: (P, Option[Double]) = (solution, None)
+    var best: (P, Option[Double]) = (solution.expression, None)
     for (_ <- Range(0, iterations)) {
+      println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
       val result = heuristic.start(panel, solution, depth)
 
       // write runtimes
@@ -70,7 +74,7 @@ class Metaheuristic[P](val name:String,
     val file = new PrintWriter(new FileOutputStream(new File(path), true))
 
     // create string to write to file
-    var string = counter + ", " + name + ", " + System.currentTimeMillis().toString + ", " + result._1.hashCode().toString + ", "
+    var string = counter + ", " + name + ", " + System.currentTimeMillis().toString + ", " + Integer.toHexString(result._1.hashCode()) + ", "
     result._2 match{
       case Some(value) => string += value.toString + "\n"
       case _ => string += "-1 \n"

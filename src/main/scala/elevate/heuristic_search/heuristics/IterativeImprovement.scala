@@ -1,18 +1,22 @@
 package elevate.heuristic_search.heuristic
 
+import elevate.core.Strategy
 import elevate.heuristic_search.util.Path
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search.util.Solution
 
 class IterativeImprovement[P] extends Heuristic[P] {
 
-  def start(panel:HeuristicPanel[P], initialSolution:P, depth:Int): (P, Option[Double], Path[P]) = {
-    var solution:P = initialSolution
+  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
+//    var solution:P = initialSolution
+    var solution = initialSolution
     var solutionValue:Option[Double] = panel.f(solution)
-    val path = new Path(solution, solutionValue)
+    val path = new Path(solution.expression, solutionValue)
 
     var oldSolution = solution
     var oldSolutionValue:Option[Double] = solutionValue
     var i = 0
+    var l = 0
     do {
       i = i + 1
       // save current state
@@ -23,18 +27,21 @@ class IterativeImprovement[P] extends Heuristic[P] {
       val Ns = panel.N(solution)
 
       //evaluate neighbourhood
+      println("\n \n \n LAYER: " + l)
+      println("Ns.size: " + Ns.size)
+      l += 1
       Ns.foreach(ns => {
-        val fns = panel.f(ns._1)
+        val fns = panel.f(ns)
         val fsolution = solutionValue
         (fns, fsolution) match {
           case (Some(fnsInternal), Some(fsolutionInternal)) =>
 
             // check for new minimum
             if (fnsInternal < fsolutionInternal) {
-              solution = ns._1
+              solution = ns
               solutionValue = fns
 
-              path.add(ns._1, ns._2, fns)
+              path.add(ns.expression, ns.strategies.last, fns)
             }
           case _ =>
         }
@@ -47,7 +54,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
         }
     )
 
-    (solution, solutionValue, path)
+    (solution.expression, solutionValue, path)
   }
 }
 
