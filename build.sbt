@@ -1,25 +1,35 @@
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / organization := "org.elevate-lang"
 
+lazy val commonSettings = Seq(
+  javaOptions ++= Seq("-Xss16m"),
+
+  scalacOptions ++= Seq(
+    "-Xfatal-warnings",
+    "-Xlint:-unused",
+    "-Xmax-classfile-name", "100",
+    "-unchecked",
+    "-deprecation",
+    "-feature",
+    "-language:reflectiveCalls"
+  ),
+
+  fork := true,
+
+  resolvers ++= Seq(
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
+  ),
+  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+)
+
 lazy val elevate = (project in file("."))
-  .dependsOn(rise)
+  .dependsOn(elevateMacros)
   .settings(
     name    := "elevate",
     version := "1.0",
 
-    javaOptions ++= Seq("-Xss16m"),
-
-    scalacOptions ++= Seq(
-      "-Xfatal-warnings",
-      "-Xlint:-unused",
-      "-Xmax-classfile-name", "100",
-      "-unchecked",
-      "-deprecation",
-      "-feature",
-      "-language:reflectiveCalls"
-    ),
-
-    fork := true,
+    commonSettings,
 
     // Scala libraries
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -40,4 +50,11 @@ lazy val elevate = (project in file("."))
     )
   )
 
-lazy val rise       = (project in file("lib/rise"))
+lazy val elevateMacros = (project in file("macros"))
+  .settings(
+    name := "macros",
+    version := "1.0",
+    commonSettings,
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
+  )
+

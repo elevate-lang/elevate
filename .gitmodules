@@ -1,3 +1,0 @@
-[submodule "lib/rise"]
-	path = lib/rise
-	url = https://github.com/rise-lang/rise.git
