@@ -69,12 +69,12 @@ class Metaheuristic[P](val name:String,
     best
   }
 
-  def writeValues(path: String, result: (P, Option[Double], Path[P]), name:String) {
+  def writeValues(path: String, result: (P, Option[Double], Path[P]), name:String): Unit = {
     // open file for appendix
     val file = new PrintWriter(new FileOutputStream(new File(path), true))
 
     // create string to write to file
-    var string = counter + ", " + name + ", " + System.currentTimeMillis().toString + ", " + Integer.toHexString(result._1.hashCode()) + ", "
+    var string = s"$counter, $name, ${System.currentTimeMillis()}, ${Integer.toHexString(result._1.hashCode())}, "
     result._2 match{
       case Some(value) => string += value.toString + "\n"
       case _ => string += "-1 \n"
@@ -86,7 +86,7 @@ class Metaheuristic[P](val name:String,
     file.close()
   }
 
-  def writeHeader(path:String) {
+  def writeHeader(path:String): Unit = {
     // open file for appendix
     val file = new PrintWriter(new FileOutputStream(new File(path), true))
 

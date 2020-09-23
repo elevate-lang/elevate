@@ -76,7 +76,7 @@ object Differentiation {
     }
 
     visit(expr, Set())
-    free
+    free.toSeq
   }
 
   def A0(v: Variable, x: Variable): Expr = {

@@ -17,7 +17,7 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
     solution.strategies.foreach(elem =>{
       println("strategy: " + elem)
     })
-    println
+    println()
     call += 1
     val neighbours = scala.collection.mutable.Set[Solution[P]]()
 
