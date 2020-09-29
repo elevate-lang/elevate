@@ -126,8 +126,8 @@ object TypeInference {
     }
 
     def compose(other: Substitution): Substitution = {
-      val substitutedThis = solutions.mapValues(s => other.apply(s))
-      Substitution(substitutedThis ++ other.solutions)
+      val substitutedThis = solutions.view.mapValues(s => other.apply(s))
+      Substitution((substitutedThis ++ other.solutions).toMap)
     }
   }
 
