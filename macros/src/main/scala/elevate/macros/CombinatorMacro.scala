@@ -6,6 +6,7 @@ import scala.language.experimental.macros
 
 // scalastyle:off indentation
 object CombinatorMacro {
+  val verbose = false
 
   // noinspection ScalaUnusedSymbol
   @compileTimeOnly("rule macro")
@@ -186,8 +187,10 @@ object CombinatorMacro {
         ..${makeCompanionFunction(name, className, tparams, t, classParamLists,
                                   regularParamLists, funParamLists, funImplParamLists)}
         """
-//      c.info(c.enclosingPosition,
-//        s"generated `${name.toString}'\n$code", force = false)
+      if (verbose) {
+        c.info(c.enclosingPosition,
+          s"generated `${name.toString}'\n$code", force = false)
+      }
       code
     }
 
