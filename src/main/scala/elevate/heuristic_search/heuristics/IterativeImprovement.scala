@@ -1,4 +1,4 @@
-package elevate.heuristic_search.heuristic
+package elevate.heuristic_search.heuristics
 
 import elevate.core.Strategy
 import elevate.heuristic_search.util.Path
