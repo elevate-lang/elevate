@@ -13,7 +13,7 @@ class rewriteExamples extends elevate.test_util.Tests {
   test("Example5: Matrix Transpose") {
     val e = fun(M => matrixTranspose(matrixTranspose(M)))
 
-    println(normalize(traversal.FSmoothTraversable)(buildGet <+ lengthBuild <+ letPartialEvaluation <+ conditionalPartialEvalution <+ conditionApplication <+ letApplication <+ funToLet <+ letFission <+ letInitDuplication).apply(e))
+    println(normalize(buildGet <+ lengthBuild <+ letPartialEvaluation <+ conditionalPartialEvalution <+ conditionApplication <+ letApplication <+ funToLet <+ letFission <+ letInitDuplication).apply(e))
     println("--")
     println(e)
   }
@@ -46,14 +46,14 @@ class rewriteExamples extends elevate.test_util.Tests {
 
     println("\n-- step1: inlining + fusing")
     // funToLet2 required because of matrixEye + vectorHot definition
-    val strategy0 = normalize(traversal.FSmoothTraversable)(funToLet <+ funToLet <+ letPartialEvaluation <+ buildGet <+ lengthBuild)
+    val strategy0 = normalize(funToLet <+ funToLet <+ letPartialEvaluation <+ buildGet <+ lengthBuild)
     //                       | ---- INLINING ------------------------------- | ----- FUSION ---------- |
     val step1 = strategy0.apply(inputFixed)
     println(step1)
 
     println("\n-- step2: conditional rules + ring structure rules")
     // conditionApplication2 handles binary functions
-    val strategy1 = normalize(traversal.FSmoothTraversable)(conditionApplication <+ multiplicationZero <+ multiplicationOne <+ additionZero)
+    val strategy1 = normalize(conditionApplication <+ multiplicationZero <+ multiplicationOne <+ additionZero)
     val step2 = strategy1.apply(step1.get)
     println(step2)
 
@@ -64,7 +64,7 @@ class rewriteExamples extends elevate.test_util.Tests {
     println(step3)
 
     println("\n-- step4: partial evaluation + simplification")
-    val strategy3 = normalize(traversal.FSmoothTraversable)(letPartialEvaluation <+ additionZero)
+    val strategy3 = normalize(letPartialEvaluation <+ additionZero)
     val step4 = strategy3.apply(step3.get)
     println(step4)
   }

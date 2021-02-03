@@ -38,9 +38,9 @@ object TypeInference {
       if (ts.length != xs.length) throw new Exception("This should not happen")
       e.t match {
         case et: ExpressionType =>
-          collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType), et)))
+          collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType.apply), et)))
         case tv: TypeVar =>
-          collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType), ExpressionTypeVar(tv.name))))
+          collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType.apply), ExpressionTypeVar(tv.name))))
         case _ => throw new Exception("This should not happen")
       }
     case Application(f, es, t) =>
@@ -52,7 +52,7 @@ object TypeInference {
       val ts = es.map(_.t)
       if (ts.length != es.length) throw new Exception("This should not happen")
       es.map(collect).foldLeft(collect(f))(_ ++ _) ++ Set(
-        Constraint(f.t, FunType(ts.reduce(IncompleteFunType), et))
+        Constraint(f.t, FunType(ts.reduce(IncompleteFunType.apply), et))
       )
     case Conditional(cond, thenBranch, elseBranch, t) =>
       collect(cond) ++ collect(thenBranch) ++ collect(elseBranch) ++ Set(

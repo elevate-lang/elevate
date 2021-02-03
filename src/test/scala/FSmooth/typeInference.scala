@@ -2,6 +2,7 @@ package FSmooth
 
 import FSmooth.DSL._
 import FSmooth.MSmooth._
+import reflect.Selectable.reflectiveSelectable
 
 class typeInference extends elevate.test_util.Tests {
 

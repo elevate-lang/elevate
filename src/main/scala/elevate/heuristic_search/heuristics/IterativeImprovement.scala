@@ -17,7 +17,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
     var oldSolutionValue:Option[Double] = solutionValue
     var i = 0
     var l = 0
-    do {
+    while ({ {
       i = i + 1
       // save current state
       oldSolution = solution
@@ -48,11 +48,11 @@ class IterativeImprovement[P] extends Heuristic[P] {
       })
 
       // check, if chosen solution is better
-    } while((solutionValue, oldSolutionValue) match {
+    } ;(solutionValue, oldSolutionValue) match {
           case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
           case _ => false
         }
-    )
+    }) ()
 
     (solution.expression, solutionValue, path)
   }

@@ -1,6 +1,7 @@
 package FSmooth
 
 import FSmooth.traversal.{Continue, Result, Stop}
+import reflect.Selectable.reflectiveSelectable
 
 //noinspection TypeAnnotation,ApparentResultTypeRefinement
 object replace {

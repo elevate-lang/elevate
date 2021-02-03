@@ -1,6 +1,7 @@
 package FSmooth
 
 import FSmooth.DSL._
+import reflect.Selectable.reflectiveSelectable
 
 //noinspection DuplicatedCode
 object MSmooth {

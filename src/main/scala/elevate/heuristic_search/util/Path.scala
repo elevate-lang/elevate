@@ -90,7 +90,7 @@ class Path[P](program:P,
     // write high-level expression and strategy list to files on disk
     var tmp = initial
 
-    do {
+    while ({ {
       // get unique filename
       val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + Integer.toHexString(tmp.program.hashCode()), 0)
       // create folder
@@ -122,7 +122,7 @@ class Path[P](program:P,
       pwStrategies.close()
 
       tmp = tmp.successor
-    } while(tmp != null)
+    } ;tmp != null}) ()
 
   }
 

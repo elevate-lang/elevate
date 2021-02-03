@@ -2,8 +2,7 @@ package elevate.core.strategies
 
 import elevate.core._
 import elevate.core.strategies.traversal.topDown
-import elevate.macros.CombinatorMacro.combinator
-import elevate.macros.RuleMacro.rule
+import elevate.core.macros._
 
 /* Inspired by:
 
@@ -22,41 +21,32 @@ import elevate.macros.RuleMacro.rule
 object basic {
 
   // Naive Strategies
-
-  @rule def id[P]: Strategy[P] = p => Success(p)
-
-  @rule def fail[P]: Strategy[P] = _ => Failure(fail)
+  def id[P]: Strategy[P] = strategy("id", p => Success(p))
+  
+  def fail[P]: Strategy[P] = strategy("fail", _ => Failure(fail))
 
   // Basic Strategy Combinators
-
-  @combinator
   def seq[P]: Strategy[P] => Strategy[P] => Strategy[P] =
-    fs => ss => p => fs(p).flatMapSuccess(ss)
-
-  @combinator
+    combinator("seq", fs => ss => p => fs(p).flatMapSuccess(ss))
+  
   def leftChoice[P]: Strategy[P] => Strategy[P] => Strategy[P] =
-    fs => ss => p => fs(p).flatMapFailure(_ => ss(p))
+    combinator("leftChoice", fs => ss => p => fs(p).flatMapFailure(_ => ss(p)))
 
   // Basic Strategies
-
-  @combinator
-  def `try`[P]: Strategy[P] => Strategy[P] = s => s <+ id
-
-  @combinator
-  def repeat[P]: Strategy[P] => Strategy[P] = s => `try`(s `;` repeat(s))
-
-  @combinator
-  def repeatNTimes[P](n: Int): Strategy[P] => Strategy[P] = s =>
-    p => if (n > 0) {(s `;` repeatNTimes(n - 1)(s))(p)} else { id(p) }
+  def `try`[P](s: Strategy[P]): Strategy[P] =
+    strategy("try", s <+ id)
+  
+  def repeat[P](s: Strategy[P]): Strategy[P] =
+    strategy("repeat", `try`(s `;` repeat(s)))
+  
+  def repeatNTimes[P](n: Int)(s: Strategy[P]): Strategy[P] =
+    strategy("repeatNTimes", p => if (n > 0) {(s `;` repeatNTimes(n - 1)(s))(p)} else { id(p) })
 
   // Normalize
-
-  @combinator
-  def normalize[P: Traversable]: Strategy[P] => Strategy[P] =
-    s => repeat(topDown.apply(s))
+  def normalize[P: Traversable](s: Strategy[P]): Strategy[P] =
+     strategy("normalize", repeat(topDown.apply(s)))
 
   // Strategy Factories
-
-  def applyNTimes[P]: Int => (Strategy[P] => Strategy[P]) => Strategy[P] => Strategy[P] =
-    i => f => s => if(i <= 0) s else applyNTimes[P](i-1)(f)(f(s))
+  def applyNTimes[P](i: Int)(f: (Strategy[P] => Strategy[P]))(s: Strategy[P]): Strategy[P] =
+    strategy("applyNTimes", if(i <= 0) s else applyNTimes[P](i-1)(f)(f(s)))
 }

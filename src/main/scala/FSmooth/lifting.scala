@@ -1,5 +1,7 @@
 package FSmooth
 
+import reflect.Selectable.reflectiveSelectable
+
 object lifting {
   sealed trait Result[+T] {
     val value: T
