@@ -4,7 +4,7 @@ import FSmooth.traversal.{Continue, Result, Stop}
 import reflect.Selectable.reflectiveSelectable
 
 //noinspection TypeAnnotation,ApparentResultTypeRefinement
-object replace {
+object replace:
   def apply(e: Expr): Object {
     def `with` (w: Expr): Object {
       def in (i: Expr): Expr
@@ -13,9 +13,8 @@ object replace {
     def `with`(w: Expr): Object {
       def in(i: Expr): Expr
     } = new {
-      def in(i: Expr): Expr = {
+      def in(i: Expr): Expr =
         replace(Seq(e)).`with`(Seq(w)).in(i)
-      }
     }
   }
 
@@ -27,20 +26,16 @@ object replace {
     def `with`(ws: Seq[Expr]): Object {
       def in(i: Expr): Expr
     } = new {
-      def in(i: Expr): Expr = {
-        object Visitor extends traversal.Visitor {
-          override def apply(e: Expr): Result[Expr] = {
+      def in(i: Expr): Expr =
+        object Visitor extends traversal.Visitor:
+          override def apply(e: Expr): Result[Expr] =
             val pos = es.indexOf(e)
-            if (pos != -1) {
+            if (pos != -1)
               Stop(ws(pos))
-            } else {
+            else
               Continue(e, this)
-            }
-          }
-        }
 
         traversal.DepthFirstLocalResult(i, Visitor)
-      }
     }
   }
-}
+end replace

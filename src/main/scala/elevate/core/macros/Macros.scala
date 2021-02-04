@@ -19,7 +19,7 @@ inline def combinator[P](inline name: String,
 def strategyMacro[P](name: Expr[String],
                      s: Expr[Strategy[P]])
                     (using Type[P])
-                    (using Quotes): Expr[Strategy[P]] = {
+                    (using Quotes): Expr[Strategy[P]] =
   val expr = '{
     new Strategy[P] {
       override def apply(p: P): RewriteResult[P] =
@@ -33,12 +33,11 @@ def strategyMacro[P](name: Expr[String],
   }
   println(name.show + "\n" + expr.show)
   expr
-}
 
 def combinatorMacro[P](name: Expr[String],
                        f: Expr[Strategy[P] => Strategy[P] => Strategy[P]])
                       (using Type[P])
-                      (using Quotes): Expr[Strategy[P] => Strategy[P] => Strategy[P]] = {
+                      (using Quotes): Expr[Strategy[P] => Strategy[P] => Strategy[P]] =
   val expr = '{
     (fs: Strategy[P]) => (ss: Strategy[P]) => new Strategy[P] {
       override def apply(p: P): RewriteResult[P] =
@@ -52,4 +51,3 @@ def combinatorMacro[P](name: Expr[String],
   }
   println(name.show + "\n" + expr.show)
   expr
-}

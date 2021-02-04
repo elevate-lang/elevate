@@ -4,9 +4,9 @@ import elevate.core._
 import elevate.core.strategies.predicate._
 import FSmooth._
 
-object traversal {
+object traversal:
 
-  implicit object FSmoothTraversable extends elevate.core.strategies.Traversable[FSmooth] {
+  implicit object FSmoothTraversable extends elevate.core.strategies.Traversable[FSmooth]:
 
     override def all: Strategy[FSmooth] => Strategy[FSmooth] =  s => {
       case Abstraction(i, body, t) => s(body).mapSuccess(Abstraction(i, _, t))
@@ -20,16 +20,14 @@ object traversal {
           Failure(s)
 
       case Let(x, value, body, t) =>
-        (s(value), s(body)) match {
+        (s(value), s(body)) match
           case (Success(v), Success(b)) => Success(Let(x, v, b))
           case _ => Failure(s)
-        }
 
       case Conditional(cond, thenBranch, elseBranch, t) =>
-        (s(cond), s(thenBranch), s(elseBranch)) match {
+        (s(cond), s(thenBranch), s(elseBranch)) match
           case (Success(c), Success(t), Success(e)) => Success(Conditional(c,t,e))
           case _ => Failure(s)
-        }
 
       case s:ScalarValue => Success(s)
       case i:IndexValue => Success(i)
@@ -44,7 +42,7 @@ object traversal {
       case Abstraction(i, body, t) => s(body).mapSuccess(Abstraction(i, _, t))
       case _:Variable => Failure(s)
 
-      case Application(f, args, t) => s(f) match {
+      case Application(f, args, t) => s(f) match
         case Success(f: FSmooth) => Success(Application(s(f).get, args, t))
         case Failure(state) => {
           val strategy = if(carryOverState) state else s
@@ -63,26 +61,22 @@ object traversal {
             }
           )
         }._2
-      }
 
-      case Let(x, value, body, t) => s(value) match {
+      case Let(x, value, body, t) => s(value) match
         case Success(f: FSmooth) => Success(Let(x, f, body, t))
         case Failure(state) => if (carryOverState)
           state(body).mapSuccess(Let(x, value, _, t)) else
           s(body).mapSuccess(Let(x, value, _, t))
-      }
 
-      case Conditional(cond, thenBranch, elseBranch, t) => s(cond) match {
+      case Conditional(cond, thenBranch, elseBranch, t) => s(cond) match
         case Success(f: FSmooth) => Success(Conditional(f, thenBranch, elseBranch))
         case Failure(state) => if (carryOverState)
           state(thenBranch).mapSuccess(Conditional(cond, _, elseBranch, t)) else
-          s(thenBranch).mapSuccess(Conditional(cond, _, elseBranch, t)) match {
+          s(thenBranch).mapSuccess(Conditional(cond, _, elseBranch, t)) match
             case s:Success[FSmooth] => s
             case Failure(x) => if (carryOverState)
               x(elseBranch).mapSuccess(Conditional(cond, thenBranch, _, t)) else
               s(elseBranch).mapSuccess(Conditional(cond, thenBranch, _, t))
-          }
-      }
 
       case _:ScalarValue => Failure(s)
       case _:IndexValue => Failure(s)
@@ -91,5 +85,7 @@ object traversal {
     }
 
     override def some: Strategy[FSmooth] => Strategy[FSmooth] = ???
-  }
-}
+    
+  end FSmoothTraversable
+
+end traversal

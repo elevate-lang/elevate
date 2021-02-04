@@ -18,7 +18,7 @@ import elevate.core.Strategy
  */
 
 // generic one-level traversal strategies
-trait Traversable[P] {
+trait Traversable[P]:
 
   // apply strategy to all direct subexpressions
   def all: Strategy[P] => Strategy[P]
@@ -32,4 +32,5 @@ trait Traversable[P] {
   // apply strategy to one direct subexpression considering the Failure-state
   // when moving from a failing subexpression to the next available
   def oneUsingState: Strategy[P] => Strategy[P]
-}
+  
+end Traversable

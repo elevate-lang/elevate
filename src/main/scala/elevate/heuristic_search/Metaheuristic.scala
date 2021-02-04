@@ -14,18 +14,18 @@ case class Metaheuristic[P](name: String,
                             runner: Runner[P],
                             strategies: Set[Strategy[P]],
                             output: String
-                      ) extends Runner[P] {
+                      ) extends Runner[P]:
   var counter = 0
 
 //  def execute(solution: P): (P, Option[Double]) = {
-    def execute(solution: Solution[P]): (P, Option[Double]) = {
+    def execute(solution: Solution[P]): (P, Option[Double]) =
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
     val panel = new HeuristicPanelImplementation[P](runner, strategies)
 
     // conduct heuristic using panel and configs like depth and iterations
     var best: (P, Option[Double]) = (solution.expression, None)
-    for (_ <- Range(0, iterations)) {
+    for (_ <- Range(0, iterations))
       println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
       val result = heuristic.start(panel, solution, depth)
 
@@ -37,34 +37,29 @@ case class Metaheuristic[P](name: String,
       //result._3.writePathToDisk(output + "/" )
       result._3.writePathToDisk(output)
 
-      best._2 match {
+      best._2 match
         case Some(currentBest) =>
-          result._2 match {
+          result._2 match
             case Some(candidateBest) =>
               // check if new best is found
-              if (candidateBest < currentBest) {
+              if (candidateBest < currentBest)
                 best = (result._1, result._2)
-              }
             case _ => // do nothing
-          }
         // initialize best
         case None =>
           //just if there is some result
-          result._2 match {
+          result._2 match
             case Some(_) =>
               // initialize best
               best = (result._1, result._2)
             case _ => // do nothing
-          }
-      }
-    }
 
     best
-  }
+  end execute
 
   def writeValues(path: String,
                   result: (P, Option[Double], Path[P]),
-                  name: String): Unit = {
+                  name: String): Unit =
     // open file for appendix
     val file = new PrintWriter(
       new FileOutputStream(new File(path), true))
@@ -72,21 +67,19 @@ case class Metaheuristic[P](name: String,
     // create string to write to file
     var string =s"$counter, $name, ${System.currentTimeMillis()}, " +
       s"${Integer.toHexString(result._1.hashCode())}, "
-    result._2 match{
+    result._2 match
       case Some(value) => string += value.toString + "\n"
       case _ => string += "-1 \n"
-    }
 
     // write to file and close
     file.write(string)
     counter += 1
     file.close()
-  }
+  end writeValues
 
-  def writeHeader(path:String): Unit = {
+  def writeHeader(path:String): Unit =
     // open file for appendix
-    val file = new PrintWriter(
-      new FileOutputStream(new File(path), true))
+    val file = new PrintWriter(new FileOutputStream(new File(path), true))
 
     // create string to write to file
     val string = "iteration, runner, timestamp, hash, runtime\n"
@@ -94,7 +87,6 @@ case class Metaheuristic[P](name: String,
     // write to file and close
     file.write(string)
     file.close()
-  }
+  end writeHeader
 
-}
-
+end Metaheuristic

@@ -7,7 +7,10 @@ lazy val commonSettings = Seq(
   scalacOptions ++= {
     if (isDotty.value) Seq(
       "-source:3.0-migration",
-      "-Xfatal-warnings",
+//      "-Xfatal-warnings",
+      "-indent",
+//      "-new-syntax",
+//      "-rewrite",
       "-unchecked",
       "-deprecation",
       "-feature",

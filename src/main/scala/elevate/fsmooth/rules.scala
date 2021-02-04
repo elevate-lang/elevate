@@ -28,7 +28,7 @@ import elevate.core.macros.rule
 }
 
  */
-object rules {
+object rules:
 
   // lambda calculus rules
   
@@ -204,4 +204,3 @@ object rules {
           Application(VectorFunctionConstants.`ifold`(freshTypeVar), Seq(f1, z1, n))
         )))
     })
-}

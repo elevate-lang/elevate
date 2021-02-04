@@ -4,7 +4,7 @@ import FSmooth.DSL._
 import FSmooth.MSmooth._
 import reflect.Selectable.reflectiveSelectable
 
-class typeInference extends elevate.test_util.Tests {
+class typeInference extends elevate.test_util.Tests:
 
   test("Type inference MSmooth vector constructs") {
     println("vectorRange = " + TypeInference.infer(vectorRange))
@@ -89,4 +89,5 @@ class typeInference extends elevate.test_util.Tests {
     assert( Differentiation.fvs( fun(x => x + y) ) == Seq(y) )
     assert( Differentiation.fvs( fun(x => z + x + y) ) == Seq(z, y) )
   }
-}
+
+end typeInference

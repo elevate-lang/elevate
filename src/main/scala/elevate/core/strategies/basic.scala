@@ -18,7 +18,7 @@ import elevate.core.macros._
 }
 
  */
-object basic {
+object basic:
 
   // Naive Strategies
   def id[P]: Strategy[P] = strategy("id", p => Success(p))
@@ -49,4 +49,3 @@ object basic {
   // Strategy Factories
   def applyNTimes[P](i: Int)(f: (Strategy[P] => Strategy[P]))(s: Strategy[P]): Strategy[P] =
     strategy("applyNTimes", if(i <= 0) s else applyNTimes[P](i-1)(f)(f(s)))
-}

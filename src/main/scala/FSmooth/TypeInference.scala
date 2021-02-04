@@ -3,15 +3,14 @@ package FSmooth
 import scala.collection.immutable
 
 //noinspection DuplicatedCode
-object TypeInference {
+object TypeInference:
   type Environment = immutable.Map[String, Type]
 
-  private def checkIdentifierAreInBound(e: Expr, env: Environment): Unit = e match {
+  private def checkIdentifierAreInBound(e: Expr, env: Environment): Unit = e match
     case i: Variable =>
-      env.get(i.name) match {
+      env.get(i.name) match
         case Some(_) =>
         case None => throw new Exception(s"Unbound Identifier: $i with env: $env")
-      }
     case Abstraction(xs, e, _) =>
       val extendedEnv = env ++ xs.map(i => (i.name, i.t))
       checkIdentifierAreInBound(e, extendedEnv)
@@ -27,28 +26,25 @@ object TypeInference {
       checkIdentifierAreInBound(init, extendedEnv)
       checkIdentifierAreInBound(e, extendedEnv)
     case _: Constants | _: CardinalityValue | _: IndexValue | _: ScalarValue =>
-  }
 
   private case class Constraint(a: Type, b: Type)
 
-  private def collect(e: Expr): Set[Constraint] = e match {
+  private def collect(e: Expr): Set[Constraint] = e match
     case _: Variable => Set.empty
     case Abstraction(xs, e, t) =>
       val ts = xs.map(_.t)
       if (ts.length != xs.length) throw new Exception("This should not happen")
-      e.t match {
+      e.t match
         case et: ExpressionType =>
           collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType.apply), et)))
         case tv: TypeVar =>
           collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType.apply), ExpressionTypeVar(tv.name))))
         case _ => throw new Exception("This should not happen")
-      }
     case Application(f, es, t) =>
-      val et = t match {
+      val et = t match
         case et: ExpressionType => et
         case tv: TypeVar => ExpressionTypeVar(tv.name)
         case _ =>  throw new Exception("This should not happen")
-      }
       val ts = es.map(_.t)
       if (ts.length != es.length) throw new Exception("This should not happen")
       es.map(collect).foldLeft(collect(f))(_ ++ _) ++ Set(
@@ -67,28 +63,24 @@ object TypeInference {
       )
     case c: Constants => Set(Constraint(c.typeScheme, c.t))
     case _: CardinalityValue | _: IndexValue | _: ScalarValue => Set()
-  }
 
-  private case class Substitution(solutions: Map[TypeVar, Type]) {
-    def apply(constraints: Set[Constraint]): Set[Constraint] = {
+  private case class Substitution(solutions: Map[TypeVar, Type]):
+    def apply(constraints: Set[Constraint]): Set[Constraint] =
       constraints.map(c => apply(c))
-    }
 
-    def apply(constraint: Constraint): Constraint = {
+    def apply(constraint: Constraint): Constraint =
       Constraint(
         apply(constraint.a),
         apply(constraint.b)
       )
-    }
 
-    def apply(t: Type): Type = {
+    def apply(t: Type): Type =
       solutions.foldLeft(t) { (result, solution) =>
         val (tvar, solutionType) = solution
         substitute(result, tvar, solutionType)
       }
-    }
 
-    def apply(e: Expr): Expr = e match {
+    def apply(e: Expr): Expr = e match
       case Variable(name, t) => Variable(name, apply(t))
       case Abstraction(xs, e, t) => Abstraction(xs.map(i => apply(i).asInstanceOf[Variable]), apply(e), apply(t))
       case Application(f, es, t) => Application(apply(f), es.map(apply), apply(t))
@@ -96,10 +88,9 @@ object TypeInference {
       case c: Constants => c.setType(apply(c.t))
       case Let(x, init, e, t) => Let(apply(x).asInstanceOf[Variable], apply(init), apply(e), apply(t))
       case Conditional(cond, thenBranch, elseBranch, t) => Conditional(apply(cond), apply(thenBranch), apply(elseBranch), apply(t))
-    }
 
-    def substitute(ty: Type, tv: TypeVar, replacement: Type): Type = {
-      ty match {
+    def substitute(ty: Type, tv: TypeVar, replacement: Type): Type =
+      ty match
         case _: Num | Bool => ty
         case FunType(inT, outT) =>
           FunType(
@@ -116,42 +107,33 @@ object TypeInference {
         case tv2: TypeVar =>
           if (tv == tv2) replacement else ty
         case tv2: ExpressionTypeVar =>
-          if (tv.name == tv2.name) {
-            replacement match {
+          if (tv.name == tv2.name)
+            replacement match
               case e: ExpressionType => e
               case _ => ty
-            }
-          } else ty
-      }
-    }
+          else ty
 
-    def compose(other: Substitution): Substitution = {
+    def compose(other: Substitution): Substitution =
       val substitutedThis = solutions.view.mapValues(s => other.apply(s))
       Substitution((substitutedThis ++ other.solutions).toMap)
-    }
-  }
 
-  private object Substitution {
+  private object Substitution:
     def empty = Substitution(Map.empty)
 
-    def fromPair(tvar: TypeVar, ty: Type): Substitution = {
+    def fromPair(tvar: TypeVar, ty: Type): Substitution =
       Substitution(Map((tvar, ty)))
-    }
-  }
 
-  private def unify(constraints: Set[Constraint]): Substitution = {
-    if (constraints.isEmpty) {
+  private def unify(constraints: Set[Constraint]): Substitution =
+    if (constraints.isEmpty)
       Substitution.empty
-    } else {
+    else
       val subst: Substitution = unifyOne(constraints.head)
       val substitutionTail = subst.apply(constraints.tail)
       val substTail: Substitution = unify(substitutionTail)
       subst.compose(substTail)
-    }
-  }
 
-  private def unifyOne(constraint: Constraint): Substitution = {
-    (constraint.a, constraint.b) match {
+  private def unifyOne(constraint: Constraint): Substitution =
+    (constraint.a, constraint.b) match
       case (Double, Double) => Substitution.empty
       case (Index, Index) => Substitution.empty
       case (Card, Card) => Substitution.empty
@@ -179,11 +161,9 @@ object TypeInference {
       case (ExpressionTypeVar(tv), ty) => unifyVar(tv, ty)
       case (ty, ExpressionTypeVar(tv)) => unifyVar(tv, ty)
       case (a, b) => throw new Exception(s"cannot unify $a with $b")
-    }
-  }
 
-  private def unifyVar(tv: String, ty: Type): Substitution = {
-    ty match {
+  private def unifyVar(tv: String, ty: Type): Substitution =
+    ty match
       case TypeVar(tv2) if tv == tv2 => Substitution.empty
       case ExpressionTypeVar(tv2) if tv == tv2 => Substitution.empty
       case TypeVar(_) => Substitution.fromPair(TypeVar(tv), ty)
@@ -191,22 +171,18 @@ object TypeInference {
       case ty if occurs(tv, ty) =>
         throw new Exception(s"circular use: $tv opccurs in $ty")
       case ty => Substitution.fromPair(TypeVar(tv), ty)
-    }
-  }
 
-  private def occurs(tv: String, ty: Type): Boolean = {
-    ty match {
+  private def occurs(tv: String, ty: Type): Boolean =
+    ty match
       case FunType(p, r) => occurs(tv, p) || occurs(tv, r)
       case TypeVar(tv2) => tv == tv2
       case ExpressionTypeVar(tv2) => tv == tv2
       case _ => false
-    }
-  }
 
-  def infer(e: Expr, gamma: Environment = Map()): Expr = {
+  def infer(e: Expr, gamma: Environment = Map()): Expr =
     checkIdentifierAreInBound(e, gamma)
     val constraints = collect(e)
     val subst = unify(constraints)
     subst(e)
-  }
-}
+
+end TypeInference

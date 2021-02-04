@@ -8,7 +8,7 @@ import elevate.core.strategies.traversal.topDown
 import elevate.fsmooth.rules._
 import elevate.fsmooth.traversal._
 
-class rewriteExamples extends elevate.test_util.Tests {
+class rewriteExamples extends elevate.test_util.Tests:
 
   test("Example5: Matrix Transpose") {
     val e = fun(M => matrixTranspose(matrixTranspose(M)))
@@ -68,4 +68,4 @@ class rewriteExamples extends elevate.test_util.Tests {
     val step4 = strategy3.apply(step3.get)
     println(step4)
   }
-}
+end rewriteExamples

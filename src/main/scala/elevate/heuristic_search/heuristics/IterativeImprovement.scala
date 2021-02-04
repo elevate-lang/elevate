@@ -5,9 +5,9 @@ import elevate.heuristic_search.util.Path
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 import elevate.heuristic_search.util.Solution
 
-class IterativeImprovement[P] extends Heuristic[P] {
+class IterativeImprovement[P] extends Heuristic[P]:
 
-  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
+  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) =
 //    var solution:P = initialSolution
     var solution = initialSolution
     var solutionValue:Option[Double] = panel.f(solution)
@@ -55,8 +55,6 @@ class IterativeImprovement[P] extends Heuristic[P] {
     }) ()
 
     (solution.expression, solutionValue, path)
-  }
-}
+  end start
 
-
-
+end IterativeImprovement

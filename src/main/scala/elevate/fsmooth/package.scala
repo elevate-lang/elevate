@@ -1,5 +1,4 @@
 package elevate
 
-package object fsmooth {
+package object fsmooth:
   type FSmooth = FSmooth.Expr
-}

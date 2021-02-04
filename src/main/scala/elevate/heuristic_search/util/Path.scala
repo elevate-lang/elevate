@@ -10,14 +10,13 @@ import elevate.core.{RewriteResult, Strategy}
 class Path[P](program:P,
               value:Option[Double],
               var initial:PathElement[P] = null,
-              var current:PathElement[P] = null
-             ){
-    // create initial path element
-    initial = new PathElement[P](program, null, value, null, null)
-    // set initial path element to current element
-    current = initial
+              var current:PathElement[P] = null):
+  // create initial path element
+  initial = new PathElement[P](program, null, value, null, null)
+  // set initial path element to current element
+  current = initial
 
-  def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit = {
+  def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit =
     // create new path element
     val elem = new PathElement[P](program, strategy, value, current, null)
 
@@ -26,41 +25,36 @@ class Path[P](program:P,
 
     //set new element as current element
     current = elem
-  }
 
-  def printPathConsole(): Unit = {
+  def printPathConsole(): Unit =
     var tmp = initial
     println("printPath: ")
 
-    while (tmp != null) {
+    while (tmp != null)
       println("program: " + tmp.program)
       println("strategy: " + tmp.strategy)
       println("value: " + tmp.value)
       tmp = tmp.successor
-    }
-  }
 
-  def writePathToDot(filename:String) = {
+  def writePathToDot(filename:String) =
     var tmp = initial
 
     // prepare file
     var full:String = "graph path {\n"
     var reduced:String = "graph path {\n"
 
-    while (tmp != null) {
+    while (tmp != null)
       // write to file
       full += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
       reduced += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + Integer.toHexString(tmp.program.hashCode()) + "\n" + tmp.value + " \"]; \n"
       tmp = tmp.successor
-    }
 
     tmp = initial.successor
-    while(tmp != null){
+    while(tmp != null)
       full += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
       reduced += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
 
       tmp = tmp.successor
-    }
 
     // finish file
     full += "}"
@@ -81,10 +75,9 @@ class Path[P](program:P,
     // close files
     pwFull.close()
     pwReduced.close()
+  end writePathToDot
 
-  }
-
-  def writePathToDisk(filename: String) = {
+  def writePathToDisk(filename: String) =
     // traverse from initial to current
 
     // write high-level expression and strategy list to files on disk
@@ -106,7 +99,7 @@ class Path[P](program:P,
       pwProgram.write(tmp.program.toString)
 
       // strategy list
-     val list = getStrategies(tmp)
+      val list = getStrategies(tmp)
 
       // create strategy string for file
       var strategyString = ""
@@ -123,30 +116,27 @@ class Path[P](program:P,
 
       tmp = tmp.successor
     } ;tmp != null}) ()
+  end writePathToDisk
 
-  }
-
-  def getStrategies(element: PathElement[P]):Seq[P=>RewriteResult[P]] = {
+  def getStrategies(element: PathElement[P]):Seq[P=>RewriteResult[P]] =
     var tmp = initial
     val strategies = scala.collection.mutable.ListBuffer.empty[P=>RewriteResult[P]]
 
     // there is no first strategy resulting in the initial expression
 
     // add elements to list (start with second)
-    while(tmp != element) {
+    while(tmp != element)
       tmp = tmp.successor
       strategies += tmp.strategy
-    }
 
     // return sequence
     strategies.toSeq
-  }
 
-  def getUniqueFilename(filename:String, offset: Int):String= {
+  def getUniqueFilename(filename:String, offset: Int):String=
     var uniqueFilename_full = filename
 
     // check if file or folder already exists
-    if(Files.exists(Paths.get(uniqueFilename_full))){
+    if(Files.exists(Paths.get(uniqueFilename_full)))
       //val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
       //println(warningString + "adding System.currentTimeMillis().")
 
@@ -156,20 +146,18 @@ class Path[P](program:P,
       // append timestamp
       val end = uniqueFilename_full.substring(uniqueFilename_full.length-offset, uniqueFilename_full.length)
       uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length-offset)+ "_" + System.currentTimeMillis() + end
-    }
 
     uniqueFilename_full
-  }
-
-}
+  
+end Path
 
 class PathElement[P] (val program:P,
                       val strategy:Strategy[P],
                       val value:Option[Double],
                       var predecessor:PathElement[P],
                       var successor:PathElement[P]
-                      ){
-  def setSuccessor(elem:PathElement[P]): Unit ={
+                      ):
+  def setSuccessor(elem:PathElement[P]): Unit =
     successor = elem
-  }
-}
+  
+end PathElement

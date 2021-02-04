@@ -4,7 +4,7 @@ import FSmooth.DSL._
 import reflect.Selectable.reflectiveSelectable
 
 //noinspection DuplicatedCode
-object MSmooth {
+object MSmooth:
   // vector constructs
   def vectorRange = fun(n =>
     build(n, fun(i => i)) )
@@ -105,4 +105,4 @@ object MSmooth {
     ifold(fun( (s, i) => s + m.get(i).get(i) ), scalar(0.0), len(m)) )
 
   def matrixZip: Expr = ???
-}
+end MSmooth

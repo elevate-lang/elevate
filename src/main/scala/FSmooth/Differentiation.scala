@@ -6,10 +6,10 @@ import FSmooth.MSmooth._
 import scala.collection.mutable
 import reflect.Selectable.reflectiveSelectable
 
-object Differentiation {
-  def deriv(e: Expr, x: Variable): Expr = {
+object Differentiation:
+  def deriv(e: Expr, x: Variable): Expr =
     val vi = fvs(e)
-    x.t match {
+    x.t match
       case Double =>
         D( fun(vi -> e) ).applySeq( vi.map(A0(_, x)) )
       case Array(Double) =>
@@ -20,10 +20,8 @@ object Differentiation {
           build(matrixCols(x), fun(c =>
             D( fun(vi -> e) ).applySeq( vi.map(A2(_, x, r, c)) ) )) ))
       case t => throw new Exception(s"Differentiation for type $t unsupported")
-    }
-  }
 
-  def D(e: Expr): Expr = e match {
+  def D(e: Expr): Expr = e match
     case Application(VectorFunctionConstants.build(_), Seq(e0, e1), _) =>
       build( fst(D(e0)), fun(i => D(e1) (pair(i, scalar(0)))) )
     case Application(VectorFunctionConstants.ifold(_), Seq(e0, e1, e2), _) =>
@@ -44,20 +42,18 @@ object Differentiation {
     case Let(x, e1, e2, _)            => Let(mark(x), D(e1), D(e2))
     case Conditional(e1, e2, e3, _)   =>`if` (fst(D(e1))) `then` D(e2) `else` D(e3)
     case ScalarValue(e)               => pair(P(e), E(e))
-  }
 
   def P(e: Double) = ???
   def E(e: Double) = ???
 
-  def mark(v: Variable): Variable = {
+  def mark(v: Variable): Variable =
     v.copy(v.name + "_")
-  }
 
   // free variables
-  def fvs(expr: Expr): Seq[Variable] = {
+  def fvs(expr: Expr): Seq[Variable] =
     val free = mutable.Buffer[Variable]()
 
-    def visit(e: Expr, bound: Set[Variable]): Unit = e match {
+    def visit(e: Expr, bound: Set[Variable]): Unit = e match
       case Abstraction(params, body, _) =>
         visit(body, bound ++ params)
       case Application(fun, args, _) =>
@@ -74,29 +70,22 @@ object Differentiation {
         if (!bound.contains(v)) { free += v }
       case ScalarValue(_) | IndexValue(_) |
            CardinalityValue(_) | _: Constants =>
-    }
 
     visit(expr, Set())
     free.toSeq
-  }
 
-  def A0(v: Variable, x: Variable): Expr = {
+  def A0(v: Variable, x: Variable): Expr =
     if (v == x) pair(x, scalar(1)) else pair(v, scalar(0))
-  }
 
-  def A1(v: Variable, x: Variable, r: Expr): Expr = {
-    if (v == x) {
+  def A1(v: Variable, x: Variable, r: Expr): Expr =
+    if (v == x)
       vectorZip(x, vectorHot(len(x), r))
-    } else {
+    else
       vectorZip(v, vectorFill(len(v), scalar(0.0)))
-    }
-  }
 
-  def A2(v: Variable, x: Variable, r: Expr, c: Expr): Expr = {
-    if (v == x) {
+  def A2(v: Variable, x: Variable, r: Expr, c: Expr): Expr =
+    if (v == x)
       matrixZip(x, matrixHot(matrixRows(x), matrixCols(x), r, c))
-    } else {
+    else
       matrixZip(v, matrixZeros(matrixRows(v), matrixCols(v)))
-    }
-  }
-}
+end Differentiation
