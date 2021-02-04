@@ -7,7 +7,7 @@ lazy val commonSettings = Seq(
   scalacOptions ++= {
     if (isDotty.value) Seq(
       "-source:3.0-migration",
-      "-rewrite",
+      "-Xfatal-warnings",
       "-unchecked",
       "-deprecation",
       "-feature",
@@ -33,9 +33,6 @@ lazy val elevate = (project in file("."))
     version := "1.0",
 
     commonSettings,
-
-    // JUnit
-    libraryDependencies += "junit" % "junit" % "4.11",
 
     // Scalatest
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.3" % "test"
