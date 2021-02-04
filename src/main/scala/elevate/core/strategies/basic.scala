@@ -40,7 +40,7 @@ object basic:
     strategy("repeat", `try`(s `;` repeat(s)))
   
   def repeatNTimes[P](n: Int)(s: Strategy[P]): Strategy[P] =
-    strategy("repeatNTimes", p => if (n > 0) {(s `;` repeatNTimes(n - 1)(s))(p)} else { id(p) })
+    strategy("repeatNTimes", p => if n > 0 then {(s `;` repeatNTimes(n - 1)(s))(p)} else { id(p) })
 
   // Normalize
   def normalize[P: Traversable](s: Strategy[P]): Strategy[P] =
@@ -48,4 +48,4 @@ object basic:
 
   // Strategy Factories
   def applyNTimes[P](i: Int)(f: (Strategy[P] => Strategy[P]))(s: Strategy[P]): Strategy[P] =
-    strategy("applyNTimes", if(i <= 0) s else applyNTimes[P](i-1)(f)(f(s)))
+    strategy("applyNTimes", if i <= 0 then s else applyNTimes[P](i-1)(f)(f(s)))

@@ -14,7 +14,7 @@ object traversal:
 
       case Application(f, args, t) =>
         val allRewritten = s(f) +: args.map(s(_))
-        if (allRewritten.forall(rewriteResultToBoolean))
+        if allRewritten.forall(rewriteResultToBoolean) then
           Success(Application(s(f).get, args.map(s(_).get)))
         else
           Failure(s)
@@ -45,14 +45,14 @@ object traversal:
       case Application(f, args, t) => s(f) match
         case Success(f: FSmooth) => Success(Application(s(f).get, args, t))
         case Failure(state) => {
-          val strategy = if(carryOverState) state else s
+          val strategy = if carryOverState then state else s
           args.foldLeft[(Boolean, RewriteResult[FSmooth])]((true, Failure(s)))(
             (state,expr) => {
               val (cont, result) = (state._1, state._2)
-              if (cont) strategy(expr) match {
+              if cont then strategy(expr) match {
                 case Success(rewrittenExpr) =>
                   val newArgs = args.foldLeft[Seq[Expr]](Seq())((list, curr) => {
-                    val newExpr = if (curr == expr) rewrittenExpr else curr
+                    val newExpr = if curr == expr then rewrittenExpr else curr
                     list :+ newExpr
                   })
                   (false,Success(Application(f, newArgs)))
@@ -64,17 +64,17 @@ object traversal:
 
       case Let(x, value, body, t) => s(value) match
         case Success(f: FSmooth) => Success(Let(x, f, body, t))
-        case Failure(state) => if (carryOverState)
+        case Failure(state) => if carryOverState then
           state(body).mapSuccess(Let(x, value, _, t)) else
           s(body).mapSuccess(Let(x, value, _, t))
 
       case Conditional(cond, thenBranch, elseBranch, t) => s(cond) match
         case Success(f: FSmooth) => Success(Conditional(f, thenBranch, elseBranch))
-        case Failure(state) => if (carryOverState)
+        case Failure(state) => if carryOverState then
           state(thenBranch).mapSuccess(Conditional(cond, _, elseBranch, t)) else
           s(thenBranch).mapSuccess(Conditional(cond, _, elseBranch, t)) match
             case s:Success[FSmooth] => s
-            case Failure(x) => if (carryOverState)
+            case Failure(x) => if carryOverState then
               x(elseBranch).mapSuccess(Conditional(cond, thenBranch, _, t)) else
               s(elseBranch).mapSuccess(Conditional(cond, thenBranch, _, t))
 

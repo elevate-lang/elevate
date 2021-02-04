@@ -9,7 +9,7 @@ lazy val commonSettings = Seq(
       "-source:3.0-migration",
 //      "-Xfatal-warnings",
       "-indent",
-//      "-new-syntax",
+      "-new-syntax",
 //      "-rewrite",
       "-unchecked",
       "-deprecation",

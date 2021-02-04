@@ -30,7 +30,9 @@ class Path[P](program:P,
     var tmp = initial
     println("printPath: ")
 
-    while (tmp != null)
+    while
+      tmp != null
+    do  
       println("program: " + tmp.program)
       println("strategy: " + tmp.strategy)
       println("value: " + tmp.value)
@@ -43,14 +45,18 @@ class Path[P](program:P,
     var full:String = "graph path {\n"
     var reduced:String = "graph path {\n"
 
-    while (tmp != null)
+    while
+      tmp != null
+    do
       // write to file
       full += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
       reduced += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + Integer.toHexString(tmp.program.hashCode()) + "\n" + tmp.value + " \"]; \n"
       tmp = tmp.successor
 
     tmp = initial.successor
-    while(tmp != null)
+    while
+      tmp != null
+    do
       full += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
       reduced += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
 
@@ -83,7 +89,7 @@ class Path[P](program:P,
     // write high-level expression and strategy list to files on disk
     var tmp = initial
 
-    while ({ {
+    while
       // get unique filename
       val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + Integer.toHexString(tmp.program.hashCode()), 0)
       // create folder
@@ -115,7 +121,11 @@ class Path[P](program:P,
       pwStrategies.close()
 
       tmp = tmp.successor
-    } ;tmp != null}) ()
+      
+      // check loop condition 
+      tmp != null
+    do
+      ()
   end writePathToDisk
 
   def getStrategies(element: PathElement[P]):Seq[P=>RewriteResult[P]] =
@@ -125,7 +135,9 @@ class Path[P](program:P,
     // there is no first strategy resulting in the initial expression
 
     // add elements to list (start with second)
-    while(tmp != element)
+    while
+      tmp != element
+    do
       tmp = tmp.successor
       strategies += tmp.strategy
 
@@ -136,7 +148,7 @@ class Path[P](program:P,
     var uniqueFilename_full = filename
 
     // check if file or folder already exists
-    if(Files.exists(Paths.get(uniqueFilename_full)))
+    if Files.exists(Paths.get(uniqueFilename_full)) then
       //val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
       //println(warningString + "adding System.currentTimeMillis().")
 
@@ -151,12 +163,11 @@ class Path[P](program:P,
   
 end Path
 
-class PathElement[P] (val program:P,
-                      val strategy:Strategy[P],
-                      val value:Option[Double],
-                      var predecessor:PathElement[P],
-                      var successor:PathElement[P]
-                      ):
+class PathElement[P] (val program: P,
+                      val strategy: Strategy[P],
+                      val value: Option[Double],
+                      var predecessor: PathElement[P],
+                      var successor: PathElement[P]):
   def setSuccessor(elem:PathElement[P]): Unit =
     successor = elem
   

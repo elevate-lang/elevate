@@ -68,7 +68,7 @@ object traversal:
   // counting traversal strategies describing absolute positions
 
   case class position[P: Traversable](n: Int)(s: Strategy[P]) extends Strategy[P]:
-    def apply(p: P): RewriteResult[P] = if (n <= 0) s(p) else oneUsingState(position(n - 1)(s)).apply(p)
+    def apply(p: P): RewriteResult[P] = if n <= 0 then s(p) else oneUsingState(position(n - 1)(s)).apply(p)
 
   case class skip[P: Traversable](n: Int)(s: Strategy[P]) extends Strategy[P]:
     def apply(p: P): RewriteResult[P] = s(p) match

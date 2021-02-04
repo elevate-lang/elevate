@@ -17,7 +17,7 @@ class IterativeImprovement[P] extends Heuristic[P]:
     var oldSolutionValue:Option[Double] = solutionValue
     var i = 0
     var l = 0
-    while ({ {
+    while
       i = i + 1
       // save current state
       oldSolution = solution
@@ -33,26 +33,22 @@ class IterativeImprovement[P] extends Heuristic[P]:
       Ns.foreach(ns => {
         val fns = panel.f(ns)
         val fsolution = solutionValue
-        (fns, fsolution) match {
+        (fns, fsolution) match
           case (Some(fnsInternal), Some(fsolutionInternal)) =>
-
             // check for new minimum
-            if (fnsInternal < fsolutionInternal) {
+            if fnsInternal < fsolutionInternal then
               solution = ns
               solutionValue = fns
 
               path.add(ns.expression, ns.strategies.last, fns)
-            }
           case _ =>
-        }
       })
 
       // check, if chosen solution is better
-    } ;(solutionValue, oldSolutionValue) match {
-          case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
-          case _ => false
-        }
-    }) ()
+      (solutionValue, oldSolutionValue) match
+        case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
+        case _ => false
+    do ()
 
     (solution.expression, solutionValue, path)
   end start

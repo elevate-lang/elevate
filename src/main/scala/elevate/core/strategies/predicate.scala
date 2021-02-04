@@ -29,12 +29,12 @@ object predicate:
   def ![P](s: Strategy[P]): Strategy[P] = not(s)
   
   def isEqualTo[P](x: P): Strategy[P] =
-    strategy("isEqualTo", p => if (p == x) Success(p) else Failure(isEqualTo(x)))
+    strategy("isEqualTo", p => if p == x then Success(p) else Failure(isEqualTo(x)))
   
   def contains[P: Traversable](x: P): Strategy[P] =
     strategy(s"contains($x)", p => topDown(isEqualTo(x)).apply(p))
   
   def liftPredicate[P](f: P => Boolean): Strategy[P] =
-    strategy("liftPredicate", p => if (f(p)) Success(p) else Failure(liftPredicate(f)))
+    strategy("liftPredicate", p => if f(p) then Success(p) else Failure(liftPredicate(f)))
 
 end predicate

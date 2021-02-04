@@ -8,7 +8,7 @@ object IOHelper:
     var uniqueFilename_full = filename
 
     // check if file or folder already exists
-    if(Files.exists(Paths.get(uniqueFilename_full)))
+    if Files.exists(Paths.get(uniqueFilename_full)) then
       val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
       println(warningString + "adding System.currentTimeMillis().")
 

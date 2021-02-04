@@ -67,7 +67,7 @@ object Differentiation:
         visit(tr, bound)
         visit(el, bound)
       case v: Variable =>
-        if (!bound.contains(v)) { free += v }
+        if !bound.contains(v) then free += v
       case ScalarValue(_) | IndexValue(_) |
            CardinalityValue(_) | _: Constants =>
 
@@ -75,16 +75,16 @@ object Differentiation:
     free.toSeq
 
   def A0(v: Variable, x: Variable): Expr =
-    if (v == x) pair(x, scalar(1)) else pair(v, scalar(0))
+    if v == x then pair(x, scalar(1)) else pair(v, scalar(0))
 
   def A1(v: Variable, x: Variable, r: Expr): Expr =
-    if (v == x)
+    if v == x then
       vectorZip(x, vectorHot(len(x), r))
     else
       vectorZip(v, vectorFill(len(v), scalar(0.0)))
 
   def A2(v: Variable, x: Variable, r: Expr, c: Expr): Expr =
-    if (v == x)
+    if v == x then
       matrixZip(x, matrixHot(matrixRows(x), matrixCols(x), r, c))
     else
       matrixZip(v, matrixZeros(matrixRows(v), matrixCols(v)))

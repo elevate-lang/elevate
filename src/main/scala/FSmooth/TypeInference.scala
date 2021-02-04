@@ -33,7 +33,7 @@ object TypeInference:
     case _: Variable => Set.empty
     case Abstraction(xs, e, t) =>
       val ts = xs.map(_.t)
-      if (ts.length != xs.length) throw new Exception("This should not happen")
+      if ts.length != xs.length then throw new Exception("This should not happen")
       e.t match
         case et: ExpressionType =>
           collect(e) ++ Set(Constraint(t, FunType(ts.reduce(IncompleteFunType.apply), et)))
@@ -46,7 +46,7 @@ object TypeInference:
         case tv: TypeVar => ExpressionTypeVar(tv.name)
         case _ =>  throw new Exception("This should not happen")
       val ts = es.map(_.t)
-      if (ts.length != es.length) throw new Exception("This should not happen")
+      if ts.length != es.length then throw new Exception("This should not happen")
       es.map(collect).foldLeft(collect(f))(_ ++ _) ++ Set(
         Constraint(f.t, FunType(ts.reduce(IncompleteFunType.apply), et))
       )
@@ -105,9 +105,9 @@ object TypeInference:
         case Pair(fst, snd) =>
           Pair(substitute(fst, tv, replacement).asInstanceOf[ExpressionType], substitute(snd, tv, replacement).asInstanceOf[ExpressionType])
         case tv2: TypeVar =>
-          if (tv == tv2) replacement else ty
+          if tv == tv2 then replacement else ty
         case tv2: ExpressionTypeVar =>
-          if (tv.name == tv2.name)
+          if tv.name == tv2.name then
             replacement match
               case e: ExpressionType => e
               case _ => ty
@@ -124,7 +124,7 @@ object TypeInference:
       Substitution(Map((tvar, ty)))
 
   private def unify(constraints: Set[Constraint]): Substitution =
-    if (constraints.isEmpty)
+    if constraints.isEmpty then
       Substitution.empty
     else
       val subst: Substitution = unifyOne(constraints.head)

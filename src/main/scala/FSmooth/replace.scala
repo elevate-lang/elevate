@@ -30,7 +30,7 @@ object replace:
         object Visitor extends traversal.Visitor:
           override def apply(e: Expr): Result[Expr] =
             val pos = es.indexOf(e)
-            if (pos != -1)
+            if pos != -1 then
               Stop(ws(pos))
             else
               Continue(e, this)

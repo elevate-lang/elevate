@@ -20,7 +20,9 @@ class Random[P] extends Heuristic[P]:
       val Ns = panel.N(solution)
       var valid = false
       var j = 0
-      while(!valid && j < Ns.size)
+      while
+        !valid && j < Ns.size
+      do  
         j = j + 1
         val randomIndex = random.nextInt(Ns.size)
         val result = Ns.toSeq(randomIndex)

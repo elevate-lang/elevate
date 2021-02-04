@@ -13,13 +13,10 @@ case class Metaheuristic[P](name: String,
                             iterations: Int,
                             runner: Runner[P],
                             strategies: Set[Strategy[P]],
-                            output: String
-                      ) extends Runner[P]:
+                            output: String) extends Runner[P]:
   var counter = 0
-
-//  def execute(solution: P): (P, Option[Double]) = {
-    def execute(solution: Solution[P]): (P, Option[Double]) =
-
+  
+  def execute(solution: Solution[P]): (P, Option[Double]) =
     // new heuristicPanel with runner (is either new metaheuristic or executor)
     val panel = new HeuristicPanelImplementation[P](runner, strategies)
 
@@ -42,7 +39,7 @@ case class Metaheuristic[P](name: String,
           result._2 match
             case Some(candidateBest) =>
               // check if new best is found
-              if (candidateBest < currentBest)
+              if candidateBest < currentBest then
                 best = (result._1, result._2)
             case _ => // do nothing
         // initialize best
