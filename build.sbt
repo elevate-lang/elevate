@@ -11,9 +11,9 @@ lazy val commonSettings = Seq(
       "-indent",
       "-new-syntax",
 //      "-rewrite",
-      "-unchecked",
       "-deprecation",
       "-feature",
+      "-unchecked",
       "-language:reflectiveCalls"
     ) else Seq(
       "-Wunused:nowarn",
