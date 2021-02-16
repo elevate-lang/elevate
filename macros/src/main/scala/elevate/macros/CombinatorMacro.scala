@@ -181,7 +181,7 @@ object CombinatorMacro {
         final case class ${TypeName(className)}[..$tparams](...$classParamLists) extends Strategy[$t] {
           ..${makeApply(t, body)}
 
-          ..${makeToString(name, classParamLists)}
+          ..${makeToString(name, classParamLists, funImplParamLists)}
         }
 
         ..${makeCompanionFunction(name, className, tparams, t, classParamLists,
@@ -212,7 +212,9 @@ object CombinatorMacro {
       }
     }
 
-    def makeToString(name: TermName, paramLists: List[List[ValDef]] = List()): Tree = {
+    def makeToString(name: TermName,
+                     paramLists: List[List[ValDef]],
+                     funImplParamLists: List[List[ValDef]]): Tree = {
       c.prefix.tree match {
         case q"new combinator($docTree)" =>
           q"override def toString: String = ${c.eval[String](c.Expr(docTree))}"
@@ -223,14 +225,14 @@ object CombinatorMacro {
             q"override def toString: String = ${name.toString}"
           } else {
             q"""
-        override def toString: String = ${name.toString} + ${
-              paramLists.map { params =>
+              override def toString: String = ${name.toString} + ${
+              paramLists.filter(!funImplParamLists.contains(_)).map { params =>
                 q"""${params.map {
                   case ValDef(_, name, _, _) => q"$name.toString"
                 }}.mkString("(", ",", ")")"""
               }
             }.mkString("(", ",", ")")
-         """
+            """
           }
       }
     }
