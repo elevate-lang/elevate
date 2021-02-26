@@ -1,6 +1,6 @@
 package FSmooth
 
-import reflect.Selectable.reflectiveSelectable
+import scala.reflect.Selectable.reflectiveSelectable
 
 object lifting:
   sealed trait Result[+T]:

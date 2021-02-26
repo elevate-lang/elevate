@@ -1,15 +1,16 @@
 package elevate.fsmooth
 
-import elevate.core._
-import FSmooth.VectorFunctionConstants.build
-import FSmooth._
 import FSmooth.DSL.freshTypeVar
-import FSmooth.ScalarFunctionConstants._
-import FSmooth.VectorFunctionConstants._
 import FSmooth.PairFunctionConstants._
+import FSmooth.ScalarFunctionConstants._
 import FSmooth.ValueConstants._
-import reflect.Selectable.reflectiveSelectable
+import FSmooth.VectorFunctionConstants.{build, _}
+import FSmooth._
+import elevate.core.RewriteResult._
+import elevate.core._
 import elevate.core.macros.rule
+
+import scala.reflect.Selectable.reflectiveSelectable
 
 /* Implementing rules for the F~ language as described in:
 

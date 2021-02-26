@@ -1,7 +1,8 @@
 package FSmooth
 
 import FSmooth.traversal.{Continue, Result, Stop}
-import reflect.Selectable.reflectiveSelectable
+
+import scala.reflect.Selectable.reflectiveSelectable
 
 //noinspection TypeAnnotation,ApparentResultTypeRefinement
 object replace:

@@ -1,9 +1,8 @@
 package elevate.heuristic_search.heuristic
 
 import elevate.core.Strategy
-import elevate.heuristic_search.util.Path
+import elevate.heuristic_search.util.{Path, Solution}
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
-import elevate.heuristic_search.util.Solution
 
 class IterativeImprovement[P] extends Heuristic[P]:
 

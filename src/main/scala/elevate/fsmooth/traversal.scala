@@ -1,8 +1,9 @@
 package elevate.fsmooth
 
+import FSmooth._
+import elevate.core.RewriteResult._
 import elevate.core._
 import elevate.core.strategies.predicate._
-import FSmooth._
 
 object traversal:
 

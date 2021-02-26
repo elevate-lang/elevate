@@ -1,6 +1,6 @@
 package FSmooth
 
-import DSL._
+import FSmooth.DSL._
 
 //noinspection DuplicatedCode
 object ScalarFunctionConstants:

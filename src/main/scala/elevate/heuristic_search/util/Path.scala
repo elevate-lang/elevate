@@ -1,11 +1,11 @@
 package elevate.heuristic_search.util
 
+import elevate.core.{RewriteResult, Strategy}
+
 import java.io.{File, FileOutputStream, PrintWriter}
 import java.nio.file.{Files, Paths}
-
-import scala.sys.process._
 import scala.language.postfixOps
-import elevate.core.{RewriteResult, Strategy}
+import scala.sys.process._
 
 class Path[P](program:P,
               value:Option[Double],

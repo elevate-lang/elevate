@@ -1,5 +1,6 @@
 package elevate.core.strategies
 
+import elevate.core.RewriteResult._
 import elevate.core._
 import elevate.core.strategies.basic._
 

@@ -1,8 +1,9 @@
 package elevate.core.strategies
 
+import elevate.core.RewriteResult._
 import elevate.core._
-import elevate.core.strategies.traversal.topDown
 import elevate.core.macros._
+import elevate.core.strategies.traversal.topDown
 
 import scala.language.implicitConversions
 

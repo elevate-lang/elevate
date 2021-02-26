@@ -1,10 +1,10 @@
 package FSmooth
 
-import DSL._
+import FSmooth.DSL._
 import FSmooth.MSmooth._
 
 import scala.collection.mutable
-import reflect.Selectable.reflectiveSelectable
+import scala.reflect.Selectable.reflectiveSelectable
 
 object Differentiation:
   def deriv(e: Expr, x: Variable): Expr =

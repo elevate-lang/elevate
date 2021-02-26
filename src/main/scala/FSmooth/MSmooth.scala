@@ -1,7 +1,8 @@
 package FSmooth
 
 import FSmooth.DSL._
-import reflect.Selectable.reflectiveSelectable
+
+import scala.reflect.Selectable.reflectiveSelectable
 
 //noinspection DuplicatedCode
 object MSmooth:
@@ -77,9 +78,13 @@ object MSmooth:
   def matrixHot = fun( (n, m, r, c) =>
     build(n, fun(i =>
       build(m, fun(j =>
-        `if` ((i `=:=` r) `&&` (j `=:=` c))
-          `then` scalar(1.0)
-          `else` scalar(0.0) )) )) )
+        `if` {
+          (i `=:=` r) `&&` (j `=:=` c)
+          } `then` {
+            scalar(1.0)
+          } `else` {
+            scalar(0.0)
+        } )) )) )
 
   def matrixMap = fun( (m, f) =>
     build(len(m), fun(i => f(m.get(i)))) )

@@ -7,6 +7,7 @@ import elevate.core.strategies.basic.normalize
 import elevate.core.strategies.traversal.topDown
 import elevate.fsmooth.rules._
 import elevate.fsmooth.traversal._
+import elevate.core._
 
 class rewriteExamples extends elevate.test_util.Tests:
 
@@ -34,7 +35,8 @@ class rewriteExamples extends elevate.test_util.Tests:
         Application(len, Seq(v)),
         fun(i => Application(ifold, Seq(
           fun((a, j) =>
-            a + Application(get, Seq(v, j)) * Application(get, Seq(Application(get, Seq(I, j)), i))
+            a + Application(FSmooth.DSL.get, Seq(v, j)) *
+              Application(FSmooth.DSL.get, Seq(Application(FSmooth.DSL.get, Seq(I, j)), i))
           ),
           ScalarValue(0),
           Application(len, Seq(v))

@@ -1,6 +1,8 @@
 package elevate.core.macros
 
-import elevate.core.{Failure, RewriteResult, Strategy}
+import elevate.core.RewriteResult._
+import elevate.core.{RewriteResult, Strategy}
+
 import scala.quoted._
 
 inline def strategy[P](inline name: String,

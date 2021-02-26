@@ -1,7 +1,8 @@
 package elevate.core.strategies
 
-import elevate.core.{RewriteResult, Strategy, Success}
+import elevate.core.RewriteResult._
 import elevate.core.macros._
+import elevate.core.{RewriteResult, Strategy}
 
 object debug:
   def peek[P](f: P => Unit): Strategy[P] =

@@ -1,6 +1,6 @@
 package FSmooth
 
-import DSL._
+import FSmooth.DSL._
 
 object VectorFunctionConstants:
   case class build(override val t: Type) extends Constants(t):

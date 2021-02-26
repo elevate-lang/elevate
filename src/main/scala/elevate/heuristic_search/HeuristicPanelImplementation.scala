@@ -1,7 +1,8 @@
 package elevate.heuristic_search
 
+import elevate.core.RewriteResult._
+import elevate.core._
 import elevate.core.strategies.basic
-import elevate.core.{Failure, Strategy, Success}
 import elevate.heuristic_search.util.Solution
 
 
