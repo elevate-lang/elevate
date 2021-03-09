@@ -50,7 +50,7 @@ object DSL:
       def `then`(thenBranch: Expr): Object {
         def `else` (elseBranch: Expr): Conditional
       } = new {
-        def `else`(elseBranch: Expr) = Conditional(cond, thenBranch, elseBranch)
+        def `else`(elseBranch: Expr): Conditional = Conditional(cond, thenBranch, elseBranch)
       }
     }
 
@@ -83,25 +83,25 @@ object DSL:
 
   object fun:
     def apply(f: Variable => Expr): Abstraction =
-      val e = Variable(freshName("e"))
+      val e: Variable = Variable(freshName("e"))
       Abstraction(Seq(e), f(e))
 
     def apply(f: (Variable, Variable) => Expr): Abstraction =
-      val e0 = Variable(freshName("e"))
-      val e1 = Variable(freshName("e"))
+      val e0: Variable = Variable(freshName("e"))
+      val e1: Variable = Variable(freshName("e"))
       Abstraction(Seq(e0, e1), f(e0, e1))
 
     def apply(f: (Variable, Variable, Variable) => Expr): Abstraction =
-      val e0 = Variable(freshName("e"))
-      val e1 = Variable(freshName("e"))
-      val e2 = Variable(freshName("e"))
+      val e0: Variable = Variable(freshName("e"))
+      val e1: Variable = Variable(freshName("e"))
+      val e2: Variable = Variable(freshName("e"))
       Abstraction(Seq(e0, e1, e2), f(e0, e1, e2))
 
     def apply(f: (Variable, Variable, Variable, Variable) => Expr): Abstraction =
-      val e0 = Variable(freshName("e"))
-      val e1 = Variable(freshName("e"))
-      val e2 = Variable(freshName("e"))
-      val e3 = Variable(freshName("e"))
+      val e0: Variable = Variable(freshName("e"))
+      val e1: Variable = Variable(freshName("e"))
+      val e2: Variable = Variable(freshName("e"))
+      val e3: Variable = Variable(freshName("e"))
       Abstraction(Seq(e0, e1, e2, e3), f(e0, e1, e2, e3))
 
     def apply(p: (Seq[Variable], Expr)) = Abstraction(p._1, p._2)
@@ -112,7 +112,7 @@ object DSL:
       def beIn(f: Variable => Expr): Let
     } = new {
       def beIn(f: Variable => Expr): Let =
-        val e = Variable(freshName("e"))
+        val e: Variable = Variable(freshName("e"))
         Let(e, init, f(e))
     }
 

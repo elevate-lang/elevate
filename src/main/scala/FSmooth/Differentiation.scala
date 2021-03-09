@@ -12,10 +12,10 @@ object Differentiation:
     x.t match
       case Double =>
         D( fun(vi -> e) ).applySeq( vi.map(A0(_, x)) )
-      case Array(Double) =>
+      case FSmooth.Array(Double) =>
         build(len(x), fun(r =>
           D( fun(vi -> e) ).applySeq( vi.map(A1(_, x, r))  ) ))
-      case Array(Array(Double)) =>
+      case FSmooth.Array(FSmooth.Array(Double)) =>
         build(matrixRows(x), fun(r =>
           build(matrixCols(x), fun(c =>
             D( fun(vi -> e) ).applySeq( vi.map(A2(_, x, r, c)) ) )) ))

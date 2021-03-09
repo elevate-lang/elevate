@@ -1,31 +1,35 @@
 package FSmooth
 
-sealed trait Type
+export Type.Cases._
+export ExpressionType.Cases._
+export Num._
 
-final case class TypeVar(name: String) extends Type
+type Type = Type.Cases | ExpressionType
+type ExpressionType = ExpressionType.Cases | Num
 
-sealed trait ExpressionType extends Type
+object Type:
+  enum Cases:
+    case TypeVar(name: String)
+    case IncompleteFunType(inT: Type, outT: Type)
+    case FunType(inT: Type, outT: ExpressionType)
 
-final case class IncompleteFunType(inT: Type, outT: Type) extends Type:
-  override def toString: String = s"($inT -> $outT)"
+    override def toString: String = this match
+      case TypeVar(name) => name
+      case IncompleteFunType(inT, outT) => s"($inT -> $outT)"
+      case FunType(inT, outT) => s"($inT -> $outT)"
 
-final case class FunType(inT: Type, outT: ExpressionType) extends Type:
-  override def toString: String = s"($inT -> $outT)"
+object ExpressionType:
+  enum Cases:
+    case ExpressionTypeVar(name: String)
+    case Bool
+    case Array(elemType: ExpressionType)
+    case Pair(fst: ExpressionType, snd: ExpressionType)
+  
+    override def toString: String = this match
+      case ExpressionTypeVar(name) => name
+      case Bool => "Bool"
+      case Array(elemType) => s"Array<$elemType>"
+      case Pair(fst, snd) => s"$fst x $snd"
 
-final case class ExpressionTypeVar(name: String) extends ExpressionType
-
-sealed trait Num extends ExpressionType
-
-case object Bool extends ExpressionType
-
-final case class Array(elemType: ExpressionType) extends ExpressionType:
-  override def toString: String = s"Array<$elemType>"
-
-final case class Pair(fst: ExpressionType, snd: ExpressionType) extends ExpressionType:
-  override def toString: String = s"$fst x $snd"
-
-case object Double extends Num
-
-case object Index extends Num
-
-case object Card extends Num
+enum Num:
+  case Double, Index, Card

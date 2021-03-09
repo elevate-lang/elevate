@@ -154,7 +154,7 @@ object rules:
   def foldInsertFun: Strategy[FSmooth] =
     rule("ifold f z n ~> ifold(fun a i -> f a (i+1))(f z 0)(n -1)", {
       case Application(`ifold`(_), Seq(f, z, n), _) =>
-        val (a, i) = (Variable("a"), Variable("i"))
+        val (a: Variable, i: Variable) = (Variable("a"), Variable("i"))
         Success(Application(VectorFunctionConstants.`ifold`(freshTypeVar), Seq(
           Abstraction(Seq(a, i),
             Application(f, Seq(a, Application(ScalarFunctionConstants.`+`(freshTypeVar), Seq(i, ScalarValue(1)))))),

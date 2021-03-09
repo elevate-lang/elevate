@@ -100,7 +100,7 @@ object TypeInference:
           IncompleteFunType(
             substitute(inT, tv, replacement),
             substitute(outT, tv, replacement))
-        case Array(elemType) =>
+        case FSmooth.Array(elemType) =>
           Array(substitute(elemType, tv, replacement).asInstanceOf[ExpressionType])
         case Pair(fst, snd) =>
           Pair(substitute(fst, tv, replacement).asInstanceOf[ExpressionType], substitute(snd, tv, replacement).asInstanceOf[ExpressionType])
@@ -154,7 +154,7 @@ object TypeInference:
         unify(Set(
           Constraint(t1, t2),
           Constraint(r1, r2)))
-      case (Array(t1), Array(t2)) => unify(Set(Constraint(t1, t2)))
+      case (FSmooth.Array(t1), FSmooth.Array(t2)) => unify(Set(Constraint(t1, t2)))
       case (Pair(f1, s1), Pair(f2, s2)) => unify(Set(Constraint(f1, f2), Constraint(s2, s2)))
       case (TypeVar(tv), ty) => unifyVar(tv, ty)
       case (ty, TypeVar(tv)) => unifyVar(tv, ty)
