@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.0.0-RC1"
+ThisBuild / scalaVersion := "3.0.0-RC3"
 ThisBuild / organization := "org.elevate-lang"
 
 lazy val commonSettings = Seq(
@@ -6,10 +6,9 @@ lazy val commonSettings = Seq(
 
   scalacOptions ++= {
     if (isDotty.value) Seq(
-//      "-Xfatal-warnings",
+      "-Xfatal-warnings",
       "-indent",
       "-new-syntax",
-//      "-rewrite",
       "-deprecation",
       "-feature",
       "-unchecked",
@@ -37,6 +36,6 @@ lazy val elevate = (project in file("."))
     commonSettings,
 
     // Scalatest
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.5" % "test"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.8" % "test"
   )
 

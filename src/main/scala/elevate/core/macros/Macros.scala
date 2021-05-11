@@ -6,11 +6,19 @@ import elevate.core.{RewriteResult, Strategy}
 import scala.quoted._
 
 inline def strategy[P](inline name: String,
+                       inline rule: PartialFunction[P, RewriteResult[P]]): Strategy[P] =
+  ${ strategyMacro('name, 'rule) }
+
+inline def strategy[P](inline name: String,
                        inline rule: Strategy[P]): Strategy[P] =
   ${ strategyMacro('name, 'rule) }
 
 inline def rule[P](inline name: String,
                    inline rule: Strategy[P]): Strategy[P] =
+  ${ strategyMacro('name, 'rule) }
+  
+inline def rule[P](inline name: String,
+                   inline rule: PartialFunction[P, RewriteResult[P]]): Strategy[P] =
   ${ strategyMacro('name, 'rule) }
 
 inline def combinator[P](inline name: String,

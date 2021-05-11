@@ -42,6 +42,8 @@ object Differentiation:
     case Let(x, e1, e2, _)            => Let(mark(x), D(e1), D(e2))
     case Conditional(e1, e2, e3, _)   =>`if` (fst(D(e1))) `then` D(e2) `else` D(e3)
     case ScalarValue(e)               => pair(P(e), E(e))
+    case Abstraction(_, _, _) | Application(_, _, _) |
+         IndexValue(_) | CardinalityValue(_) | _: Expr.Constants => ???
 
   def P(e: Double) = ???
   def E(e: Double) = ???
