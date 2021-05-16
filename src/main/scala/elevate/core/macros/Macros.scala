@@ -21,6 +21,11 @@ inline def rule[P](inline name: String,
                    inline rule: PartialFunction[P, RewriteResult[P]]): Strategy[P] =
   ${ strategyMacro('name, 'rule) }
 
+inline def transformer[P](inline name: String,
+                          inline f: Strategy[P] => Strategy[P]
+                         ): Strategy[P] => Strategy[P] =
+  ${ transformerMacro('name, 'f) }
+
 inline def combinator[P](inline name: String,
                          inline f: Strategy[P] => Strategy[P] => Strategy[P]
                         ): Strategy[P] => Strategy[P] => Strategy[P] =
@@ -39,6 +44,24 @@ def strategyMacro[P](name: Expr[String],
           case _: MatchError => Failure(this)
           
       override def toString(): String = $name
+    }
+  }
+  println(name.show + "\n" + expr.show)
+  expr
+
+def transformerMacro[P](name: Expr[String],
+                        f: Expr[Strategy[P] => Strategy[P]])
+                       (using Type[P])
+                       (using Quotes): Expr[Strategy[P] => Strategy[P]] =
+  val expr = '{
+    (s: Strategy[P]) => new Strategy[P] {
+      override def apply(p: P): RewriteResult[P] =
+        try
+          $f(s)(p)
+        catch
+          case _: MatchError => Failure(this)
+
+      override def toString(): String = $name + s"(${s.toString})"
     }
   }
   println(name.show + "\n" + expr.show)

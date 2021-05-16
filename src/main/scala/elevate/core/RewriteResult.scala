@@ -1,8 +1,8 @@
 package elevate.core
 
 enum RewriteResult[P]:
-  case Success(p: P)
-  case Failure(s: Strategy[P])
+  case Success(p: P)            extends RewriteResult[P] with SuccessRewriteCounter
+  case Failure(s: Strategy[P])  extends RewriteResult[P]
 
   def get: P = this match
     case Success(p) => p
@@ -31,3 +31,8 @@ enum RewriteResult[P]:
     case Failure(s) => f(s)
 
 case class NotApplicable[P](s: Strategy[P]) extends Exception
+
+object SuccessRewriteCounter:
+  var rewriteCount = 1
+trait SuccessRewriteCounter:
+  SuccessRewriteCounter.rewriteCount = SuccessRewriteCounter.rewriteCount + 1

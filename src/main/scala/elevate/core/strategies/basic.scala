@@ -44,7 +44,7 @@ object basic:
     strategy("repeatNTimes", p => if n > 0 then {(s `;` repeatNTimes(n - 1)(s))(p)} else { id(p) })
 
   // Normalize
-  def normalize[P: Traversable](s: Strategy[P]): Strategy[P] =
+  def normalize[P](s: Strategy[P])(using ev: Traversable[P]): Strategy[P] =
      strategy("normalize", repeat(topDown.apply(s)))
 
   // Strategy Factories
