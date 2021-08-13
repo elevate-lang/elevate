@@ -1,5 +1,7 @@
 package elevate.core
 
+export RewriteResult.{Success, Failure}
+
 enum RewriteResult[P]:
   case Success(p: P)            extends RewriteResult[P] with SuccessRewriteCounter
   case Failure(s: Strategy[P])  extends RewriteResult[P]
