@@ -49,10 +49,10 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
       }
     })
 
-    val identity = basic.id[P]
+//    val identity = basic.id[P]
 
     // add id to neighbourhood (use real id strategy instead of null)
-    neighbours.add(new Solution[P](solution.expression, solution.strategies :+ identity))
+//    neighbours.add(new Solution[P](solution.expression, solution.strategies :+ identity))
 
     neighbours.toSet
   }
