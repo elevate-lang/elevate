@@ -82,6 +82,11 @@ class Path[P](program:P,
     pwFull.close()
     pwReduced.close()
 
+
+    // visualize dot graph
+    (s"dot -Tpng -O " + uniqueFilename_full !!)
+    (s"dot -Tpng -O " + uniqueFilename_reduced !!)
+
   }
 
   def writePathToDisk(filename: String) = {
