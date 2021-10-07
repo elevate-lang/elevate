@@ -11,6 +11,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
 //    var solution:P = initialSolution
     var solution = initialSolution
     var solutionValue:Option[Double] = panel.f(solution)
+    var solutionStrategies = Seq.empty[Strategy[P]]
     val path = new Path(solution.expression, solutionValue)
 
     var oldSolution = solution
@@ -33,6 +34,15 @@ class IterativeImprovement[P] extends Heuristic[P] {
       Ns.foreach(ns => {
         val fns = panel.f(ns)
         val fsolution = solutionValue
+
+        // add every node to path
+        // todo mark chosen ones (aka solutions)
+
+        val current = path.current
+        // test this node, so add this node to the path
+        path.add(ns.expression, ns.strategies.last, fns)
+
+
         (fns, fsolution) match {
           case (Some(fnsInternal), Some(fsolutionInternal)) =>
 
@@ -40,12 +50,25 @@ class IterativeImprovement[P] extends Heuristic[P] {
             if (fnsInternal < fsolutionInternal) {
               solution = ns
               solutionValue = fns
+              solutionStrategies = ns.strategies
 
-              path.add(ns.expression, ns.strategies.last, fns)
+//              path.add(ns.expression, ns.strategies.last, fns)
             }
           case _ =>
         }
+
+        // after testing go one node back
+        path.add(current.program, elevate.core.strategies.basic.revert, current.value)
       })
+
+      // add chosen solution to path
+
+      val solutionStrategy:Strategy[P] = solutionStrategies.size match{
+        case 0 => elevate.core.strategies.basic.id
+        case _ => solutionStrategies.last
+      }
+
+      path.add(solution.expression, elevate.core.strategies.basic.id, solutionValue)
 
       // check, if chosen solution is better
     } while((solutionValue, oldSolutionValue) match {

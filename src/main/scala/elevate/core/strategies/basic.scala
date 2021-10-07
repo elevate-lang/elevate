@@ -25,6 +25,9 @@ object basic {
 
   @rule def id[P]: Strategy[P] = p => Success(p)
 
+  // dummy no rewrite will happen here
+  @rule def revert[P]: Strategy[P] = p => Success(p)
+
   @rule def fail[P]: Strategy[P] = _ => Failure(fail)
 
   // Basic Strategy Combinators
