@@ -2,24 +2,31 @@ package elevate.heuristic_search.util
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import java.nio.file.{Files, Paths}
-
 import scala.sys.process._
 import scala.language.postfixOps
 import elevate.core.{RewriteResult, Strategy}
 
+import scala.collection.mutable.ListBuffer
+
 class Path[P](program:P,
               value:Option[Double],
               var initial:PathElement[P] = null,
-              var current:PathElement[P] = null
+              var current:PathElement[P] = null,
+              var elements: Int
              ){
+
+    elements = 1
     // create initial path element
-    initial = new PathElement[P](program, null, value, null, null)
+    initial = new PathElement[P](program, null, value, null, null, elements)
     // set initial path element to current element
     current = initial
 
+
   def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit = {
+    elements += 1
+
     // create new path element
-    val elem = new PathElement[P](program, strategy, value, current, null)
+    val elem = new PathElement[P](program, strategy, value, current, null, elements)
 
     // set new element as successor of current element
     current.successor = elem
@@ -47,13 +54,26 @@ class Path[P](program:P,
     var full:String = "graph path {\n"
     var reduced:String = "graph path {\n"
 
+    // write nodes
     while (tmp != null) {
+      // for each node traverse tree and match for given hash code
+      var tmp2 = initial
+      val visitCounter = new ListBuffer[Int]
+      while(tmp2 != null){
+        // if element was visited later in graph
+        if(tmp2.program.hashCode() == tmp.program.hashCode()){
+          visitCounter += tmp2.visitNumber
+        }
+        tmp2 = tmp2.successor
+      }
+
       // write to file
-      full += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
-      reduced += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + Integer.toHexString(tmp.program.hashCode()) + "\n" + tmp.value + " \"]; \n"
+      full += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
+      reduced += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + Integer.toHexString(tmp.program.hashCode()) + "\n" + tmp.value + " \"]; \n"
       tmp = tmp.successor
     }
 
+    // write edges
     tmp = initial.successor
     while(tmp != null){
       full += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
@@ -172,7 +192,8 @@ class PathElement[P] (val program:P,
                       val strategy:Strategy[P],
                       val value:Option[Double],
                       var predecessor:PathElement[P],
-                      var successor:PathElement[P]
+                      var successor:PathElement[P],
+                      val visitNumber: Int
                       ){
   def setSuccessor(elem:PathElement[P]): Unit ={
     successor = elem

@@ -13,7 +13,7 @@ class Random[P] extends Heuristic[P] {
 
 //    var solution = new Solution[P](initialSolution, scala.collection.mutable.Seq.empty[Strategy[P]])
 
-    val path = new Path(solution.expression, panel.f(solution))
+    val path = new Path(solution.expression, panel.f(solution), null, null, 0)
     val random = scala.util.Random
 
     for (_ <- Range(0, depth)) {
@@ -43,7 +43,7 @@ class Random[P] extends Heuristic[P] {
             }
 
           }
-          case _ =>
+          case _ => path.add(solution.expression, result.strategies.last, Some(value))
         }
       }
     }

@@ -12,7 +12,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
     var solution = initialSolution
     var solutionValue:Option[Double] = panel.f(solution)
     var solutionStrategies = Seq.empty[Strategy[P]]
-    val path = new Path(solution.expression, solutionValue)
+    val path = new Path(solution.expression, solutionValue, null, null, 0)
 
     var oldSolution = solution
     var oldSolutionValue:Option[Double] = solutionValue
@@ -68,7 +68,12 @@ class IterativeImprovement[P] extends Heuristic[P] {
         case _ => solutionStrategies.last
       }
 
-      path.add(solution.expression, elevate.core.strategies.basic.id, solutionValue)
+//      solution.equals(oldSolution) match {
+//        case true => path.add(solution.expression, solutionStrategy, solutionValue)
+//        case false => path.add(solution.expression, solutionStrategy, solutionValue)
+//      }
+
+    path.add(solution.expression, solutionStrategy, solutionValue)
 
       // check, if chosen solution is better
     } while((solutionValue, oldSolutionValue) match {
