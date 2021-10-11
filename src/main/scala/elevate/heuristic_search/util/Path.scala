@@ -136,7 +136,10 @@ class Path[P](program:P,
       // create strategy string for file
       var strategyString = ""
       list.foreach(elem=>{
-        strategyString +=  elem.toString + "\n"
+        elem match {
+          case null => strategyString +=  "null" + "\n"
+          case _ => strategyString +=  elem.toString + "\n"
+        }
       })
 
       // write strategy string to file
@@ -184,6 +187,10 @@ class Path[P](program:P,
     }
 
     uniqueFilename_full
+  }
+
+  def setCurrent(pathElement: PathElement[P]) = {
+    current = pathElement
   }
 
 }
