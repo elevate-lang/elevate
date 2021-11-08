@@ -10,6 +10,6 @@ object StrategyMacro {
   // noinspection ScalaUnusedSymbol
   @compileTimeOnly("strategy macro")
   class strategy(doc: String = "") extends StaticAnnotation {
-    def macroTransform(annottees: Any*): Any = macro Impl.rule
+    def macroTransform(annottees: Any*): Any = macro Impl.strategy
   }
 }
