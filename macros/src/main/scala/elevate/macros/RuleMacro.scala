@@ -6,6 +6,7 @@ import scala.language.experimental.macros
 
 // scalastyle:off indentation
 object RuleMacro {
+  val verbose = false
 
   // noinspection ScalaUnusedSymbol
   @compileTimeOnly("rule macro")
@@ -177,8 +178,10 @@ object RuleMacro {
 
         ..${makeToString(name)}
       }"""
-      c.info(c.enclosingPosition,
-        s"generated `${name.toString}'\n$code", force = false)
+      if (verbose) {
+        c.info(c.enclosingPosition,
+          s"generated `${name.toString}'\n$code", force = false)
+      }
       code
     }
 
@@ -207,8 +210,10 @@ object RuleMacro {
             q"def $name[..$tparams](...$params): Strategy[$resType] = $makeClass"
         }}
         """
-      c.info(c.enclosingPosition,
-        s"generated `${name.toString}'\n$code", force = false)
+      if (verbose) {
+        c.info(c.enclosingPosition,
+          s"generated `${name.toString}'\n$code", force = false)
+      }
       code
     }
 
