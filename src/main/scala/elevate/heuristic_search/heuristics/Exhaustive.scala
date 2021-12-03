@@ -10,6 +10,8 @@ class Exhaustive[P] extends Heuristic[P] {
 
   def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
 
+    println("depth: " + depth)
+
     var solution = initialSolution
     val solutionValue = panel.f(solution)
 
@@ -20,7 +22,7 @@ class Exhaustive[P] extends Heuristic[P] {
     queue = queue.enqueue(solution, path.initial)
 
     var i = 0
-    while(!queue.isEmpty && i < 10) {
+    while(!queue.isEmpty && i < depth) {
       i = i + 1
 
 //      println("i: " + i)
