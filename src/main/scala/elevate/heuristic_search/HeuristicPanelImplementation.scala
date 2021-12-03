@@ -2,13 +2,13 @@ package elevate.heuristic_search
 
 import elevate.core.strategies.basic
 import elevate.core.{Failure, Strategy, Success}
-import elevate.heuristic_search.util.Solution
+import elevate.heuristic_search.util.{Solution, hashProgram}
 
 
 // encapsulates definition of neighbourhood
 class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[Strategy[P]]) extends HeuristicPanel[P] {
 
-  val solutions = new scala.collection.mutable.HashMap[Int, Option[Double]]()
+  val solutions = new scala.collection.mutable.HashMap[String, Option[Double]]()
   var call = 0
 
   def N(solution:Solution[P]):Set[Solution[P]]= {
@@ -60,11 +60,11 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
   // warning: check size of hashmap
   def f(solution:Solution[P]): Option[Double] = {
     // buffer performance values in hashmap
-    solutions.get(solution.hashCode()) match {
-      case Some(value) => solutions.get(solution.hashCode()).get
+    solutions.get(hashProgram(solution.expression)) match {
+      case Some(value) => solutions.get(hashProgram(solution.expression)).get
       case _ => {
         val performanceValue = runner.execute(solution)._2
-        solutions.+=(solution.hashCode() -> performanceValue)
+        solutions.+=(hashProgram(solution.expression)-> performanceValue)
         performanceValue
       }
     }

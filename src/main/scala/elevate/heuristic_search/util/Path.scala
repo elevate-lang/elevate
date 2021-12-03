@@ -21,6 +21,32 @@ class Path[P](program:P,
     // set initial path element to current element
     current = initial
 
+  def getSize(): Int = {
+    var counter = 0
+    var tmp = initial
+
+    while(tmp != null){
+      counter += 1
+      tmp = tmp.successor
+    }
+
+    counter
+  }
+
+  def getElement(i: Int):PathElement[P] = {
+    // check if size of path is exceeded by i
+
+    var counter = 0
+    var tmp = initial
+
+    while(tmp != null && counter < i){
+      counter += 1
+      tmp = tmp.successor
+    }
+
+    tmp
+  }
+
 
   def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit = {
     elements += 1
@@ -59,25 +85,52 @@ class Path[P](program:P,
       // for each node traverse tree and match for given hash code
       var tmp2 = initial
       val visitCounter = new ListBuffer[Int]
+
+      // initialize strategy string
+      var strategyString = tmp.strategy match {
+        case null => ""
+        case value => value.toString()
+      }
+
       while(tmp2 != null){
         // if element was visited later in graph
         if(tmp2.program.hashCode() == tmp.program.hashCode()){
           visitCounter += tmp2.visitNumber
+
+          // count strategies
+          // todo reduce this to actual strategies
+          strategyString = tmp2.strategy match {
+            case null => strategyString
+            case value => strategyString + "\n" + value.toString()
+          }
+
         }
         tmp2 = tmp2.successor
       }
 
-      // write to file
-      full += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
-      reduced += "\" "+ Integer.toHexString(tmp.program.hashCode()) + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + Integer.toHexString(tmp.program.hashCode()) + "\n" + tmp.value + " \"]; \n"
+
+      // todo fix bugs in path!
+      // remove all pairs "rule - revert"
+
+      // write strategy, which lead to this node
+      // todo list all strategies leading to this node starting from the initial node
+
+      val hash = hashProgram(tmp.program)
+
+      full += "\" "+ hash + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
+      reduced += "\" "+ hash + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\n" + strategyString + "\n" + tmp.value + " \"]; \n"
       tmp = tmp.successor
     }
 
     // write edges
     tmp = initial.successor
     while(tmp != null){
-      full += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
-      reduced += "\" "+ Integer.toHexString(tmp.predecessor.program.hashCode()) + " \" -- \" " + Integer.toHexString(tmp.program.hashCode()) + " \"  [label = \" " + tmp.strategy + " \"]; \n"
+
+      val hash = hashProgram(tmp.program)
+      val hashPredecessor = hashProgram(tmp.predecessor.program)
+
+      full += "\" "+ hashPredecessor + " \" -- \" " + hash + " \"  [label = \" " + tmp.strategy + " \"]; \n"
+      reduced += "\" "+ hashPredecessor + " \" -- \" " + hash + " \"  [label = \" " + tmp.strategy + " \"]; \n"
 
       tmp = tmp.successor
     }
@@ -116,13 +169,14 @@ class Path[P](program:P,
     var tmp = initial
 
     do {
+      val hash = hashProgram(tmp.program)
       // get unique filename
-      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + Integer.toHexString(tmp.program.hashCode()), 0)
+      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash , 0)
       // create folder
       (s"mkdir ${uniqueFilename}" !!)
 
       // create file for expression
-      val pwProgram = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/" + Integer.toHexString(tmp.program.hashCode())), false))
+      val pwProgram = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/" + hash), false))
 
       // create file for strategies
       val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
