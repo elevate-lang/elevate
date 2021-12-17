@@ -1,15 +1,17 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 import elevate.heuristic_search.util.{Path, PathElement, Solution, hashProgram}
+import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
 import scala.collection.immutable.Queue
 
-class Exhaustive[P] extends Heuristic[P] {
+class DepthFirst[P] extends Heuristic[P] {
 
 
-  // todo cleanup
-  // breadth first
+  // todo implement depth first search
+  // match for given expression?
+  // how to print path
+
   def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
 
     println("depth: " + depth)

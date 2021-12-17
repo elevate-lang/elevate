@@ -30,12 +30,17 @@ case class Metaheuristic[P](name: String,
       val result = heuristic.start(panel, solution, depth)
 
       // write runtimes
+      println("[METAHEURISTIC] : write values")
       writeValues(output + "/" + name + ".csv", result, name)
 
+
       // print path
+      println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
+      println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
       result._3.writePathToDot(output + "/" + name + ".dot")
-      //result._3.writePathToDisk(output + "/" )
-      result._3.writePathToDisk(output)
+//      result._3.writePathToDisk(output + "/" )
+      println("[METAHEURISTIC] : write path to disk")
+//      result._3.writePathToDisk(output)
 
       best._2 match {
         case Some(currentBest) =>

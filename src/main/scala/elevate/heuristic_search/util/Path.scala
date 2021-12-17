@@ -6,8 +6,10 @@ import scala.sys.process._
 import scala.language.postfixOps
 import elevate.core.{RewriteResult, Strategy}
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+// todo think about tree structure
 class Path[P](program:P,
               value:Option[Double],
               var initial:PathElement[P] = null,
@@ -47,6 +49,36 @@ class Path[P](program:P,
     tmp
   }
 
+  // shrink path
+  // list all possible solutions without duplicates
+  def getSearchSpace(): Seq[Solution[P]] = {
+
+    // throw all in hashmap
+    val hashmap = mutable.HashMap.empty[String, Solution[P]]
+
+    // initialize hashmap
+    var tmp = initial
+    hashmap += (hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+
+    // iterate over all path nodes
+    while(tmp.successor != null) {
+      tmp = tmp.successor
+
+      // duplicates?
+//      hashmap.addOne(hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+      hashmap += (hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+    }
+
+    // convert to Seq
+    val seq = hashmap.toSeq.map(elem => elem._2)
+
+    println("path size: " + getSize())
+    println("hashmap size: " + hashmap.size)
+    println("seq size: " + seq.size)
+
+    seq
+  }
+
 
   def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit = {
     elements += 1
@@ -77,11 +109,18 @@ class Path[P](program:P,
     var tmp = initial
 
     // prepare file
-    var full:String = "graph path {\n"
-    var reduced:String = "graph path {\n"
+    var full:String = "strict digraph path {\n"
+    var full2:String = "strict digraph path {\n"
+    var reduced:String = "strict digraph path {\n"
+    var reduced2:String = "strict digraph path {\n"
+    var reduced3:String = "strict digraph path {\n"
 
+    println("write nodes")
     // write nodes
+    var counter = 0
     while (tmp != null) {
+//      println("node: " + counter)
+//      counter += 1
       // for each node traverse tree and match for given hash code
       var tmp2 = initial
       val visitCounter = new ListBuffer[Int]
@@ -92,21 +131,21 @@ class Path[P](program:P,
         case value => value.toString()
       }
 
-      while(tmp2 != null){
-        // if element was visited later in graph
-        if(tmp2.program.hashCode() == tmp.program.hashCode()){
-          visitCounter += tmp2.visitNumber
-
-          // count strategies
-          // todo reduce this to actual strategies
-          strategyString = tmp2.strategy match {
-            case null => strategyString
-            case value => strategyString + "\n" + value.toString()
-          }
-
-        }
-        tmp2 = tmp2.successor
-      }
+//      while(tmp2 != null){
+//        // if element was visited later in graph
+//        if(tmp2.program.hashCode() == tmp.program.hashCode()){
+//          visitCounter += tmp2.visitNumber
+//
+//          // count strategies
+//          // todo reduce this to actual strategies
+//          strategyString = tmp2.strategy match {
+//            case null => strategyString
+//            case value => strategyString + "\n" + value.toString()
+//          }
+//
+//        }
+//        tmp2 = tmp2.successor
+//      }
 
 
       // todo fix bugs in path!
@@ -117,48 +156,112 @@ class Path[P](program:P,
 
       val hash = hashProgram(tmp.program)
 
-      full += "\" "+ hash + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + tmp.program.toString  + "\n" + tmp.value + " \"]; \n"
-      reduced += "\" "+ hash + " \" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\n" + strategyString + "\n" + tmp.value + " \"]; \n"
+      full += "\"" + hash + "\" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n n" + tmp.program.toString + "\n" + tmp.value + "\"]; \n"
+      full2 += "\"" + hash + "\" [label = \" " + tmp.program.toString  + "\n" + tmp.value + "\"]; \n"
+
+      reduced  += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + strategyString + "\\n" + tmp.value + "\"]; \n"
+      reduced2 += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + tmp.value + "\"]; \n"
+      reduced3 += "\"" + hash + "\" [label = \"" + hash + "\\n" + tmp.value + "\"]; \n"
       tmp = tmp.successor
     }
 
+    println("write edges")
+
     // write edges
     tmp = initial.successor
+    var appendix = ""
     while(tmp != null){
 
       val hash = hashProgram(tmp.program)
       val hashPredecessor = hashProgram(tmp.predecessor.program)
 
-      full += "\" "+ hashPredecessor + " \" -- \" " + hash + " \"  [label = \" " + tmp.strategy + " \"]; \n"
-      reduced += "\" "+ hashPredecessor + " \" -- \" " + hash + " \"  [label = \" " + tmp.strategy + " \"]; \n"
+
+      appendix += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+
+
+//      full += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+//      full2 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+
+//      reduced += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+//      reduced2 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+//      reduced3 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
 
       tmp = tmp.successor
     }
 
+    println("reverse order")
+
+    // reverse order linewise
+    appendix = appendix.split("\n")
+      .toSeq
+      .map(_.trim)
+      .filter(_ != "").reverse.mkString("\n")
+
+    println("append")
+
+    // append to dot graphs
+    full += appendix
+    full2 += appendix
+
+    reduced += appendix
+    reduced2 += appendix
+    reduced3 += appendix
+
     // finish file
     full += "}"
+    full2 += "}"
     reduced += "}"
+    reduced2 += "}"
+    reduced3 += "}"
 
     //check if file exists and avoid overwriting
     val uniqueFilename_full = getUniqueFilename(filename, 4)
-    val uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain" + ".dot"
+    val uniqueFilename_full2 = uniqueFilename_full.substring(0, uniqueFilename_full.length-4) + "_no_numbers" + ".dot"
+
+    val uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain_strategies" + ".dot"
+    val uniqueFilename_reduced2 = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain" + ".dot"
+    val uniqueFilename_reduced3 = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain_no_numbers" + ".dot"
 
     // create new files
     val pwFull = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
+    val pwFull2 = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full2), false))
+
     val pwReduced = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced), false))
+    val pwReduced2 = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced2), false))
+    val pwReduced3 = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced3), false))
 
     // write string encoding path to file
     pwFull.write(full)
+    pwFull2.write(full2)
+
     pwReduced.write(reduced)
+    pwReduced2.write(reduced2)
+    pwReduced3.write(reduced3)
 
     // close files
     pwFull.close()
+    pwFull2.close()
+
     pwReduced.close()
+    pwReduced2.close()
+    pwReduced3.close()
 
 
     // visualize dot graph
     (s"dot -Tpng -O " + uniqueFilename_full !!)
+    (s"dot -Tpdf -O " + uniqueFilename_full !!)
+
+    (s"dot -Tpdf -O " + uniqueFilename_full2 !!)
+    (s"dot -Tpdf -O " + uniqueFilename_full2 !!)
+
     (s"dot -Tpng -O " + uniqueFilename_reduced !!)
+    (s"dot -Tpdf -O " + uniqueFilename_reduced !!)
+
+    (s"dot -Tpng -O " + uniqueFilename_reduced2 !!)
+    (s"dot -Tpdf -O " + uniqueFilename_reduced2 !!)
+
+    (s"dot -Tpng -O " + uniqueFilename_reduced3 !!)
+    (s"dot -Tpdf -O " + uniqueFilename_reduced3 !!)
 
   }
 
