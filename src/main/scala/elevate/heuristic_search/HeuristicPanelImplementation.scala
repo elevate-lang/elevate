@@ -12,12 +12,12 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
   var call = 0
 
   def N(solution:Solution[P]):Set[Solution[P]]= {
-    println("\n call number: " + call + "---------------------------------------------------")
-    println("solution.strategy: " + solution.strategies.size)
-    solution.strategies.foreach(elem =>{
-      println("strategy: " + elem)
-    })
-    println()
+//    println("\n call number: " + call + "---------------------------------------------------")
+//    println("solution.strategy: " + solution.strategies.size)
+//    solution.strategies.foreach(elem =>{
+//      println("strategy: " + elem)
+//    })
+//    println()
     call += 1
     val neighbours = scala.collection.mutable.Set[Solution[P]]()
 
@@ -27,16 +27,18 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 //      println("row: " + row)
       row += 1
       try {
+//        println("apply strategy")
         // apply strategy
         val result = strategy.apply(solution.expression)
+//        println("finished")
 
         // check rewriting result and it add to neighbourhood set
         result match {
           case _:Success[P] => {
-            println("solution.strategies: \n" + solution.strategies)
-            println("strategy: " + strategy)
+//            println("solution.strategies: \n" + solution.strategies)
+//            println("strategy: " + strategy)
             val tmp = solution.strategies :+ strategy
-            println("update: \n" + tmp)
+//            println("update: \n" + tmp)
             neighbours.add(new Solution[P](result.get, solution.strategies :+ strategy))
             //add to neighbourhood
           }
@@ -44,7 +46,7 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
         }
       }catch{
         case e:Throwable => {
-          print("rewriting error: " + e +  "\n")
+//          print("rewriting error: " + e +  "\n")
         }
       }
     })

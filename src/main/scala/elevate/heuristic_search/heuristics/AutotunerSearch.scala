@@ -1,7 +1,8 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, PathElement, Solution, hashProgram}
+import elevate.heuristic_search.util.{Path, Solution, hashProgram}
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import jdk.jfr.Timespan
 
 import scala.collection.immutable.Queue
 import scala.collection.mutable
@@ -9,293 +10,241 @@ import scala.util.Random
 
 class AutotunerSearch[P] extends Heuristic[P] {
 
-
-  // create search space using exhaustive/breadth first search and store in path
-
-  // then, count nodes in path and give to auto tuner
-
-  // neighbours?
-
-  // evaluate using impl.
-
-
   def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
-
 
     println("depth: " + depth)
 
+    val totalDurationStart = System.currentTimeMillis()
+
     var solution = initialSolution
-    var solutionValue = panel.f(solution)
-//    val solutionValue = panel.f(solution)
+//    var solutionValue = panel.f(solution)
+    var solutionValue: Option[Double] = Some(1000.toDouble)
 
-    // craete path
-    val path = new Path(solution.expression, solutionValue, null, null, 0)
-
-    var queue = Queue.empty[(Solution[P], PathElement[P])]
-    var queue2 = Queue.empty[Solution[P]]
-
-    queue = queue.enqueue(solution, path.initial)
-    queue2 = queue2.enqueue(solution)
-
-    // throw all in hashmap
+    // create path, queue and hashmap
+    val path = new Path(solution.expression, solutionValue, null, null, 0) // still necessary?
+    var queue = Queue.empty[(Int, Solution[P])]
     val hashmap = mutable.HashMap.empty[String, Solution[P]]
-    val hashmap2 = mutable.HashMap.empty[String, Solution[P]]
 
-    // initialize hashmap
-//    var tmp = path.initial
-
-//    var tmp = path.initial
-
-    // add initial solution to hashmap
+    queue = queue.enqueue((0, solution))
     hashmap += (hashProgram(solution.expression) -> solution)
-    hashmap2 += (hashProgram(solution.expression) -> solution)
 
 
-    // initialize hashmap
-//    var tmp = initial
-//    hashmap += (hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+    // parallel and synchronized
+    def dq():(Int, (Int, Solution[P])) = this.synchronized {
 
+        val current = queue.dequeue
 
+        // update queue
+        queue = current._2
+        val layer = current._1._1 + 1
 
-
-    var counter2 = 0
-    var counter3 = 0
-    var i = 0
-    while(!queue.isEmpty && i < depth) {
-      i += 1
-
-      println("i: " + i)
-      println("queue size: " + queue.size)
-//      println("queue: " + queue)
-
-      // get element from queue
-      val current = queue.dequeue
-      val current2 = queue2.dequeue
-
-
-      val hash = hashProgram(current2._1.expression)
-      val hash2 = hashProgram(current._1._1.expression)
-
-      println("hash: " + hash)
-      println("hash2: " + hash2)
-
-      // add to hashmap, if not present yet
-      hashmap.get(hash) match {
-        case Some(solution) =>  println("already there") // do nothing (already present)
-        case None => {
-          println("not there")
-          counter2 += 1
-
-          hashmap += (hash -> current2._1)
-        } // add to hashmap
-      }
-
-      // add to hashmap, if not present yet
-      hashmap2.get(hash2) match {
-        case Some(solution) =>  println("already there") // do nothing (already present)
-        case None => {
-          println("not there")
-          counter3 += 1
-
-          hashmap2 += (hash2 -> current._1._1)
-        } // add to hashmap
-      }
-
-      //      hashmap += (hashProgram(current2._1.expression) -> Solution(current._1._2.program, current._1._1.strategies))
-
-      //      println("current: " + current)
-
-      // update current path element
-      //      path.setCurrent(current._1._2)
-      // todo reach this from start (step by step)
-      // first go down from beginning?
-//      path.add(current._1._2.program, current._1._2.strategy, current._1._2.value)
-
-      // start at initial node
-      var down = path.initial
-
-      println("\n")
-      println(" --------- go down ---------- ")
-      // go down step by step until reaching current program
-      while (hashProgram(current._1._2.program) != hashProgram(down.program)) {
-//        println("down: " + hashProgram(down.program))
-//        println("current: " + hashProgram(current._1._2.program))
-        down = down.successor
-        //        tmp.program.hashCode() == tmp.successor.program.hashCode()){
-        // go one step down
-        path.add(down.program, down.strategy, down.value)
-      }
-      println(" --------- finished ---------- ")
-      println("\n")
-
-
-      // update queue
-      queue = current._2
-      queue2 = current2._2
-
-      val Ns2 = panel.N(current2._1)
-      // add elements from neighborhood to queue
-      Ns2.foreach(ne => {
-        queue2 = queue2.enqueue(ne)
-
-        val hash = hashProgram(ne.expression)
-
-        println("hash: " + hash)
-
-        // add to hashmap, if not present yet
-        hashmap.get(hash) match {
-          case Some(solution) =>  println("already there") // do nothing (already present)
-          case None => {
-            println("not there")
-            counter2 += 1
-
-            hashmap += (hash -> ne)
-          } // add to hashmap
-        }
-
-
-        // add current not neighbors
-
-
-//        hashmap += (hash -> current2._1)
-        // add to hashmap
-      })
-
-      // get neighborhood
-      val Ns = panel.N(current._1._1)
-
-      Ns.foreach(ne => {
-        //        path.writePathToDot("/home/jo/development/rise-lang/shine/exploration/dot/mv.dot")
-        // eval function value
-
-        // add path element
-//                val fne = panel.f(ne)
-//        path.add(ne.expression, ne.strategies.last, fne)
-        path.add(ne.expression, ne.strategies.last, None)
-
-        val hash2 = hashProgram(current._1._1.expression)
-        // add to hashmap, if not present yet
-        hashmap2.get(hash2) match {
-          case Some(solution) =>  println("already there") // do nothing (already present)
-          case None => {
-            println("not there")
-            counter3 += 1
-
-            hashmap2 += (hash2 -> ne.)
-          } // add to hashmap
-        }
-
-        // add path element and solution to queue
-        queue = queue.enqueue((ne, path.current))
-
-        // revert path
-        path.add(current._1._1.expression, elevate.core.strategies.basic.revert, current._1._2.value)
-
-        hashmap2.get(hash2) match {
-          case Some(solution) =>  println("already there") // do nothing (already present)
-          case None => {
-            println("not there")
-            counter3 += 1
-
-            hashmap2 += (hash2 -> current._1._1)
-          } // add to hashmap
-        }
-
-
-      })
-
-
-      println("\n")
-      // go back to parent?
-      println(" --------- go up ---------- ")
-      var up = current._1._2
-      while (up.predecessor != null) {
-        up = up.predecessor
-        path.add(up.program, elevate.core.strategies.basic.revert, up.value)
-      }
-      println(" --------- finished ---------- ")
-      println("\n")
-      //      current._1._2.predecessor match {
-      //        case null => // do nothing
-      //        case _ =>
-      //           go back to parent
-      //          path.add(current._1._2.predecessor.program, elevate.core.strategies.basic.revert, current._1._2.predecessor.value)
-      //      }
-
+      (layer, current._1)
     }
 
-    // now count
-    // maybe collaps path
-    // doubled things?
+    def enq(layer: Int, Ns: Set[Solution[P]]) = this.synchronized {
+      // add elements
+      // add elements from neighborhood to queue
+      Ns.foreach(ne => {
+        // if last layer is reached don't enqueue
+        if (layer < depth) {
+          queue = queue.enqueue((layer, ne))
+        }
 
+        // add to hashmap, if not present yet
+        val hash = hashProgram(ne.expression)
+        hashmap.get(hash) match {
+          case Some(_) => // do nothing
+          case None => hashmap += (hash -> ne)
+        }
+      })
+    }
 
-//    path.printPathConsole()
+    // parallel
+    def grow(current: (Int, Solution[P])): Set[Solution[P]] = {
+      // get neighborhood of current solution
+      panel.N(current._2)
+    }
 
-//    val size = path.getSize()
-//    println("size: " + size)
+    if (depth > 0) {
 
-    val searchSpace = path.getSearchSpace()
-    val searchSpace2 = hashmap.toSeq.map(elem => elem._2)
+      var i = 0
+      var old_layer = 0
+      while (!queue.isEmpty) {
+        i += 1
 
+        println("iteration: " + i )
+//        println("nodes: " + hashmap.size)
+        println("queue size: " + queue.size)
 
-    val size = searchSpace.size
-    println("path size: " + path.getSize())
-    println("search space: " + size)
-    println("search space2: " + searchSpace2.size)
-    println("hashmap size: " + hashmap.size)
-    println("counter2 (elements added to hashmap: " + counter2)
-//    println("search space: " + searchSpace2)
-
-//    searchSpace2.foreach(elem => {
-//      println("elem: \n " + elem)
-//    })
+//        val current = queue.dequeue
 //
-//    searchSpace.foreach(elem => {
-//      println("elem: \n" + elem)
-//    })
+//        // update queue
+//        queue = current._2
+//        val layer = current._1._1 + 1
+//
+//        if (layer > old_layer){
+//          old_layer = layer
+//          println("layer: " + layer)
+//        }
 
-//    System.exit(0)
 
-//    val elem = path.getElement(0)
+        // determine thread numbers
+        var threads = 1
+        if (queue.size >= 8) {
+          threads = 8
+        }
 
-//    println("elem: \n" + elem.program)
-//    println("elem: \n" + elem.value)
+        val work = queue.size/threads
+        println("threads: " + threads)
+        println("work per thread: "  + work)
+
+        val threadList = mutable.ListBuffer.empty[Thread]
+
+        // maybe use thread pool
+        for (i <- 1 to threads) {
+//          println("thread i: " + i)
+          val thread = new Thread {
+            override def run: Unit = {
+
+              // do work on thread
+              for (j <- 1 to work) {
+
+                val (layer, current) = this.synchronized {
+                  dq()
+                }
+
+//                val Ns = this.synchronized {
+//                  grow(current) // rewrite parallel
+//                }
+                val Ns = grow(current)
+
+                this.synchronized {
+                  enq(layer, Ns) // add elements synchorniedz
+                }
+              }
+            }
+          }
+          thread.start
+          threadList.addOne(thread)
+
+          //          Thread.sleep(10) // slow the loop down a bit
+        }
+
+//        println("finish")
+        threadList.foreach(thread => thread.join())
+
+        // get neighborhood of current solution
+//        val Ns = panel.N(current._1._2)
+
+        // add elements from neighborhood to queue
+//        Ns.foreach(ne => {
+////           if last layer is reached don't enqueue
+//          if (layer < depth) {
+//            queue = queue.enqueue((layer, ne))
+//          }
+//
+//          // add to hashmap, if not present yet
+//          val hash = hashProgram(ne.expression)
+//          hashmap.get(hash) match {
+//            case Some(_) => // do nothing
+//            case None => hashmap += (hash -> ne)
+//          }
+//        })
+      }
+    }
+
+//
+//    if (depth > 0) {
+//
+//      var i = 0
+//      var old_layer = 0
+//      while (!queue.isEmpty) {
+//        i += 1
+//
+//        //        println("node iteration: " + i + "/" + depth)
+//        //        println("nodes: " + hashmap.size)
+//        //        println("queue size: " + queue.size)
+//
+//                val current = queue.dequeue
+//        //
+//                // update queue
+//                queue = current._2
+//                val layer = current._1._1 + 1
+//        //
+//                if (layer > old_layer){
+//                  old_layer = layer
+//                  println("layer: " + layer)
+//                }
+//
+////         get neighborhood of current solution
+//                val Ns = panel.N(current._1._2)
+//
+//        // add elements from neighborhood to queue
+//                Ns.foreach(ne => {
+//        //           if last layer is reached don't enqueue
+//                  if (layer < depth) {
+//                    queue = queue.enqueue((layer, ne))
+//                  }
+//
+//                  // add to hashmap, if not present yet
+//                  val hash = hashProgram(ne.expression)
+//                  hashmap.get(hash) match {
+//                    case Some(_) => // do nothing
+//                    case None => hashmap += (hash -> ne)
+//                  }
+//                })
+//      }
+//    }
+
+
+    // todo config file generation -> duplicates in constraints
+    // check generation of constraints
+
+    val searchSpace = hashmap.toSeq.map(elem => elem._2)
+    val size = searchSpace.size
+
+    println("search space: " + searchSpace.size)
+    println("hashmap size: " + hashmap.size)
+
+    val duration:Double = (System.currentTimeMillis() - totalDurationStart).toDouble
+
+
+
+    println("duration: " + (duration) + "ms")
+    println("duration: " + (duration/1000) + "s")
+    println("duration: " +  (duration/1000/60) + "m")
 
     // random number generator
     val random = new scala.util.Random
 
     var j = 0
-    val max = 0
+    val max = 10000
 
     println("start random exploration")
+    val explorationStartingPoint = System.currentTimeMillis()
     while(j < max){
       val index = random.nextInt(size)
       j += 1
 
-      // get element from index
-//      val elem = path.getElement(index)
-
       val candidate = searchSpace.apply(index)
 
-//      val tmpSolution = Solution(elem.program, null)
-
-      println("elem: " + candidate.expression)
-      println("execute index: " + index)
+//      println("elem: " + candidate.expression)
+//      println("execute index: " + index)
       val result = panel.f(candidate)
-      println("result: " + result)
+//      println("result: " + result)
 
       // update solution value if better performance is found
       solutionValue = result match {
         case Some(value) => {
           value <= solutionValue.get  match {
             case true =>
-              println("better")
+//              println("better")
               // update solution
               solution = candidate
               // return result as new solution value
               result
             case false =>
-              println("not better")
+//              println("not better")
               solutionValue
           }
         }
@@ -303,9 +252,19 @@ class AutotunerSearch[P] extends Heuristic[P] {
       }
     }
 
+    val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
+    println("duration2: " + duration2/1000  + "s")
+
+    // todo write all tested elements to disk
+//    path.writePathToDisk()
+
+    // write solutions to disk
+
     println("end")
     println("solution: " + solution.expression)
     println("solutionValue: " + solutionValue)
+    println("strategies: ")
+    solution.strategies.foreach(println)
 
     // generate stuff
     // start tuner

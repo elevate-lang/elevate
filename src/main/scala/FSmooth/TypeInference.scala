@@ -178,7 +178,8 @@ object TypeInference {
       case (ty, TypeVar(tv)) => unifyVar(tv, ty)
       case (ExpressionTypeVar(tv), ty) => unifyVar(tv, ty)
       case (ty, ExpressionTypeVar(tv)) => unifyVar(tv, ty)
-      case (a, b) => throw new Exception(s"cannot unify $a with $b")
+//      case (a, b) => throw new Exception(s"cannot unify $a with $b")
+      case (a, b) => throw new Exception("")
     }
   }
 

@@ -265,6 +265,7 @@ class Path[P](program:P,
 
   }
 
+  // todo same export for hashmap
   def writePathToDisk(filename: String) = {
     // traverse from initial to current
 
