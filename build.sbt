@@ -35,8 +35,11 @@ lazy val elevate = (project in file("."))
     libraryDependencies += "junit" % "junit" % "4.11",
 
     // Scalatest
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0" % "test"
-  )
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0" % "test",
+
+    // subprocess communication
+    libraryDependencies += "com.lihaoyi" %% "os-lib" % "0.7.3"
+)
 
 lazy val elevateMacros = (project in file("macros"))
   .settings(

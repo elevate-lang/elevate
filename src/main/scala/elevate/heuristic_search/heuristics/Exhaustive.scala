@@ -68,8 +68,12 @@ class Exhaustive[P] extends Heuristic[P] {
       Ns.foreach(ne => {
 //        path.writePathToDot("/home/jo/development/rise-lang/shine/exploration/dot/mv.dot")
         // eval function value
-//        val fne = panel.f(ne)
-        val fne = None
+
+        // change this value!
+
+        // todo make this configurable option!
+        val fne = panel.f(ne)
+//        val fne = None
 
         // add path element
         path.add(ne.expression, ne.strategies.last, fne)
