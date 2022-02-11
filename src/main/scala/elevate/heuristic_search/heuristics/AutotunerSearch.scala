@@ -4,9 +4,14 @@ import elevate.heuristic_search.util.{Path, Solution, hashProgram}
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 import jdk.jfr.Timespan
 
+import java.io.{File, FileOutputStream, PrintWriter}
 import scala.collection.immutable.Queue
 import scala.collection.mutable
-import scala.util.Random
+import scala.collection.mutable.ListBuffer
+import java.io.{File, FileOutputStream, PrintWriter}
+import scala.collection.mutable.ListBuffer
+import scala.language.postfixOps
+import scala.sys.process._
 
 class AutotunerSearch[P] extends Heuristic[P] {
 
@@ -17,16 +22,16 @@ class AutotunerSearch[P] extends Heuristic[P] {
     val totalDurationStart = System.currentTimeMillis()
 
     var solution = initialSolution
-//    var solutionValue = panel.f(solution)
+    //    var solutionValue = panel.f(solution)
     var solutionValue: Option[Double] = Some(1000.toDouble)
 
     // create path, queue and hashmap
     val path = new Path(solution.expression, solutionValue, null, null, 0) // still necessary?
     var queue = Queue.empty[(Int, Solution[P])]
-    val hashmap = mutable.HashMap.empty[String, Solution[P]]
+//    val hashmap = mutable.HashMap.empty[String, Solution[P]]
 
     queue = queue.enqueue((0, solution))
-    hashmap += (hashProgram(solution.expression) -> solution)
+    path.hashmap += (hashProgram(solution.expression) -> solution)
 
 
     // parallel and synchronized
@@ -52,9 +57,9 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
         // add to hashmap, if not present yet
         val hash = hashProgram(ne.expression)
-        hashmap.get(hash) match {
+        path.hashmap.get(hash) match {
           case Some(_) => // do nothing
-          case None => hashmap += (hash -> ne)
+          case None => path.hashmap += (hash -> ne)
         }
       })
     }
@@ -90,8 +95,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
         // determine thread numbers
         var threads = 1
-        if (queue.size >= 8) {
-          threads = 8
+        if (queue.size >= 24) {
+          threads = 24
         }
 
         val work = queue.size/threads
@@ -199,12 +204,11 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     // todo config file generation -> duplicates in constraints
     // check generation of constraints
-
-    val searchSpace = hashmap.toSeq.map(elem => elem._2)
+    val searchSpace = path.hashmap.toSeq.map(elem => elem._2)
     val size = searchSpace.size
 
     println("search space: " + searchSpace.size)
-    println("hashmap size: " + hashmap.size)
+    println("hashmap size: " + path.hashmap.size)
 
     val duration:Double = (System.currentTimeMillis() - totalDurationStart).toDouble
 
@@ -214,43 +218,152 @@ class AutotunerSearch[P] extends Heuristic[P] {
     println("duration: " + (duration/1000) + "s")
     println("duration: " +  (duration/1000/60) + "m")
 
-    // random number generator
-    val random = new scala.util.Random
 
-    var j = 0
-    val max = 10000
+    // start hm with default config file
+
 
     println("start random exploration")
     val explorationStartingPoint = System.currentTimeMillis()
-    while(j < max){
-      val index = random.nextInt(size)
-      j += 1
 
-      val candidate = searchSpace.apply(index)
+    // read search space size and generate json
 
-//      println("elem: " + candidate.expression)
-//      println("execute index: " + index)
-      val result = panel.f(candidate)
-//      println("result: " + result)
+    val doe = 10
+    val optimizationIterations = 10
 
-      // update solution value if better performance is found
-      solutionValue = result match {
-        case Some(value) => {
-          value <= solutionValue.get  match {
-            case true =>
-//              println("better")
-              // update solution
-              solution = candidate
-              // return result as new solution value
-              result
-            case false =>
-//              println("not better")
-              solutionValue
-          }
-        }
-        case None => solutionValue
+    val configString = {
+      s"""{
+      "application_name": "mv_exploration",
+      "optimization_objectives": ["runtime"],
+      "feasible_output" : {
+        "enable_feasible_predictor" : true,
+        "name" : "Valid",
+        "true_value" : "True",
+        "false_value" : "False"
+      },
+      "hypermapper_mode" : {
+        "mode" : "client-server"
+      },
+      "design_of_experiment": {
+        "doe_type": "random sampling",
+        "number_of_samples": ${doe}
+      },
+      "optimization_iterations": ${optimizationIterations},
+      "input_parameters" : {
+        "i": {
+        "parameter_type" : "integer",
+        "values" : [1, ${size}]
+      }
+      }
+    }"""
+    }
+
+    // write config String to file
+    val file = new File(os.pwd.toString() + "/exploration/configuration/hm_tuning.json")
+    new PrintWriter(file) {
+      try {
+        write(configString)
+      } finally {
+        close()
       }
     }
+
+    val configFile = os.pwd.toString() + "/exploration/configuration/hm_tuning.json"
+    println("configFile: " + configFile)
+
+      val hypermapper = os.proc("hypermapper", configFile).spawn()
+
+      var i = 1
+      // main tuning loop
+      var done = false
+      while (hypermapper.isAlive() && !done) {
+        hypermapper.stdout.readLine() match {
+          case null =>
+            done = true
+            println("End of HyperMapper -- error")
+          case "End of HyperMapper" =>
+            done = true
+            println("End of HyperMapper -- done")
+          case "Best point found:" =>
+            val headers = hypermapper.stdout.readLine()
+            val values = hypermapper.stdout.readLine()
+            hypermapper.stdout.readLine() // consume empty line
+            println(s"Best point found\nHeaders: ${headers}Values: $values")
+          case request if request.contains("warning") =>
+            println(s"[Hypermapper] $request")
+          case request if request.contains("Request") =>
+            println(s"Request: $request")
+            val numberOfEvalRequests = request.split(" ")(1).toInt
+            // read in header
+            val header = hypermapper.stdout.readLine().split(",").map(x => x.trim())
+            // start forming response
+            var response = s"${header.mkString(",")},runtime,Valid\n"
+            for (_ <- Range(0, numberOfEvalRequests)) {
+              // read in parameters values
+//              val parametersValues = hypermapper.stdout.readLine().split(",").map(x => x.trim())
+              val index = hypermapper.stdout.readLine().toInt
+              // compute sample (including function value aka runtime)
+              print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
+
+              val candidate = searchSpace.apply(index)
+
+              // add candidate to visited
+              path.visited += (hashProgram(candidate.expression) -> solution)
+
+              // change this value
+              val result = panel.f(candidate)
+
+              // update solution value if better performance is found
+              solutionValue = result match {
+                case Some(value) => {
+                  value <= solutionValue.get  match {
+                    case true =>
+                      //              println("better")
+                      // update solution
+                      solution = candidate
+                      // return result as new solution value
+                      result
+                    case false =>
+                      //              println("not better")
+                      solutionValue
+                  }
+                }
+                case None => solutionValue
+              }
+
+              //            println(sample.runtime)
+              println(result)
+              println(result)
+              println()
+              i += 1
+              // append sample to Samples
+
+              // append response
+              result match {
+                case None => response += s"${index},-1,False\n"
+                case Some(value) =>
+                  response += s"${index},${value},True\n"
+              }
+            }
+            print(s"Response: $response")
+            // send response to Hypermapper
+            hypermapper.stdin.write(response)
+            hypermapper.stdin.flush()
+          case message => println("message: " + message)
+        }
+      }
+
+
+    // save output
+    ("mkdir -p exploration/tuner" !!)
+    ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
+    (s"mv ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
+
+    // plot results using hypermapper
+    ("hm-plot-optimization-results " +
+      "-j " + "exploration/tuner/tuner_exploration.json" + " " +
+      "-i " + "exploration/tuner/" + " " +
+      "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
+      "-log --y_label \"Log Runtime(ms)\"" !!)
 
     val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
     println("duration2: " + duration2/1000  + "s")

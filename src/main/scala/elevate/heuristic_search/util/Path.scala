@@ -22,6 +22,8 @@ class Path[P](program:P,
     initial = new PathElement[P](program, null, value, null, null, elements)
     // set initial path element to current element
     current = initial
+    val hashmap = mutable.HashMap.empty[String, Solution[P]]
+    val visited = mutable.HashMap.empty[String, Solution[P]]
 
   def getSize(): Int = {
     var counter = 0
@@ -105,7 +107,7 @@ class Path[P](program:P,
     }
   }
 
-  def writePathToDot(filename:String) = {
+  def writePathToDot(filename: String) = {
     var tmp = initial
 
     // prepare file
@@ -310,6 +312,50 @@ class Path[P](program:P,
       tmp = tmp.successor
     } while(tmp != null)
 
+  }
+
+  def writeSearchSpaceTodisk(filename: String) = {
+
+    visited.foreach(elem => {
+
+      // hash program
+//      val hash = hashProgram(solution.expression)
+      val hash = elem._1
+
+      // create unique output folder
+      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash , 0)
+      // create folder
+      (s"mkdir ${uniqueFilename}" !!)
+
+      // create file for expression
+      val pwProgram = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/" + hash), false))
+
+      // create file for strategies
+      val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
+
+      // write expression to file
+      pwProgram.write(elem._2.expression.toString)
+
+      // strategy list
+      val list = elem._2.strategies
+
+      // create strategy string for file
+      var strategyString = ""
+      list.foreach(elem=>{
+        elem match {
+          case null => strategyString +=  "null" + "\n"
+          case _ => strategyString +=  elem.toString + "\n"
+        }
+      })
+
+      // write strategy string to file
+      pwStrategies.write(strategyString)
+
+      // close files
+      pwProgram.close()
+      pwStrategies.close()
+
+    })
   }
 
   def getStrategies(element: PathElement[P]):Seq[P=>RewriteResult[P]] = {

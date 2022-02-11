@@ -5,6 +5,8 @@ import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
 import elevate.heuristic_search.util.{Path, Solution}
 
+import scala.language.postfixOps
+import scala.sys.process._
 
 // runner class
 case class Metaheuristic[P](name: String,
@@ -41,6 +43,12 @@ case class Metaheuristic[P](name: String,
 //      result._3.writePathToDisk(output + "/" )
       println("[METAHEURISTIC] : write path to disk")
 //      result._3.writePathToDisk(output)
+      result._3.writeSearchSpaceTodisk(output)
+
+      // move tuner to output
+      ("mv exploration/tuner/tuner_exploration.csv " + output !!)
+      ("mv exploration/tuner/tuner_exploration.pdf " + output !!)
+      ("mv exploration/tuner/tuner_exploration.json " + output !!)
 
       best._2 match {
         case Some(currentBest) =>
