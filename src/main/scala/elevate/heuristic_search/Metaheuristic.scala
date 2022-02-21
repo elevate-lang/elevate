@@ -75,6 +75,11 @@ case class Metaheuristic[P](name: String,
     best
   }
 
+  override def checkSolution(solution: Solution[P]): Boolean = {
+
+    true
+  }
+
   def writeValues(path: String,
                   result: (P, Option[Double], Path[P]),
                   name: String): Unit = {

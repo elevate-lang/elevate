@@ -11,7 +11,7 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
   val solutions = new scala.collection.mutable.HashMap[String, Option[Double]]()
   var call = 0
 
-  def N(solution:Solution[P]):Set[Solution[P]]= {
+  def N(solution: Solution[P]): Set[Solution[P]]= {
 //    println("\n call number: " + call + "---------------------------------------------------")
 //    println("solution.strategy: " + solution.strategies.size)
 //    solution.strategies.foreach(elem =>{
@@ -37,10 +37,17 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
           case _:Success[P] => {
 //            println("solution.strategies: \n" + solution.strategies)
 //            println("strategy: " + strategy)
-            val tmp = solution.strategies :+ strategy
-//            println("update: \n" + tmp)
-            neighbours.add(new Solution[P](result.get, solution.strategies :+ strategy))
-            //add to neighbourhood
+//            val tmp = solution.strategies :+ strategy
+
+            // check if expression is valid
+            if(runner.checkSolution(new Solution[P](result.get, solution.strategies :+ strategy))){
+
+              neighbours.add(new Solution[P](result.get, solution.strategies :+ strategy))
+              //add to neighbourhood
+            }else{
+              // do nothing, drop result/ candidate
+
+            }
           }
           case _:Failure[P] => //nothing
         }
