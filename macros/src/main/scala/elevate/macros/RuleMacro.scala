@@ -18,38 +18,46 @@ object RuleMacro {
   class Impl(val c: blackbox.Context) {
     import c.universe._
 
-    def rule(annottees: c.Expr[Any]*): c.Expr[Any] = {
+    def strategy(annottees: c.Expr[Any]*): c.Expr[Any] =
+      generic({ r: Tree => r }, annottees)
+
+    def rule(annottees: c.Expr[Any]*): c.Expr[Any] =
+      generic({ r: Tree => q"elevate.core.countApplications { $r }" }, annottees)
+
+    def generic(wrapResult: Tree => Tree, annottees: Seq[c.Expr[Any]]): c.Expr[Any] = {
       annottees.map(_.tree) match {
         case (cdef: DefDef) :: Nil =>
-          c.Expr(fromDefDef(cdef))
+          c.Expr(fromDefDef(wrapResult)(cdef))
         case (cdef: DefDef) :: (md: ModuleDef) :: Nil =>
-          c.Expr(q"{${fromDefDef(cdef)}; $md}")
+          c.Expr(q"{${fromDefDef(wrapResult)(cdef)}; $md}")
         case _ => c.abort(c.enclosingPosition, "expected a method definition")
       }
     }
 
-    def fromDefDef: DefDef => Tree = {
+    def fromDefDef(wrapResult: Tree => Tree): DefDef => Tree = {
       case q"def ${name: TermName}[..$tparams]: Strategy[..$resTypes] = { case ..$cases }"
         if resTypes.length == 1 =>
 
         val resType = resTypes.head.asInstanceOf[Tree]
         if (tparams.isEmpty) {
+          val r = q"""e_internal match {
+            case ..${addDefaultCase(cases.asInstanceOf[List[CaseDef]], q"elevate.core.Failure($name)")}
+          }"""
           makeRuleObject(name, resType,
             q"""
-            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
-              case ..${addDefaultCase(cases.asInstanceOf[List[CaseDef]], q"elevate.core.Failure($name)")}
-            }"""
+            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}"""
           )
         } else {
-          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List()))(makeClass =>
-            q"""
-            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
+          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List())) { makeClass =>
+            val r = q"""e_internal match {
               case ..${addDefaultCase(cases.asInstanceOf[List[CaseDef]], q"elevate.core.Failure($makeClass)")}
-            }
+            }"""
+            q"""
+            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
 
             ..${makeToString(name)}
             """
-          )
+          }
         }
 
       case q"def ${name: TermName}[..$tparams]: Strategy[..$resTypes] = (..$es) => $body"
@@ -58,22 +66,24 @@ object RuleMacro {
         val resType = resTypes.head.asInstanceOf[Tree]
         val e = es.head.asInstanceOf[ValDef]
         if (tparams.isEmpty) {
+          val r = q"""((${e.name} : $resType) => {
+            val res_internal: elevate.core.RewriteResult[$resType] = $body
+            res_internal
+          }).apply(e_internal)"""
           makeRuleObject(name, resType,
             q"""
-            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = {
-              ((${e.name} : $resType) => {
-                val res_internal: elevate.core.RewriteResult[$resType] = $body
-                res_internal
-              }).apply(e_internal)
-            }""")
+            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
+            """)
         } else {
+          val r = q"""{
+            ((${e.name} : $resType) => {
+              val res_internal: elevate.core.RewriteResult[$resType] = $body
+              res_internal
+            }).apply(e_internal)
+          }"""
           makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List()))(_ =>
             q"""
-            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
-              ((${e.name} : $resType) => {
-                val res_internal: elevate.core.RewriteResult[$resType] = $body
-                res_internal
-              }).apply(e_internal)
+            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
 
             ..${makeToString(name)}
             """
@@ -84,17 +94,16 @@ object RuleMacro {
         if resTypes.length == 1 =>
 
         val resType = resTypes.head.asInstanceOf[Tree]
+        val r = q"""($body).apply(e_internal)"""
         if (tparams.isEmpty) {
           makeRuleObject(name, resType,
             q"""
-            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = {
-              ($body).apply(e_internal)
-            }""")
+            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
+            """)
         } else {
           makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, List(List()))(_ =>
             q"""
-          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
-            ($body).apply(e_internal)
+          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
 
           ..${makeToString(name)}
         """
@@ -108,15 +117,16 @@ object RuleMacro {
 
           val params = paramLists.asInstanceOf[List[List[ValDef]]]
           val resType = resTypes.head.asInstanceOf[Tree]
-          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(makeClass =>
-            q"""
-            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = e_internal match {
+          makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params) { makeClass =>
+            val r = q"""e_internal match {
               case ..${addDefaultCase(cases.asInstanceOf[List[CaseDef]], q"elevate.core.Failure($makeClass)")}
-            }
+            }"""
+            q"""
+            override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
 
             ..${makeToString(name, params)}
             """
-          )
+          }
 
       case q"def ${name: TermName}[..$tparams](...$paramLists): Strategy[..$resTypes] = (..$es) => $body"
         if /*paramLists.length == 1 &&*/ resTypes.length == 1 && es.length == 1 =>
@@ -124,13 +134,14 @@ object RuleMacro {
         val params = paramLists.asInstanceOf[List[List[ValDef]]]
         val resType = resTypes.head.asInstanceOf[Tree]
         val e = es.head.asInstanceOf[ValDef]
-        makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(_ =>
-          q"""
-          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
+        val r = q"""
             ((${e.name} : $resType) => {
               val res_internal: elevate.core.RewriteResult[$resType] = $body
               res_internal
-            }).apply(e_internal)
+            }).apply(e_internal)"""
+        makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(_ =>
+          q"""
+          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
 
           ..${makeToString(name, params)}
         """
@@ -142,10 +153,10 @@ object RuleMacro {
 
         val params = paramLists.asInstanceOf[List[List[ValDef]]]
         val resType = resTypes.head.asInstanceOf[Tree]
+        val r = q"""($body).apply(e_internal)"""
         makeRuleClass(name, tparams.asInstanceOf[List[TypeDef]], resType, params)(_ =>
           q"""
-          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] =
-            ($body).apply(e_internal)
+          override def apply(e_internal: $resType): elevate.core.RewriteResult[$resType] = ${wrapResult(r)}
 
           ..${makeToString(name, params)}
         """
