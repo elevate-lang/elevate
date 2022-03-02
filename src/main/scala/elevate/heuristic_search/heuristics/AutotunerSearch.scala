@@ -139,8 +139,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
     val explorationStartingPoint = System.currentTimeMillis()
 
     // todo read in these values
-    val doe = 2500
-    val optimizationIterations = 2500
+    val doe = 10
+    val optimizationIterations = 10
 
     val configString = {
       s"""{
