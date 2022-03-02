@@ -46,9 +46,9 @@ case class Metaheuristic[P](name: String,
       result._3.writeSearchSpaceTodisk(output)
 
       // move tuner to output
-      ("mv exploration/tuner/tuner_exploration.csv " + output !!)
-      ("mv exploration/tuner/tuner_exploration.pdf " + output !!)
-      ("mv exploration/tuner/tuner_exploration.json " + output !!)
+      ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)
+      ("mv exploration/tuner/tuner_exploration.pdf " + output + "/Executor" !!)
+      ("mv exploration/tuner/tuner_exploration.json " + output + "/Executor" !!)
 
       best._2 match {
         case Some(currentBest) =>
