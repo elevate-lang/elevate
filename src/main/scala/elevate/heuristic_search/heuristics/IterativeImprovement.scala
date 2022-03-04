@@ -7,7 +7,7 @@ import elevate.heuristic_search.util.Solution
 
 class IterativeImprovement[P] extends Heuristic[P] {
 
-  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
 //    var solution:P = initialSolution
     var solution = initialSolution
     var solutionValue:Option[Double] = panel.f(solution)
@@ -75,11 +75,12 @@ class IterativeImprovement[P] extends Heuristic[P] {
 
     path.add(solution.expression, solutionStrategy, solutionValue)
 
-      // check, if chosen solution is better
-    } while((solutionValue, oldSolutionValue) match {
-          case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
-          case _ => false
-        }
+      // check if chosen solution is better and limit is not reached
+    } while((i < depth) &&
+      ((solutionValue, oldSolutionValue) match {
+        case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
+        case _ => false
+      })
     )
 
     (solution.expression, solutionValue, path)
