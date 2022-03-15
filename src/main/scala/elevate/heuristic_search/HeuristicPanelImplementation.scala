@@ -40,9 +40,11 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 //            val tmp = solution.strategies :+ strategy
 
             // check if expression is valid
-            if(runner.checkSolution(new Solution[P](result.get, solution.strategies :+ strategy))){
+            val newSolution = new Solution[P](result.get, solution.strategies :+ strategy)
+            if(runner.checkSolution(newSolution)){
 
-              neighbours.add(new Solution[P](result.get, solution.strategies :+ strategy))
+              neighbours.add(newSolution)
+//                new Solution[P](result.get, solution.strategies :+ strategy))
               //add to neighbourhood
             }else{
               // do nothing, drop result/ candidate

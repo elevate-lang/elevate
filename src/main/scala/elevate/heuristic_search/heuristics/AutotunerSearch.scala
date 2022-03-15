@@ -71,6 +71,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
     if (depth > 0) {
 
       var i = 0
+      var rewritesTotal = 0
       while (!queue.isEmpty) {
         i += 1
 
@@ -81,16 +82,21 @@ class AutotunerSearch[P] extends Heuristic[P] {
         // determine thread numbers
         var threads = 1
         if (queue.size >= 24) {
-          threads = 24
+          threads = 1
         }
 
         val work = queue.size/threads
         println("threads: " + threads)
         println("work per thread: "  + work)
+        println("rewrites total: " + rewritesTotal)
 
         val threadList = mutable.ListBuffer.empty[Thread]
 
+        val layerStart: Long = System.currentTimeMillis()
+        var hashMapDuration: Long = 0
+        var rewriteDuration: Long = 0
         // maybe use thread pool
+        val start = System.currentTimeMillis()
         for (i <- 1 to threads) {
           val thread = new Thread {
             override def run: Unit = {
@@ -102,20 +108,30 @@ class AutotunerSearch[P] extends Heuristic[P] {
                   dq()
                 }
 
+                val rewriteStart: Long = System.currentTimeMillis()
                 val Ns = grow(current)
+                rewritesTotal += Ns.size
+                rewriteDuration += (System.currentTimeMillis() - rewriteStart)
 
+                val hashMapStart: Long = System.currentTimeMillis()
                 this.synchronized {
                   enq(layer, Ns) // add elements synchronized
                 }
+                hashMapDuration += (System.currentTimeMillis() - hashMapStart)
+
               }
             }
           }
           thread.start
           threadList.addOne(thread)
         }
-
         threadList.foreach(thread => thread.join())
 
+        val durationLayer = System.currentTimeMillis() - layerStart
+        println("durationTotal: " + durationLayer.toDouble/1000 + " s")
+        println("rewriteDuration: " + rewriteDuration.toDouble/1000 + " s")
+        println("hashMapDuration: " + hashMapDuration.toDouble/1000 + " s")
+        println("\n")
       }
     }
 
@@ -139,6 +155,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
     val explorationStartingPoint = System.currentTimeMillis()
 
     // todo read in these values
+//    val doe = size
     val doe = 10
     val optimizationIterations = 10
 
@@ -163,7 +180,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",
-        "values" : [1, ${size}]
+        "values" : [0, ${size-1}]
       }
       }
     }"""
@@ -216,6 +233,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
             val index = hypermapper.stdout.readLine().toInt
             // compute sample (including function value aka runtime)
             print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
+            print(index.toString + " ")
 
             val candidate = searchSpace.apply(index)
 
