@@ -49,13 +49,13 @@ class DepthFirst[P] extends Heuristic[P] {
       println(" --------- go down ---------- ")
       // go down step by step until reaching current program
 
-      while (hashProgram(current._1._2.program) != hashProgram(down.program)) {
-        println("down: " + hashProgram(down.program))
-        println("current: " + hashProgram(current._1._2.program))
+      while (hashProgram(current._1._2.solution.expression) != hashProgram(down.solution.expression)) {
+        println("down: " + hashProgram(down.solution.expression))
+        println("current: " + hashProgram(current._1._2.solution.expression))
         down = down.successor
         //        tmp.program.hashCode() == tmp.successor.program.hashCode()){
         // go one step down
-        path.add(down.program, down.strategy, down.value)
+        path.add(down.solution.expression, down.strategy, down.value)
       }
       println(" --------- finished ---------- ")
       println("\n")
@@ -89,7 +89,7 @@ class DepthFirst[P] extends Heuristic[P] {
       var up = current._1._2
       while (up.predecessor != null) {
         up = up.predecessor
-        path.add(up.program, elevate.core.strategies.basic.revert, up.value)
+        path.add(up.solution.expression, elevate.core.strategies.basic.revert, up.value)
       }
       println(" --------- finished ---------- ")
       println("\n")

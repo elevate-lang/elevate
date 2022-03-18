@@ -1,9 +1,8 @@
 package elevate.heuristic_search
 
 import java.io.{File, FileOutputStream, PrintWriter}
-
 import elevate.core.Strategy
-import elevate.heuristic_search.util.{Path, Solution}
+import elevate.heuristic_search.util.{Path, SearchSpace, Solution}
 
 import scala.language.postfixOps
 import scala.sys.process._
@@ -39,11 +38,11 @@ case class Metaheuristic[P](name: String,
       // print path
       println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
       println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
-      result._3.writePathToDot(output + "/" + name + ".dot")
+      result._3.writeToDot(output + "/" + name + ".dot")
 //      result._3.writePathToDisk(output + "/" )
       println("[METAHEURISTIC] : write path to disk")
 //      result._3.writePathToDisk(output)
-      result._3.writeSearchSpaceTodisk(output)
+      result._3.writeToDisk(output)
 
       // move tuner to output
       ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)
@@ -81,7 +80,7 @@ case class Metaheuristic[P](name: String,
   }
 
   def writeValues(path: String,
-                  result: (P, Option[Double], Path[P]),
+                  result: (P, Option[Double], SearchSpace[P]),
                   name: String): Unit = {
     // open file for appendix
     val file = new PrintWriter(

@@ -9,23 +9,54 @@ import elevate.core.{RewriteResult, Strategy}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-// todo think about tree structure
+
+class PathElement[P] (override val solution: Solution[P],
+                      override val value: Option[Double],
+                      val strategy: Strategy[P],
+                      var predecessor: PathElement[P],
+                      var successor: PathElement[P],
+                      val visitNumber: Int
+                     ) extends SearchSpaceElement[P](solution, value) {
+
+  def setSuccessor(elem:PathElement[P]): Unit ={
+    successor = elem
+  }
+
+}
+
 class Path[P](program:P,
               value:Option[Double],
               var initial:PathElement[P] = null,
               var current:PathElement[P] = null,
               var elements: Int
-             ){
+             ) extends SearchSpace[P]{
 
     elements = 1
     // create initial path element
-    initial = new PathElement[P](program, null, value, null, null, elements)
+    initial = new PathElement[P](Solution(program, Seq.empty[Strategy[P]]), value, null, null, null, elements)
     // set initial path element to current element
     current = initial
     val hashmap = mutable.HashMap.empty[String, Solution[P]]
     val visited = mutable.HashMap.empty[String, Solution[P]]
 
-  def getSize(): Int = {
+  override def getSize(): Int = {
+    hashmap.size
+  }
+
+  override def printConsole(): Unit = {
+    var tmp = initial
+    println("printPath: ")
+
+    while (tmp != null) {
+      println("program: " + tmp.solution.expression)
+      println("strategy: " + tmp.strategy)
+      println("value: " + tmp.value)
+      tmp = tmp.successor
+    }
+  }
+
+
+  override def getSizeTotal(): Int = {
     var counter = 0
     var tmp = initial
 
@@ -37,7 +68,8 @@ class Path[P](program:P,
     counter
   }
 
-  def getElement(i: Int):PathElement[P] = {
+  // todo think about this
+  override def getElement(i: Int): SearchSpaceElement[P] = {
     // check if size of path is exceeded by i
 
     var counter = 0
@@ -48,19 +80,19 @@ class Path[P](program:P,
       tmp = tmp.successor
     }
 
-    tmp
+    tmp.asInstanceOf[SearchSpaceElement[P]]
   }
 
   // shrink path
   // list all possible solutions without duplicates
-  def getSearchSpace(): Seq[Solution[P]] = {
+  override def getSearchSpace(): Seq[Solution[P]] = {
 
     // throw all in hashmap
     val hashmap = mutable.HashMap.empty[String, Solution[P]]
 
     // initialize hashmap
     var tmp = initial
-    hashmap += (hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+    hashmap += (hashProgram(tmp.solution.expression) -> tmp.solution)
 
     // iterate over all path nodes
     while(tmp.successor != null) {
@@ -68,7 +100,7 @@ class Path[P](program:P,
 
       // duplicates?
 //      hashmap.addOne(hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
-      hashmap += (hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+      hashmap += (hashProgram(tmp.solution.expression) -> tmp.solution)
     }
 
     // convert to Seq
@@ -86,7 +118,9 @@ class Path[P](program:P,
     elements += 1
 
     // create new path element
-    val elem = new PathElement[P](program, strategy, value, current, null, elements)
+    val elem = new PathElement[P](Solution(program, current.solution.strategies :+ strategy), value, strategy, current, null, elements)
+
+    hashmap += (hashProgram(program) -> Solution(program, current.solution.strategies :+ strategy))
 
     // set new element as successor of current element
     current.successor = elem
@@ -95,19 +129,8 @@ class Path[P](program:P,
     current = elem
   }
 
-  def printPathConsole(): Unit = {
-    var tmp = initial
-    println("printPath: ")
 
-    while (tmp != null) {
-      println("program: " + tmp.program)
-      println("strategy: " + tmp.strategy)
-      println("value: " + tmp.value)
-      tmp = tmp.successor
-    }
-  }
-
-  def writePathToDot(filename: String) = {
+  override def writeToDot(filename: String): String = {
     var tmp = initial
 
     // prepare file
@@ -156,10 +179,10 @@ class Path[P](program:P,
       // write strategy, which lead to this node
       // todo list all strategies leading to this node starting from the initial node
 
-      val hash = hashProgram(tmp.program)
+      val hash = hashProgram(tmp.solution.expression)
 
-      full += "\"" + hash + "\" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n n" + tmp.program.toString + "\n" + tmp.value + "\"]; \n"
-      full2 += "\"" + hash + "\" [label = \" " + tmp.program.toString  + "\n" + tmp.value + "\"]; \n"
+      full += "\"" + hash + "\" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n n" + tmp.solution.expression.toString + "\n" + tmp.value + "\"]; \n"
+      full2 += "\"" + hash + "\" [label = \" " + tmp.solution.expression.toString  + "\n" + tmp.value + "\"]; \n"
 
       reduced  += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + strategyString + "\\n" + tmp.value + "\"]; \n"
       reduced2 += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + tmp.value + "\"]; \n"
@@ -174,8 +197,8 @@ class Path[P](program:P,
     var appendix = ""
     while(tmp != null){
 
-      val hash = hashProgram(tmp.program)
-      val hashPredecessor = hashProgram(tmp.predecessor.program)
+      val hash = hashProgram(tmp.solution.expression)
+      val hashPredecessor = hashProgram(tmp.predecessor.solution.expression)
 
 
       appendix += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
@@ -268,14 +291,14 @@ class Path[P](program:P,
   }
 
   // todo same export for hashmap
-  def writePathToDisk(filename: String) = {
+  def writeAllToDisk(filename: String): Unit = {
     // traverse from initial to current
 
     // write high-level expression and strategy list to files on disk
     var tmp = initial
 
     do {
-      val hash = hashProgram(tmp.program)
+      val hash = hashProgram(tmp.solution.expression)
       // get unique filename
       val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash , 0)
       // create folder
@@ -288,7 +311,7 @@ class Path[P](program:P,
       val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
 
       // write expression to file
-      pwProgram.write(tmp.program.toString)
+      pwProgram.write(tmp.solution.expression.toString)
 
       // strategy list
      val list = getStrategies(tmp)
@@ -314,9 +337,10 @@ class Path[P](program:P,
 
   }
 
-  def writeSearchSpaceTodisk(filename: String) = {
+  // todo think about this? compare to writeToDisk
+  override def writeToDisk(filename: String) = {
 
-    visited.foreach(elem => {
+    hashmap.foreach(elem => {
 
       // hash program
 //      val hash = hashProgram(solution.expression)
@@ -399,14 +423,3 @@ class Path[P](program:P,
 
 }
 
-class PathElement[P] (val program:P,
-                      val strategy:Strategy[P],
-                      val value:Option[Double],
-                      var predecessor:PathElement[P],
-                      var successor:PathElement[P],
-                      val visitNumber: Int
-                      ){
-  def setSuccessor(elem:PathElement[P]): Unit ={
-    successor = elem
-  }
-}

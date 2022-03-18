@@ -58,7 +58,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
         }
 
         // after testing go one node back
-        path.add(current.program, elevate.core.strategies.basic.revert, current.value)
+        path.add(current.solution.expression, elevate.core.strategies.basic.revert, current.value)
       })
 
       // add chosen solution to path
