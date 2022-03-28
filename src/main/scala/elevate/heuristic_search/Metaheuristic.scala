@@ -37,12 +37,12 @@ case class Metaheuristic[P](name: String,
 
       // print path
       println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
+//      result._3.writeToDot(output + "/" + name + ".dot")
       println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
-      result._3.writeToDot(output + "/" + name + ".dot")
 //      result._3.writePathToDisk(output + "/" )
       println("[METAHEURISTIC] : write path to disk")
 //      result._3.writePathToDisk(output)
-      result._3.writeToDisk(output)
+//      result._3.writeToDisk(output)
 
       // move tuner to output
       ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)

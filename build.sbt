@@ -30,6 +30,7 @@ lazy val elevate = (project in file("."))
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
     libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value,
+    libraryDependencies += "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0",
 
     // JUnit
     libraryDependencies += "junit" % "junit" % "4.11",

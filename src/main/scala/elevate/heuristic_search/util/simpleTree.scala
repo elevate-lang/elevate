@@ -4,23 +4,48 @@ import elevate.core.Strategy
 import java.io.{File, FileOutputStream, PrintWriter}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+
 import scala.language.postfixOps
 import scala.sys.process._
 
-class TreeElement[P] (override val solution: Solution[P], // do we need this here?
-                      override val value: Option[Double], // later
-                      val strategy: Strategy[P], // node itself
-                      val layer: Int,
-                      val predecessor: TreeElement[P],
-                      var successor: Set[TreeElement[P]], // mutable ? -> tree in scala?
-                     ) extends SearchSpaceElement[P](solution, value) {
+// try to rewrite this
+class SimpleTreeElement[P] (
+                             val solutionHash: String, // maybe remove this
+                             val rewrite: Int, // 0 - 16
+                             val layer: Int, // Do we need this?
+                             val predecessor: SimpleTreeElement[P],
+                             var successor: Set[SimpleTreeElement[P]]
+                           ) {
+
+  // get rewrites from strucute
+
 }
 
+class SimpleTree[P] (val initial: SimpleTreeElement[P],
+                     val initialSolution: Solution[P]) extends SearchSpace[P]{
 
-class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
-
-  // we don't need the add here
+  // we do not need add here
   override def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit = ???
+
+  def getRewriteNumbers(simpleTreeElement: SimpleTreeElement[P]): Seq[Int] = {
+
+    // get rewrites by backtracking of tree elements
+    var tmp = simpleTreeElement
+    val rewrites = new ListBuffer[Int]
+
+    // we can drop rewrite of root
+    while(tmp.predecessor != null){
+
+      // add rewrites
+      rewrites += tmp.rewrite
+
+      // next element
+      tmp = tmp.predecessor
+    }
+
+    rewrites.toSeq.reverse
+  }
+
 
   override def printConsole(): Unit = {
     printNode(initial)
@@ -36,41 +61,42 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     val duration = System.currentTimeMillis() - countStart
     print("getSize: " + duration.toDouble/1000 + "s - ")
 
-
     result
   }
 
+  override def getSearchSpace(): Seq[Solution[P]] = ???
+  override def getElement(i: Int): SearchSpaceElement[P] = ???
 
-  override def getSearchSpace(): Seq[Solution[P]] = {
-    leafs().map(x => x.solution)
-  }
+//  override def getSearchSpace(): Seq[Solution[P]] = {
+//    leafs().map(x => x.solution)
+//  }
 
   // warning! can be slow
-  override def getElement(i: Int): SearchSpaceElement[P] = {
-    leafs().apply(i)
-  }
+//  override def getElement(i: Int): SearchSpaceElement[P] = {
+//    leafs().apply(i)
+//  }
 
   override def writeToDot(filename: String): String = {
-      // write string to file
-      val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 4)
-      val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
+    // write string to file
+    val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 4)
+    val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
 
-      val begin = "strict digraph path {\n"
-      pw.write(begin)
-      println("writen nodes")
-      writeNodesDot(initial, pw)
-      println("write edges")
-      writeEdgesDot(initial, pw)
-      val end = "}"
-      pw.write(end)
-      pw.close()
+    val begin = "strict digraph path {\n"
+    pw.write(begin)
+    println("writen nodes")
+    writeNodesDot(initial, pw)
+    println("write edges")
+    writeEdgesDot(initial, pw)
+    val end = "}"
+    pw.write(end)
+    pw.close()
 
-      // visualize dot graph
-      (s"dot -Tpng -O " + uniqueFilename_full !!)
-      (s"dot -Tpdf -O " + uniqueFilename_full !!)
+    // visualize dot graph
+//          (s"dot -Tpng -O " + uniqueFilename_full !!)
+//          (s"dot -Tpdf -O " + uniqueFilename_full !!)
 
-     ""
-    }
+    ""
+  }
 
   override def writeToDisk(filename: String): Unit = {
 
@@ -79,7 +105,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     writeExpressionsDisk(filename)
 
     // save json for export
-//    toJsonNumbers(filename)
+    //    toJsonNumbers(filename)
     // todo make this more generic, currently json is written and copied elsewhere
 
   }
@@ -87,70 +113,72 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
   // helper
 
   // export
-  def printNode(treeElement: TreeElement[P]): Unit = {
+  def printNode(simpleTreeElement: SimpleTreeElement[P]): Unit = {
 
-    println("treeElement: " + treeElement.strategy)
-    println("layer: " + treeElement.layer)
-    if(treeElement.predecessor == null){
+    println("treeElement: " + simpleTreeElement.rewrite)
+    println("layer: " + simpleTreeElement.layer)
+    if(simpleTreeElement.predecessor == null){
       println("predecessor: " + "null")
     } else {
-      println("predecessor: " + treeElement.predecessor.strategy)
+      println("predecessor: " + simpleTreeElement.predecessor.rewrite)
     }
-    println("successor: " + treeElement.successor.toSeq.map(elem => elem.strategy).mkString("[", ", ", "]"))
+    println("successor: " + simpleTreeElement.successor.toSeq.map(elem => elem.rewrite).mkString("[", ", ", "]"))
     println("\n")
 
-    treeElement.successor.foreach(succ => {
+    simpleTreeElement.successor.foreach(succ => {
       printNode(succ)
     })
   }
 
-  def writeNodesDot(treeElement: TreeElement[P], pw: PrintWriter): Unit = {
+  def writeNodesDot(simpleTreeElement: SimpleTreeElement[P], pw: PrintWriter): Unit = {
 
+    // create hash
+    val numbers = getRewriteNumbers(simpleTreeElement)
+    val hash = hashAndNumbers(simpleTreeElement.solutionHash, numbers)
 
     // write nodes
-    val hash = hashSolution(treeElement.solution)
-    val output = "\"" + hash + "\" [label = \" " + hashProgram(treeElement.solution.expression).substring(0, 2) + "\"]; \n"
+    val output = "\"" + hash + "\" [label = \" " + simpleTreeElement.solutionHash.substring(0, 2) + "\"]; \n"
     pw.write(output)
 
-    if(treeElement.successor.size != 0) {
+    if(simpleTreeElement.successor.size != 0) {
       // write successor nodes
-      treeElement.successor.foreach(succ => {
+      simpleTreeElement.successor.foreach(succ => {
         writeNodesDot(succ, pw)
       })
     }
   }
 
-  def writeEdgesDot(treeElement: TreeElement[P], pw: PrintWriter): Unit = {
+  def writeEdgesDot(simpleTreeElement: SimpleTreeElement[P], pw: PrintWriter): Unit = {
 
-    if(treeElement.successor.size != 0) {
+    if(simpleTreeElement.successor.size != 0) {
 
       // write edges to successors
-      treeElement.successor.foreach(succ => {
+      simpleTreeElement.successor.foreach(succ => {
 
-        val hash = hashSolution(treeElement.solution)
-        val hashSuccessor = hashSolution(succ.solution)
+        val hash = hashAndNumbers(simpleTreeElement.solutionHash, getRewriteNumbers(simpleTreeElement))
+        val hashSuccessor = hashAndNumbers(succ.solutionHash, getRewriteNumbers(succ))
 
-        val output = "\"" + hash + "\" -> \"" + hashSuccessor + "\"  [label = \"" + succ.strategy + "\"]; \n"
+        val output = "\"" + hash + "\" -> \"" + hashSuccessor + "\"  [label = \"" + SearchSpaceHelper.strategies.map(_.swap).apply(succ.rewrite) + "\"]; \n"
         pw.write(output)
 
       })
 
       // write edges of all successors
-      treeElement.successor.foreach(succ => {
+      simpleTreeElement.successor.foreach(succ => {
         writeEdgesDot(succ, pw)
       })
     }
   }
 
   // count
-  def countLeafs(treeElement: TreeElement[P]): Int = {
+  def countLeafs(simpleTreeElement: SimpleTreeElement[P]): Int = {
     // count this node
     var counter = 0
 
-    if(treeElement.successor.size != 0){
+    if(simpleTreeElement.successor.size != 0){
 
       // count successor nodes
-      treeElement.successor.foreach(succ => {
+      simpleTreeElement.successor.foreach(succ => {
         counter += countLeafs(succ)
       })
       counter
@@ -160,14 +188,14 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     counter
   }
 
-  def countNodes(treeElement: TreeElement[P]): Int = {
+  def countNodes(simpleTreeElement: SimpleTreeElement[P]): Int = {
     // count this node
     var counter = 1
 
-    if(treeElement.successor.size != 0){
+    if(simpleTreeElement.successor.size != 0){
 
       // count successor nodes
-      treeElement.successor.foreach(succ => {
+      simpleTreeElement.successor.foreach(succ => {
         counter += countNodes(succ)
       })
       counter
@@ -177,27 +205,27 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
   // get something
 
-  def leafs(): Seq[TreeElement[P]] = {
+  def leafs(): Seq[SimpleTreeElement[P]] = {
 
-    var countedLeaves = new ListBuffer[TreeElement[P]]
+    var countedLeaves = new ListBuffer[SimpleTreeElement[P]]
 
     getLeafs(initial)
 
-    def getLeafs(treeElement: TreeElement[P]): Int = {
+    def getLeafs(simpleTreeElement: SimpleTreeElement[P]): Int = {
       // count this node
       var counter = 0
 
-      if(treeElement.successor.size != 0){
+      if(simpleTreeElement.successor.size != 0){
 
         // count successor nodes
-        treeElement.successor.foreach(succ => {
+        simpleTreeElement.successor.foreach(succ => {
           counter += getLeafs(succ)
         })
         counter
       } else {
         // add to elements
 
-        countedLeaves += treeElement
+        countedLeaves += simpleTreeElement
 
         counter = 1
       }
@@ -283,25 +311,25 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
     // generateConstraints
     val constraints = mutable.HashMap.empty[Int, Set[String]]
-    def generateConstraints(treeElement: TreeElement[P]): Unit = {
+    def generateConstraints(simpleTreeElement: SimpleTreeElement[P]): Unit = {
 
-      val constraint = treeElement.predecessor.strategy match {
-        case null => s"(s${treeElement.layer.toString}" + " == " + SearchSpaceHelper.strategies.apply(treeElement.strategy.toString()) + ")"
-        case _ => s"((s${treeElement.layer.toString}" + " == " + SearchSpaceHelper.strategies.apply(treeElement.strategy.toString()) + ")" + " & " + s"(s${treeElement.predecessor.layer.toString}" + " == " + SearchSpaceHelper.strategies.apply(treeElement.predecessor.strategy.toString()) + "))"
+      val constraint = simpleTreeElement.predecessor.rewrite match {
+        case -1 => s"(s${simpleTreeElement.layer.toString}" + " == " + simpleTreeElement.rewrite + ")"
+        case _ => s"((s${simpleTreeElement.layer.toString}" + " == " + simpleTreeElement.rewrite + ")" + " & " + s"(s${simpleTreeElement.predecessor.layer.toString}" + " == " + simpleTreeElement.predecessor.rewrite + "))"
       }
 
-      val elem: Set[String] = constraints.isDefinedAt(treeElement.layer) match {
-        case true => constraints.apply(treeElement.layer)
+      val elem: Set[String] = constraints.isDefinedAt(simpleTreeElement.layer) match {
+        case true => constraints.apply(simpleTreeElement.layer)
         case false => Set.empty[String]
       }
 
       val con: Set[String] = elem ++ (Set(constraint))
 
       // generate constraint for each elem
-      constraints.addOne(treeElement.layer, con)
+      constraints.addOne(simpleTreeElement.layer, con)
 
       // call this foreach successor
-      treeElement.successor.foreach(succ => {
+      simpleTreeElement.successor.foreach(succ => {
         generateConstraints(succ)
       })
 
@@ -320,7 +348,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
   // todo think about this? compare to writeToDisk
   def writeExpressionsDisk(filename: String) = {
 
-//    val searchSpace =getSearchSpace()
+    //    val searchSpace =getSearchSpace()
     val searchSpace = leafs()
 
 
@@ -328,7 +356,8 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     searchSpace.foreach(elem => {
 
       // hash program
-      val hash = hashProgram(elem.solution.expression)
+//      val hash = hashProgram(elem.solution.expression)
+      val hash = elem.solutionHash
 
       // create unique output folder
       val uniqueFilename = SearchSpaceHelper.getUniqueFilename(filename + "/Expressions/" + hash , 0)
@@ -342,33 +371,32 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
       val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
 
       // create file for value todo (add tuning results?)
-//      val pwValue = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/value"), false))
+      //      val pwValue = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/value"), false))
 
       // write expression to file
-      pwProgram.write(elem.solution.expression.toString)
+      // reproduce elem here
+      pwProgram.write(elem.solutionHash)
 
       // strategy list
-      val list = elem.solution.strategies
+      val list = getRewriteNumbers(elem)
 
       // create strategy string for file
-      var strategyString = ""
-      list.foreach(elem=>{
-        elem match {
-          case null => strategyString +=  "null" + "\n"
-          case _ => strategyString +=  elem.toString + "\n"
-        }
-      })
+      val strategyString = list.mkString("\n")
 
       // write strategy string to file
       pwStrategies.write(strategyString)
 
       // write value to file
-//      pwValue.write(elem.value.toString)
+      //      pwValue.write(elem.value.toString)
 
       // close files
       pwProgram.close()
       pwStrategies.close()
-//      pwValue.close()
+      //      pwValue.close()
     })
   }
+
+
+
+
 }

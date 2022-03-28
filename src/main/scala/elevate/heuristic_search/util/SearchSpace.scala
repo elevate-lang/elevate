@@ -35,7 +35,7 @@ trait SearchSpace[P] {
 
 }
 
-object SearchSpaceHelper{
+object SearchSpaceHelper {
 
   def getUniqueFilename(filename:String, offset: Int):String= {
     var uniqueFilename_full = filename

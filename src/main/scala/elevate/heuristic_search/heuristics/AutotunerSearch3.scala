@@ -1,20 +1,46 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{SearchSpaceHelper, Solution, Tree, TreeElement, hashProgram}
+import elevate.heuristic_search.util._
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
 import scala.collection.mutable
 import scala.language.postfixOps
 import scala.sys.process._
 
-class AutotunerSearch2[P] extends Heuristic[P] {
+class AutotunerSearch3[P] extends Heuristic[P] {
   var layerPrint = 0
   var counterTotal = 0
-  val rewriteLimit = 7
+  val rewriteLimit = 6
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
+  var durationGetSolution: Long = 0
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Tree[P]) = {
+
+  // todo optimize this
+  def computeSample2(panel: HeuristicPanel[P], initialSolution: Solution[P], numbers: Seq[Int]): Solution[P] = {
+
+    val strategies = SearchSpaceHelper.getStrategies(numbers)
+
+    var solution = initialSolution
+    strategies.foreach(strategy => {
+
+      // get neighbourhood
+      val Ns = panel.N(solution)
+      Ns.foreach(ns => {
+
+        if (ns.strategies.last.toString().equals(strategy)) {
+          // apply!
+          solution = ns
+        }
+        // check if this is your number
+      })
+    })
+
+    solution
+  }
+
+
+    def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SimpleTree[P]) = {
     // we don't need this here
 //    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
 
@@ -35,15 +61,15 @@ class AutotunerSearch2[P] extends Heuristic[P] {
             val filepath = "exploration/tree_8.json"
 
             // create empty tree with only one element
-            val tree = new Tree[P](
-              initial = new TreeElement[P](
-                solution = initialSolution,
-                strategy = null,
+            val tree = new SimpleTree[P](
+              initial = new SimpleTreeElement[P](
+                solutionHash = hashProgram(initialSolution),
+                rewrite = -1, // edge case
                 layer = 0,
-                value = None,
                 predecessor = null,
-                successor = Set.empty[TreeElement[P]]
-              )
+                successor = Set.empty[SimpleTreeElement[P]]
+              ),
+              initialSolution = initialSolution
             )
         (tree, filepath)
     }
@@ -62,40 +88,60 @@ class AutotunerSearch2[P] extends Heuristic[P] {
   var counter = 0
 
   // depth first
-  def rewriteNode(panel: HeuristicPanel[P], treeElement: TreeElement[P], tree: Tree[P]): Unit = {
+  def rewriteNode(panel: HeuristicPanel[P], simpleTreeElement: SimpleTreeElement[P], simpleTree: SimpleTree[P]): Unit = {
 
     if(counter % 1000 == 0){
-      println("treeSize: " + tree.getSize())
+      println("treeSize: " + simpleTree.getSize())
     }
     counter += 1
 
-    if (treeElement.layer < rewriteLimit) {
+//    simpleTree.printConsole()
+
+    if (simpleTreeElement.layer < rewriteLimit) {
+
+
+      // reproduce element from numbers
+
+      val getSolutionStart = System.currentTimeMillis()
+      // get solution from current SimpleTreeElement
+      val rewriteNumbers = simpleTree.getRewriteNumbers(simpleTreeElement)
+//      val solution = computeSample2(panel, simpleTree.initialSolution, rewriteNumbers)
+      val solution = panel.getSolution(simpleTree.initialSolution, rewriteNumbers)
+      durationGetSolution += (System.currentTimeMillis() - getSolutionStart)
 
       val rewritesStart = System.currentTimeMillis()
-      val Ns = panel.N(treeElement.solution)
+      val Ns = panel.N(solution)
       durationRewriting += (System.currentTimeMillis() - rewritesStart)
+
+//      solution.strategies.size match {
+//        case 0 => println("solution: " + "initial - " + Ns.size)
+//        case _ => println("solution: " + solution.strategies.last.toString() + " - " + Ns.size)
+//      }
+//
+//      println("globalLeafs: " + globalLeaves.size)
 
       Ns.foreach(ne => {
         // check if we have this node already
         val cond = globalLeaves.contains(hashProgram(ne.expression))
 
         if (cond) {
+//          println("already in: " + hashProgram(ne.expression) + " - " + ne.strategies.last.toString())
           // don't add
         } else {
           // add
+//          println("add: " + hashProgram(ne.expression) + " - " + ne.strategies.last.toString())
 
           // create new tree element
-          val neTree = new TreeElement[P](
-            strategy = ne.strategies.last,
-            solution = ne, // maybe not used
-            layer = treeElement.layer + 1,
-            value = None, // maybe not used
-            predecessor = treeElement,
-            successor = Set.empty[TreeElement[P]]
+          val neTree = new SimpleTreeElement[P](
+            solutionHash = hashProgram(ne.expression),
+            rewrite = SearchSpaceHelper.strategies.apply(ne.strategies.last.toString()),
+            layer = simpleTreeElement.layer + 1,
+            predecessor = simpleTreeElement,
+            successor = Set.empty[SimpleTreeElement[P]]
           )
 
           // add element to predecessor
-          treeElement.successor += neTree
+          simpleTreeElement.successor += neTree
 
           globalLeaves.addOne(hashProgram(ne.expression))
 
@@ -103,46 +149,53 @@ class AutotunerSearch2[P] extends Heuristic[P] {
       })
 
       // add id element manually
-      val dummyElement = new TreeElement[P](
-        strategy = elevate.core.strategies.basic.id[P],
-        solution = new Solution[P](treeElement.solution.expression, treeElement.solution.strategies :+ elevate.core.strategies.basic.id[P]),
-//        solution = treeElement.solution,
-        layer = treeElement.layer + 1,
-        value = None, // maybe not used
-        predecessor = treeElement,
-        successor = Set.empty[TreeElement[P]]
+      val dummyElement = new SimpleTreeElement[P](
+        solutionHash = simpleTreeElement.solutionHash,
+        rewrite = 0,
+        layer = simpleTreeElement.layer + 1,
+        predecessor = simpleTreeElement,
+        successor = Set.empty[SimpleTreeElement[P]]
       )
 
       // add element to predecessor
-      treeElement.successor += dummyElement
+      simpleTreeElement.successor += dummyElement
 
-      treeElement.successor.foreach(succ => {
+//      println("globalLeafs: " + globalLeaves.size)
+//      println("tree size: " + simpleTree.countNodes(simpleTree.initial))
+//      println("tree leafs: " + simpleTree.getSize())
+//      println("tree leafs: " + simpleTree.countLeafs(simpleTree.initial))
+
+      simpleTreeElement.successor.foreach(succ => {
         // call rewrite node
         if (succ.layer < rewriteLimit) {
-          rewriteNode(panel, succ, tree)
+          rewriteNode(panel, succ, simpleTree)
         }
       })
     }
   }
 
-  def generateSearchSpace(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): Tree[P]  = {
+  def generateSearchSpace(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): SimpleTree[P]  = {
 
-    // create tree with initial element
-    val tree = new Tree[P](
-      initial = new TreeElement[P](
-        solution = initialSolution,
-        strategy = null,
+    // create simple tree with initial element
+    val tree = new SimpleTree[P](
+      initial = new SimpleTreeElement[P](
+        solutionHash = hashProgram(initialSolution.expression),
+        rewrite = -1,
         layer = 0,
-        value = None,
         predecessor = null,
-        successor = Set.empty[TreeElement[P]]
-      )
+        successor = Set.empty[SimpleTreeElement[P]]
+      ),
+      initialSolution = initialSolution
     )
 
     println("create tree")
     // create tree
+    val upperBound = math.pow((SearchSpaceHelper.strategies.size + 1)/2, rewriteLimit).toLong
+    println("upper bound: " + upperBound)
 
     val startTime = System.currentTimeMillis()
+
+    globalLeaves.addOne(hashProgram(initialSolution.expression))
 
     rewriteNode(panel, tree.initial, tree)
 
@@ -151,9 +204,15 @@ class AutotunerSearch2[P] extends Heuristic[P] {
     println("\ndurations: ")
     println("duration total: " + duration.toDouble / 1000 + " s")
     println("duration total: " + duration.toDouble / 1000 / 60 + " m")
+
+    println("getSolution overhead: " + durationGetSolution.toDouble / 1000 + " s")
+    println("getSolution overhead: " + durationGetSolution.toDouble / 1000 / 60 + " m")
+    println("getSolution percentage: " + durationGetSolution.toDouble / duration.toDouble)
+
     println("rewrite overhead: " + durationRewriting.toDouble / 1000 + " s")
     println("rewrite overhead: " + durationRewriting.toDouble / 1000 / 60 + " m")
     println("rewrite percentage: " + durationRewriting.toDouble / duration.toDouble)
+
 
     println("\nsizes: ")
     println("tree size: " + tree.getSizeTotal())
