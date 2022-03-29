@@ -180,7 +180,9 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",
-        "values" : [0, ${size-1}]
+        "values" : [0, ${size-1}],
+        "constraints" : [],
+        "dependencies" : []
       }
       }
     }"""
