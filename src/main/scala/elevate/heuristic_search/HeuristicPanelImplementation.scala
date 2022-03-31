@@ -40,7 +40,7 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
   }
 
 
-  def getSolution(solution: Solution[P], numbers: Seq[Int]): Solution[P] = {
+  def getSolution(initial: Solution[P], numbers: Seq[Int]): Option[Solution[P]] = {
 
 //    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
 
@@ -52,21 +52,26 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
     strategies.foreach(strat => strategiesMap += (strat.toString() -> strat))
 
     // rewrite expression
-    var tmp = solution
-    strategiesString.foreach(strat => {
-//      println("look for: " + strat)
-      val strategy = strat match {
-        case "id" => basic.id[P]
-        case _ => strategiesMap.apply(strat)
-      }
-      tmp = new Solution[P](strategy.apply(tmp.expression).get, tmp.strategies :+ strategy)
-    })
+    var solution = initial
+    try {
 
-//    println("solution: " + hashSolution(tmp))
-//    println("\n")
+      strategiesString.foreach(strat => {
+//        println("look for: " + strat)
+        val strategy = strat match {
+          case "id" => basic.id[P]
+          case _ => strategiesMap.apply(strat)
+        }
+        solution = new Solution[P](strategy.apply(solution.expression).get, solution.strategies :+ strategy)
+      })
+      Some(solution)
+    } catch {
+      case e: Throwable => None
+    }
 
-    tmp
+    //    println("solution: " + hashSolution(tmp))
+    //    println("\n")
   }
+
 
   // parallel without checking
   def N3(solution: Solution[P]): Set[Solution[P]]= {
@@ -169,15 +174,15 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 
             // check if expression is valid
             val newSolution = new Solution[P](result.get, solution.strategies :+ strategy)
-//            if(runner.checkSolution(newSolution)){
+            if(runner.checkSolution(newSolution)){
 
               neighbours.add(newSolution)
 //                new Solution[P](result.get, solution.strategies :+ strategy))
               //add to neighbourhood
-//            }else{
+            }else{
               // do nothing, drop result/ candidate
 
-//            }
+            }
           }
           case _:Failure[P] => //nothing
         }

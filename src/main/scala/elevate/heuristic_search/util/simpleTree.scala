@@ -64,7 +64,10 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     result
   }
 
-  override def getSearchSpace(): Seq[Solution[P]] = ???
+  // todo fix this
+  override def getSearchSpace(): Seq[Solution[P]] = {
+    Seq.empty[Solution[P]]
+  }
   override def getElement(i: Int): SearchSpaceElement[P] = ???
 
 //  override def getSearchSpace(): Seq[Solution[P]] = {
@@ -92,8 +95,8 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     pw.close()
 
     // visualize dot graph
-//          (s"dot -Tpng -O " + uniqueFilename_full !!)
-//          (s"dot -Tpdf -O " + uniqueFilename_full !!)
+          (s"dot -Tpng -O " + uniqueFilename_full !!)
+          (s"dot -Tpdf -O " + uniqueFilename_full !!)
 
     ""
   }
@@ -243,7 +246,7 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 5)
     val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
 
-    val doe = 100
+    val doe = 10
     val optimizationIterations = 100
 
     val begin = {
@@ -259,11 +262,9 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "design_of_experiment": {
-        "doe_type": "random sampling",
-        "number_of_samples": ${doe}
-      },
-      "optimization_iterations": ${optimizationIterations},
+      "scalarization_method": "linear",
+      "optimization_method": "opentuner",
+      "optimization_iterations" : ${optimizationIterations},
       "input_parameters" : {\n"""
 
     }

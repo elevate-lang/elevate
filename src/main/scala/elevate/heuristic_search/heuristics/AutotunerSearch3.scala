@@ -3,6 +3,7 @@ package elevate.heuristic_search.heuristics
 import elevate.heuristic_search.util._
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 import scala.language.postfixOps
 import scala.sys.process._
@@ -10,7 +11,7 @@ import scala.sys.process._
 class AutotunerSearch3[P] extends Heuristic[P] {
   var layerPrint = 0
   var counterTotal = 0
-  val rewriteLimit = 6
+  val rewriteLimit = 7
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
@@ -50,7 +51,8 @@ class AutotunerSearch3[P] extends Heuristic[P] {
     val (tree, filepath) = generate match {
       case true =>
         // generate search space
-        val tree = generateSearchSpace(panel, initialSolution, depth)
+//        val tree = generateSearchSpace(panel, initialSolution, depth)
+        val tree = createTree(initialSolution, panel)
 
         // export tree
         val filepath = tree.toJsonNumbers("exploration/tree.json")
@@ -78,11 +80,130 @@ class AutotunerSearch3[P] extends Heuristic[P] {
     dry match {
       case true => (initialSolution.expression, None, tree)
       case false =>
-        //     explore search sapce
+        //     explore search space
         val (solution, solutionValue) = explore(panel, initialSolution, depth, filepath)
         (solution.expression, solutionValue, tree)
     }
 
+  }
+
+  // breadth first
+  def createTree(initialSolution: Solution[P], panel: HeuristicPanel[P]): SimpleTree[P] = {
+
+    // create empty tree
+    val tree = new SimpleTree[P](
+      initial = new SimpleTreeElement[P](
+        solutionHash = hashProgram(initialSolution.expression),
+        rewrite = -1,
+        layer = 0,
+        predecessor = null,
+        successor = Set.empty[SimpleTreeElement[P]]
+      ),
+      initialSolution = initialSolution
+    )
+
+    // create queue
+    var queue = Queue.empty[SimpleTreeElement[P]]
+
+    // empty tree
+    // initial tree element
+    queue = queue.enqueue(tree.initial)
+
+    println("queue: " + queue.size)
+    println("queue.empty: " + !queue.isEmpty)
+
+    var layer = 0
+    while(!queue.isEmpty){
+      val layerDurationStart = System.currentTimeMillis()
+      println("\nlayer: " + layer)
+      println("queue.size: " + queue.size)
+
+      // dequeue complete layer
+      var layerElements = 0
+      val layerNodes = queue.size
+      for(i <- 1 to queue.size){
+
+        // dequeue element
+        val (currentElement, currentQueue) = queue.dequeue
+        queue = currentQueue
+
+        val rewriteNumbers = tree.getRewriteNumbers(currentElement)
+        val solution = panel.getSolution(tree.initialSolution, rewriteNumbers)
+
+        val Ns = panel.N(solution.get)
+        layerElements += Ns.size
+
+          // rewrite
+          Ns.foreach(ne => {
+
+            val hash = hashProgram(ne.expression)
+
+            // add new element if condition is met
+          val cond = globalLeaves.contains(hash)
+          if(!cond) {
+
+            // create new tree element
+            val currentTreeElement = new SimpleTreeElement[P](
+              solutionHash = hash,
+              rewrite = SearchSpaceHelper.strategies.apply(ne.strategies.last.toString()),
+              layer = currentElement.layer + 1,
+              predecessor = currentElement,
+              successor = Set.empty[SimpleTreeElement[P]]
+            )
+
+            // add element to predecessor
+            currentElement.successor += currentTreeElement
+
+            globalLeaves.addOne(hash)
+
+            // add to queue
+            if (layer < rewriteLimit) {
+              queue = queue.enqueue(currentTreeElement)
+            }
+          }
+          })
+
+        // add one for id element
+        // do we need to count this? It is techincally not rewritten, but added to next layer
+        layerElements += 1
+
+        // add id element manually
+        val dummyElement = new SimpleTreeElement[P](
+          solutionHash = currentElement.solutionHash,
+          rewrite = 0,
+          layer = currentElement.layer + 1,
+          predecessor = currentElement,
+          successor = Set.empty[SimpleTreeElement[P]]
+        )
+
+        // add element to predecessor
+        currentElement.successor += dummyElement
+
+        // add to queue if limit is not reached
+        if (layer < rewriteLimit){
+          queue = queue.enqueue(dummyElement)
+        } else {
+
+        }
+      }
+
+      // todo collect intermediate jsons at output folder
+      // write json
+      val test = tree.toJsonNumbers("exploration/tree_" + layer.toString + ".json")
+      println("write json: " + test)
+      layer += 1
+
+      // todo write this to file
+      // layer end
+      val layerDuration = System.currentTimeMillis() - layerDurationStart
+      println("duration: " + layerDuration.toDouble/1000 + " s")
+      println("duration: " + layerDuration.toDouble/1000/60 + " m")
+      println("elements: " + layerElements)
+      println("durationPerElement: " + layerDuration/layerElements + " ms")
+      println("avg children per node: " + layerElements.toDouble/layerNodes.toDouble)
+    }
+
+    tree
   }
 
   var counter = 0
@@ -97,7 +218,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
 //    simpleTree.printConsole()
 
-    if (simpleTreeElement.layer < rewriteLimit) {
+    if (simpleTreeElement.layer <= rewriteLimit) {
 
 
       // reproduce element from numbers
@@ -110,7 +231,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
       durationGetSolution += (System.currentTimeMillis() - getSolutionStart)
 
       val rewritesStart = System.currentTimeMillis()
-      val Ns = panel.N(solution)
+      val Ns = panel.N(solution.get)
       durationRewriting += (System.currentTimeMillis() - rewritesStart)
 
 //      solution.strategies.size match {
@@ -167,7 +288,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
       simpleTreeElement.successor.foreach(succ => {
         // call rewrite node
-        if (succ.layer < rewriteLimit) {
+        if (succ.layer <= rewriteLimit) {
           rewriteNode(panel, succ, simpleTree)
         }
       })
@@ -253,24 +374,47 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
       val strategies = SearchSpaceHelper.getStrategies(parametersValuesMap.toSeq.sortBy(x => x._1).map(x => x._2))
 
-      var solution = initialSolution
-      strategies.foreach(strategy => {
+      val rewriteNumbers = parametersValuesMap.toSeq.sortBy(x => x._1).map(x => x._2)
 
-        // get neighbourhood
-        val Ns = panel.N(solution)
-        Ns.foreach(ns => {
+      //      val solution = computeSample2(panel, simpleTree.initialSolution, rewriteNumbers)
+//      println("\nmap")
+//      parametersValuesMap.foreach(elem => println(elem))
 
-          if(ns.strategies.last.toString().equals(strategy)){
-            // apply!
-            solution = ns
+//      println("\nstrategies")
+
+//      strategies.foreach(println)
+//      println("\nnumbers ")
+//      rewriteNumbers.foreach(println)
+      val solution = panel.getSolution(initialSolution, rewriteNumbers)
+
+      solution match {
+        case Some(value) =>
+          {
+
+            //
+            //      var solution = initialSolution
+            //      strategies.foreach(strategy => {
+            //
+            //        // get neighbourhood
+            //        val Ns = panel.N(solution)
+            //        Ns.foreach(ns => {
+            //
+            //          if(ns.strategies.last.toString().equals(strategy)){
+            //            // apply!
+            //            solution = ns
+            //          }
+            //          // check if this is your number
+            //        })
+            //      })
+
+            val runtime = panel.f(solution.get)
+
+            Sample(solution.get, runtime)
           }
-          // check if this is your number
-        })
-      })
 
-      val runtime = panel.f(solution)
-
-      Sample(solution, runtime)
+          // todo fix problem with inital solution
+        case None => Sample(initialSolution, None)
+      }
     }
 
     val totalDurationStart = System.currentTimeMillis()

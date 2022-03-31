@@ -13,7 +13,7 @@ trait HeuristicPanel[P] {
   def f(solution: Solution[P]): Option[Double]
 
   // get solutiosn
-  def getSolution(solution: Solution[P], numbers: Seq[Int]): Solution[P]
+  def getSolution(solution: Solution[P], numbers: Seq[Int]): Option[Solution[P]]
 
 }
 
