@@ -11,42 +11,15 @@ import scala.sys.process._
 class AutotunerSearch3[P] extends Heuristic[P] {
   var layerPrint = 0
   var counterTotal = 0
-  val rewriteLimit = 7
+  val rewriteLimit = 5
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
 
-
-  // todo optimize this
-  def computeSample2(panel: HeuristicPanel[P], initialSolution: Solution[P], numbers: Seq[Int]): Solution[P] = {
-
-    val strategies = SearchSpaceHelper.getStrategies(numbers)
-
-    var solution = initialSolution
-    strategies.foreach(strategy => {
-
-      // get neighbourhood
-      val Ns = panel.N(solution)
-      Ns.foreach(ns => {
-
-        if (ns.strategies.last.toString().equals(strategy)) {
-          // apply!
-          solution = ns
-        }
-        // check if this is your number
-      })
-    })
-
-    solution
-  }
-
-
     def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SimpleTree[P]) = {
-    // we don't need this here
-//    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
 
-    val dry = true
-    val generate = true
+    val dry = false
+    val generate = false
 
     val (tree, filepath) = generate match {
       case true =>
@@ -60,7 +33,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
         (tree, filepath)
       case false =>
         // read in config file
-            val filepath = "exploration/tree_8.json"
+            val filepath = "exploration/tree_5.json"
 
             // create empty tree with only one element
             val tree = new SimpleTree[P](
@@ -189,7 +162,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
       // todo collect intermediate jsons at output folder
       // write json
-      val test = tree.toJsonNumbers("exploration/tree_" + layer.toString + ".json")
+      val test = tree.toJsonNumbers2("exploration/tree_" + layer.toString + ".json")
       println("write json: " + test)
       layer += 1
 
@@ -341,14 +314,6 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
     println("\ngenerate constraints")
     val constraints = tree.getConstraints()
-//    constraints.foreach(constr => {
-//      println("layer: " + constr._1)
-//      constr._2.foreach(elem => {
-//        println(elem)
-//      })
-//      println("\n")
-//
-//    })
 
     var sum = 0
     constraints.foreach(elem => {
@@ -376,44 +341,22 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
       val rewriteNumbers = parametersValuesMap.toSeq.sortBy(x => x._1).map(x => x._2)
 
-      //      val solution = computeSample2(panel, simpleTree.initialSolution, rewriteNumbers)
-//      println("\nmap")
-//      parametersValuesMap.foreach(elem => println(elem))
-
-//      println("\nstrategies")
-
-//      strategies.foreach(println)
-//      println("\nnumbers ")
-//      rewriteNumbers.foreach(println)
       val solution = panel.getSolution(initialSolution, rewriteNumbers)
 
       solution match {
-        case Some(value) =>
-          {
+        case Some(value) => {
 
-            //
-            //      var solution = initialSolution
-            //      strategies.foreach(strategy => {
-            //
-            //        // get neighbourhood
-            //        val Ns = panel.N(solution)
-            //        Ns.foreach(ns => {
-            //
-            //          if(ns.strategies.last.toString().equals(strategy)){
-            //            // apply!
-            //            solution = ns
-            //          }
-            //          // check if this is your number
-            //        })
-            //      })
+          val runtime = panel.f(solution.get)
 
-            val runtime = panel.f(solution.get)
-
-            Sample(solution.get, runtime)
-          }
-
-          // todo fix problem with inital solution
-        case None => Sample(initialSolution, None)
+          Sample(solution.get, runtime)
+        }
+        // todo fix problem with initial solution
+        case None => {
+          println(rewriteNumbers.mkString("[", ",", "]"))
+          println(strategies.mkString("[", ", ", "]"))
+//          throw new Exception("cannot reproduce expression")
+          Sample(initialSolution, None)
+        }
       }
     }
 
@@ -426,8 +369,6 @@ class AutotunerSearch3[P] extends Heuristic[P] {
     val doe = 100
     val optimizationIterations = 100
 
-//    val configFile = os.pwd.toString() + "/exploration/tree.json"
-//    val configFile = os.pwd.toString() + "/exploration/tree_8.json"
     val configFile = os.pwd.toString() + "/" + filePath
     println("configFile: " + configFile)
 
@@ -498,7 +439,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 //            println(sample)
             i += 1
             // append sample to Samples
-            //            samples += sample
+//                        samples += sample
             // append response
             sample.runtime match {
               case None =>
@@ -520,14 +461,13 @@ class AutotunerSearch3[P] extends Heuristic[P] {
               case message => println("message: " + message)
             }
           }
-    //
-    //    // todo save output generic, avoid overwriting
+
     // apply this at the end
-        // save output
+    // save output
     println("save output")
-        ("mkdir -p exploration/tuner" !!)
-        ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
-        (s"cp ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
+    ("mkdir -p exploration/tuner" !!)
+    ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
+    (s"cp ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
 
     println("plot results")
         // plot results using hypermapper
@@ -540,15 +480,11 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
     println("output: " + test)
 
-//        val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
-//        println("duration2: " + duration2/1000  + "s")
-    //
-    //    println("end")
-    //    println("solution: " + solution.expression)
-    //    println("solutionValue: " + solutionValue)
-    //    println("strategies: ")
-    //    solution.strategies.foreach(println)
-    //
+
+    val duration = (System.currentTimeMillis() - totalDurationStart).toDouble
+
+    println("duration2: " + duration/1000  + " s")
+    println("duration2: " + duration/1000/60  + " m")
 
     (solution, solutionValue)
   }

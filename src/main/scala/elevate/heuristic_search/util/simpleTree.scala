@@ -246,8 +246,8 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 5)
     val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
 
-    val doe = 10
-    val optimizationIterations = 100
+    val doe = 5
+    val optimizationIterations = 5
 
     val begin = {
       s"""{
@@ -262,11 +262,17 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
+      "design_of_experiment" : {
+        "doe_type" : "random sampling",
+        "number_of_samples" : ${doe}
+      },
       "scalarization_method": "linear",
-      "optimization_method": "opentuner",
+      "models": {
+        "model": "gaussian_process"
+       },
+      "optimization_method": "bayesian_optimization",
       "optimization_iterations" : ${optimizationIterations},
       "input_parameters" : {\n"""
-
     }
 
 
@@ -275,9 +281,12 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     val json = getConstraints()
     json.foreach(elem => {
 
-      val dependency: String = elem._1 == 1 match {
-        case true => ""
-        case false => "\"" + s"s${elem._1-1}" + "\""
+      val dependencies = new ListBuffer[String]
+
+      var layer = elem._1
+      while(layer > 1) {
+        dependencies += ("\"" + s"s${layer-1}" + "\"")
+        layer -= 1
       }
 
       entries +=
@@ -285,7 +294,7 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
            |          "parameter_type" : "ordinal",
            |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
            |          "constraints" : ${elem._2.mkString("[\"", " | ", "\"]")},
-           |          "dependencies" : [${dependency}]
+           |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
            |        },
            |""".stripMargin
     })
@@ -308,23 +317,42 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
   }
 
 
+
+
+  // WARNING: blows config file, because we store each complete edge as constraint
+  // todo filter out duplicates
   def getConstraints(): mutable.HashMap[Int, Set[String]] = {
 
     // generateConstraints
     val constraints = mutable.HashMap.empty[Int, Set[String]]
     def generateConstraints(simpleTreeElement: SimpleTreeElement[P]): Unit = {
 
-      val constraint = simpleTreeElement.predecessor.rewrite match {
-        case -1 => s"(s${simpleTreeElement.layer.toString}" + " == " + simpleTreeElement.rewrite + ")"
-        case _ => s"((s${simpleTreeElement.layer.toString}" + " == " + simpleTreeElement.rewrite + ")" + " & " + s"(s${simpleTreeElement.predecessor.layer.toString}" + " == " + simpleTreeElement.predecessor.rewrite + "))"
+      var iteratorNode = simpleTreeElement
+      val collectedConstraints = new ListBuffer[String]
+      while(iteratorNode.rewrite >= 0){
+        // process
+        val constraint = iteratorNode.predecessor.rewrite match {
+          case -1 => s"(s${iteratorNode.layer.toString}" + " == " + iteratorNode.rewrite + ")"
+          case _ => s"((s${iteratorNode.layer.toString}" + " == " + iteratorNode.rewrite + ")" + " & " + s"(s${iteratorNode.predecessor.layer.toString}" + " == " + iteratorNode.predecessor.rewrite + "))"
+        }
+
+        collectedConstraints += constraint
+
+        iteratorNode = iteratorNode.predecessor
       }
+
+      //      val constraintsString = collectedConstraints.toSet
+      //      val constraintsString2 = collectedConstraints.toSet.mkString(" & ")
+      //      println("constraintsString: " + constraintsString)
+      //      println("constraintsString2: " + constraintsString2)
+
 
       val elem: Set[String] = constraints.isDefinedAt(simpleTreeElement.layer) match {
         case true => constraints.apply(simpleTreeElement.layer)
         case false => Set.empty[String]
       }
 
-      val con: Set[String] = elem ++ (Set(constraint))
+      val con: Set[String] = elem ++ Set(collectedConstraints.toSet.mkString(" & "))
 
       // generate constraint for each elem
       constraints.addOne(simpleTreeElement.layer, con)
@@ -344,6 +372,174 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     constraints
   }
 
+
+  def toJsonNumbers2(filename: String): String = {
+
+
+    // write string to file
+    val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 5)
+    val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
+
+    val doe = 5
+    val optimizationIterations = 5
+
+    val begin = {
+      s"""{
+      "application_name": "mv_exploration",
+      "optimization_objectives": ["runtime"],
+      "feasible_output" : {
+        "enable_feasible_predictor" : true,
+        "name" : "Valid",
+        "true_value" : "True",
+        "false_value" : "False"
+      },
+      "hypermapper_mode" : {
+        "mode" : "client-server"
+      },
+      "design_of_experiment" : {
+        "doe_type" : "random sampling",
+        "number_of_samples" : ${doe}
+      },
+      "scalarization_method": "linear",
+      "models": {
+        "model": "gaussian_process"
+       },
+      "optimization_method": "bayesian_optimization",
+      "optimization_iterations" : ${optimizationIterations},
+      "input_parameters" : {\n"""
+    }
+
+
+    var entries = ""
+
+
+    // todo make this bottom up
+    val json = getConstraints2()
+
+//
+//    entries +=
+//      s"""        "s${0}" : {
+//         |          "parameter_type" : "ordinal",
+//         |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+//         |          "constraints" : ${elem._2.mkString("[\"", " | ", "\"]")},
+//         |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
+//         |        },
+//         |""".stripMargin
+
+
+    // todo check if this works for bottom up order
+    json.foreach(elem => {
+
+      val dependencies = new ListBuffer[String]
+
+      val max = json.map(elem => elem._1).max
+
+      var layer = elem._1
+      while(layer < max) {
+        dependencies += ("\"" + s"s${layer+1}" + "\"")
+        layer += 1
+      }
+
+      entries +=
+        s"""        "s${elem._1}" : {
+           |          "parameter_type" : "ordinal",
+           |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+           |          "constraints" : ${elem._2.mkString("[\"", " | ", "\"]")},
+           |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
+           |        },
+           |""".stripMargin
+    })
+
+    entries = entries.dropRight(2) + "\n"
+
+    val end =
+      """
+        | }
+        |}
+        |""".stripMargin
+
+
+    pw.write(begin)
+    pw.write(entries)
+    pw.write(end)
+    pw.close()
+
+    uniqueFilename_full
+  }
+
+
+  def getConstraints2(): mutable.HashMap[Int, Set[String]] = {
+
+    // generateConstraints
+    val constraints = mutable.HashMap.empty[Int, Set[String]]
+    def generateConstraints2(simpleTreeElement: SimpleTreeElement[P]): Unit = {
+
+      var iteratorNode = simpleTreeElement
+      val collectedConstraints = new ListBuffer[String]
+//      while(iteratorNode.rewrite >= 0){
+
+      val constraint = iteratorNode.successor.size match {
+        case 0 => s"(s${iteratorNode.layer.toString}" + " == " + iteratorNode.rewrite + ")"
+        case _ => {
+          iteratorNode.successor.map(succ => {
+            s"((s${iteratorNode.layer.toString}" + " == " + iteratorNode.rewrite + ")" + " & " + s"(s${succ.layer.toString}" + " == " + succ.rewrite + "))"
+          }).mkString(" | ")
+        }
+      }
+
+        // process
+//        val constraint = iteratorNode.predecessor.rewrite match {
+//          case -1 => s"(s${iteratorNode.layer.toString}" + " == " + iteratorNode.rewrite + ")"
+//          case _ => s"((s${iteratorNode.layer.toString}" + " == " + iteratorNode.rewrite + ")" + " & " + s"(s${iteratorNode.predecessor.layer.toString}" + " == " + iteratorNode.predecessor.rewrite + "))"
+//        }
+
+        collectedConstraints += constraint
+
+//        iteratorNode = iteratorNode.predecessor
+//      }
+
+      //      val constraintsString = collectedConstraints.toSet
+      //      val constraintsString2 = collectedConstraints.toSet.mkString(" & ")
+      //      println("constraintsString: " + constraintsString)
+      //      println("constraintsString2: " + constraintsString2)
+
+
+      // todo check duplicates here!
+
+      val elem: Set[String] = constraints.isDefinedAt(simpleTreeElement.layer) match {
+        case true => constraints.apply(simpleTreeElement.layer)
+        case false => Set.empty[String]
+      }
+
+      val con: Set[String] = elem ++ Set(collectedConstraints.toSet.mkString(" | "))
+
+      // generate constraint for each elem
+      constraints.addOne(simpleTreeElement.layer, con)
+
+      if(simpleTreeElement.layer > 1){
+        // call this foreach successor
+        generateConstraints2(simpleTreeElement.predecessor)
+      }
+    }
+
+    // constraint for leaf
+
+    // constraints for element and children?
+
+    val treeLeafs = leafs()
+
+    // start from each leaf and write constraints
+
+    // call foreach parent function
+
+    // get layer function? -> generate constraints foreach layer
+
+    // generate constraints
+
+    treeLeafs.foreach(elem => generateConstraints2(elem))
+
+    constraints
+  }
 
 
   // todo think about this? compare to writeToDisk

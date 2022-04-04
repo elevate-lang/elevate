@@ -37,7 +37,7 @@ case class Metaheuristic[P](name: String,
 
       // print path
       println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
-//      result._3.writeToDot(output + "/" + name + ".dot")
+      result._3.writeToDot(output + "/" + name + ".dot")
       println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
 //      result._3.writePathToDisk(output + "/" )
       println("[METAHEURISTIC] : write path to disk")
