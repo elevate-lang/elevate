@@ -416,6 +416,11 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     // todo make this bottom up
     val json = getConstraints2()
 
+//    println("constraints: " + json.)
+
+    val jsonSize = json.toSeq.map(elem => elem._2.size).reduceLeft((a,b) => a+b)
+    println("constraints: " + jsonSize)
+
 //
 //    entries +=
 //      s"""        "s${0}" : {
@@ -467,6 +472,137 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     uniqueFilename_full
   }
 
+  def getConstraintsInvert(): mutable.HashMap[Int, Set[Set[String]]] = {
+    val constraints = mutable.HashMap.empty[Int, Set[Set[String]]]
+
+
+    def all(numbers: Seq[Int]): Seq[Seq[Int]] = {
+//      println("call all: " + numbers.mkString("[", ",", "]"))
+      val strategies = 17
+      val layerLimit = 4
+//      println("progress: " + numbers.size + "/" + layerLimit)
+
+      var output = scala.collection.mutable.Seq.empty[Seq[Int]]
+
+      for (j <- Range(0, strategies)) {
+        val numbersCombined = numbers :+ j
+        output = output :+ numbersCombined
+      }
+
+      if(numbers.size+1 < layerLimit) {
+        var output2 = scala.collection.mutable.Seq.empty[Seq[Int]]
+        output.toSeq.foreach(elem => {
+          output2 = output2 ++ all(elem)
+        })
+        output2.toSeq
+      }else{
+        output.toSeq
+      }
+    }
+    // todo collect all constraints/inverted
+    // collect all invalid paths
+
+    // extensible -> flip around
+    // s1*1 + s2*100 + s3*1000 != 001404 -> rewrite [4, 14, 0] (invalid rewrite)
+    // s1*1 + s2*100 + s3*1000 + s4 * 100000 != 03001404 -> rewrite [4, 14, 0, 03] (invalid rewrite)
+
+    // top down?
+    // for all invalid children -> get invalid ones?
+
+
+    // get all valid numbers => then create all invalid numbers from that
+
+    // get rewrite sequence for each leaf
+
+    // doesn't get the leafs here !
+    val numbers = leafs().map(elem => {
+      var tmp = elem
+      val numbers = new ListBuffer[Int]
+      while(tmp.rewrite >= 0){
+        numbers += tmp.rewrite
+        tmp = tmp.predecessor
+      }
+      numbers.toSeq
+    })
+
+//    numbers.foreach(number => {
+//      println(number.mkString("[", "," , "]"))
+//    })
+
+    // invert
+
+    val allNumbers = SearchSpaceHelper.strategies.map(elem => elem._2).toSeq.map(elem => all(Seq(elem))).flatten
+
+    println("\n")
+
+//    numbers.foreach(elem => println(elem.size))
+
+    val filtered = allNumbers.filter(elem => !numbers.contains(elem))
+
+    println("allNumbers.size: " + allNumbers.size)
+    println("numbers: " + numbers.size)
+    println("filtered: " + filtered.size)
+    println("difference: " + (allNumbers.size - numbers.size).toString)
+
+    // write constraints for filtered individually
+    // warning! huge amount 83 thousand!
+    // filter stuff out? -> generalise constraints?
+
+//    val allNumbers2 = allNumbers.filter(elem => elem.size == 3)
+//
+//    println("allNumbers2.size: " + allNumbers2.toSet.size)
+//    allNumbers.foreach(elem =>{
+//      println("elem: " + elem)
+//    })
+
+    // generate all
+//    val layerLimit = 3
+//    val strategies = SearchSpaceHelper.strategies.size
+//    val localNumbers = SearchSpaceHelper.strategies.map(x => x._2).toSeq
+
+
+
+    // filter out valid ones
+
+
+//    val layer = 1
+//
+//    val limit = 2
+
+//    val numbers = SearchSpaceHelper.strategies.map(x => x._2).toSeq
+//    val rewrites = initial.successor.map(elem => elem.rewrite).toSeq
+//    val invalidNumbers = numbers.filter(elem => !rewrites.contains(elem))
+//
+//    invalidNumbers.foreach(invalidNumber => {
+
+      // invalidNumber -> get all successors?
+
+
+
+//
+//    var counter = 0
+//    while(counter < limit){
+//
+//      // get rewrites
+//
+//      // walk down until limit
+//
+//
+//     counter += 1
+//    }
+//
+//    // write constraints
+//    val constraintsLayer = invalidNumbers.map(number => {
+//      s"s${layer}*1" + "!=" + number
+//    })
+//
+//    println("contraints on layer: " + layer )
+//    constraintsLayer.foreach(println)
+//
+//    constraints
+    constraints
+  }
+
 
   def getConstraints2(): mutable.HashMap[Int, Set[String]] = {
 
@@ -486,6 +622,10 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
           }).mkString(" | ")
         }
       }
+
+      // flip constraints?
+
+
 
         // process
 //        val constraint = iteratorNode.predecessor.rewrite match {

@@ -11,15 +11,15 @@ import scala.sys.process._
 class AutotunerSearch3[P] extends Heuristic[P] {
   var layerPrint = 0
   var counterTotal = 0
-  val rewriteLimit = 5
+  val rewriteLimit = 3
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
 
     def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SimpleTree[P]) = {
 
-    val dry = false
-    val generate = false
+    val dry = true
+    val generate = true
 
     val (tree, filepath) = generate match {
       case true =>
@@ -27,13 +27,17 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 //        val tree = generateSearchSpace(panel, initialSolution, depth)
         val tree = createTree(initialSolution, panel)
 
+        val constraintsInverted = tree.getConstraintsInvert()
+//        System.exit(0)
+
         // export tree
         val filepath = tree.toJsonNumbers("exploration/tree.json")
+
 
         (tree, filepath)
       case false =>
         // read in config file
-            val filepath = "exploration/tree_5.json"
+            val filepath = "exploration/tree_5_big.json"
 
             // create empty tree with only one element
             val tree = new SimpleTree[P](
@@ -162,7 +166,8 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
       // todo collect intermediate jsons at output folder
       // write json
-      val test = tree.toJsonNumbers2("exploration/tree_" + layer.toString + ".json")
+//      val test = tree.toJsonNumbers2("exploration/tree_" + layer.toString + ".json")
+      val test = tree.toJsonNumbers("exploration/tree_" + layer.toString + ".json")
       println("write json: " + test)
       layer += 1
 
