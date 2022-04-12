@@ -5,6 +5,9 @@ import java.io.{File, FileOutputStream, PrintWriter}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
+import scala.collection.parallel.CollectionConverters._
+import scala.collection.parallel.ParSet
+
 import scala.language.postfixOps
 import scala.sys.process._
 
@@ -472,8 +475,118 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     uniqueFilename_full
   }
 
-  def getConstraintsInvert(): mutable.HashMap[Int, Set[Set[String]]] = {
-    val constraints = mutable.HashMap.empty[Int, Set[Set[String]]]
+  def toJsonNumbers3(filename: String): String = {
+
+
+    // write string to file
+    val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 5)
+    val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
+
+    val doe = 5
+    val optimizationIterations = 5
+
+    val begin = {
+      s"""{
+      "application_name": "mv_exploration",
+      "optimization_objectives": ["runtime"],
+      "feasible_output" : {
+        "enable_feasible_predictor" : true,
+        "name" : "Valid",
+        "true_value" : "True",
+        "false_value" : "False"
+      },
+      "hypermapper_mode" : {
+        "mode" : "client-server"
+      },
+      "design_of_experiment" : {
+        "doe_type" : "random sampling",
+        "number_of_samples" : ${doe}
+      },
+      "scalarization_method": "linear",
+      "models": {
+        "model": "gaussian_process"
+       },
+      "optimization_method": "bayesian_optimization",
+      "optimization_iterations" : ${optimizationIterations},
+      "input_parameters" : {\n"""
+    }
+
+
+    var entries = ""
+
+
+    // todo make this bottom up
+    val json = getConstraintsInvert()
+
+    //    println("constraints: " + json.)
+
+    val jsonSize = json.toSeq.map(elem => elem._2.size).reduceLeft((a,b) => a+b)
+    println("constraints: " + jsonSize)
+
+    //
+    //    entries +=
+    //      s"""        "s${0}" : {
+    //         |          "parameter_type" : "ordinal",
+    //         |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+    //         |          "constraints" : ${elem._2.mkString("[\"", " | ", "\"]")},
+    //         |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
+    //         |        },
+    //         |""".stripMargin
+
+
+    // todo check if this works for bottom up order
+    json.foreach(elem => {
+
+//      val dependencies = new ListBuffer[String]
+
+//      val max = json.map(elem => elem._1).max
+//
+//
+//      var layer = elem._1
+//      while(layer < max) {
+//        dependencies += ("\"" + s"s${layer+1}" + "\"")
+//        layer += 1
+//      }
+
+
+      val dependencies = new ListBuffer[String]
+
+      var layer = elem._1
+      while(layer > 1) {
+        dependencies += ("\"" + s"s${layer-1}" + "\"")
+        layer -= 1
+      }
+
+      entries +=
+        s"""        "s${elem._1}" : {
+           |          "parameter_type" : "ordinal",
+           |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+           |          "constraints" : ${elem._2.toSeq.sorted.mkString("[\"", "\", \"", "\"]")},
+           |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
+           |        },
+           |""".stripMargin
+
+    })
+
+    entries = entries.dropRight(2) + "\n"
+
+    val end =
+      """
+        | }
+        |}
+        |""".stripMargin
+
+
+    pw.write(begin)
+    pw.write(entries)
+    pw.write(end)
+    pw.close()
+
+    uniqueFilename_full
+  }
+
+  def getConstraintsInvert(): mutable.HashMap[Int, Set[String]] = {
+    val constraints = mutable.HashMap.empty[Int, Set[String]]
 
 
     def all(numbers: Seq[Int]): Seq[Seq[Int]] = {
@@ -531,22 +644,146 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
 
     // invert
 
-    val allNumbers = SearchSpaceHelper.strategies.map(elem => elem._2).toSeq.map(elem => all(Seq(elem))).flatten
+    println("create all numbers")
+    val allNumbers2 = SearchSpaceHelper.strategies.map(elem => elem._2).toSeq.par.map(elem => all(Seq(elem))).seq
+    println("finished all numbers")
+
+
+    println("now flatten")
+    val allNumbers = allNumbers2.flatten
+//    val allNumbers = allNumbers2.reduce((A,B) => A ++ B)
+    println("finished flatten ")
+
+
+
 
     println("\n")
 
 //    numbers.foreach(elem => println(elem.size))
 
-    val filtered = allNumbers.filter(elem => !numbers.contains(elem))
+    println("now filter")
+    val filtered_tmp = allNumbers.par.filter(elem => !numbers.contains(elem)).seq
+    println("finished filtering")
+
+    // filter all uneven values out
+    println("now filter2")
+    val filtered = filtered_tmp.par.filter(elem => elem.forall(value => value % 2 == 0)).seq
+    println("finished filter2")
+
+    println("\n")
 
     println("allNumbers.size: " + allNumbers.size)
     println("numbers: " + numbers.size)
+    println("filtered_tmp: " + filtered_tmp.size)
     println("filtered: " + filtered.size)
     println("difference: " + (allNumbers.size - numbers.size).toString)
 
+
+
     // write constraints for filtered individually
     // warning! huge amount 83 thousand!
+
+    //
+
+
+    def writeConstraints(constraints: Seq[Seq[Int]], index: Int): Set[String] = {
+
+      val filtered = constraints.map(elem => elem.take(index)).toSet
+
+      // todo think about that
+      // add only if next value is fully covered?
+      // single constraint? if now  rewrite at all on this layer -> constraint
+      // handle constraints on layer individually?
+
+
+      println("filtered.size: " + filtered.size)
+//      filtered.size
+
+      // [0, 1, 2, 3, 4] -> constraint
+      // todo fix that
+      val result = filtered.map(elem => {
+
+        // make constraint from element
+
+        // s1*1 + s2*100 + s3*1000 != 001404 -> rewrite [4, 14, 0] (invalid rewrite)
+        //
+        var counter = -1
+        var counter2 = -2
+//        var constraintString = scala.collection.mutable.Seq.empty[String]
+        val constraintString = elem.map(value => {
+          counter += 1
+          counter2 += 2
+          (s"s${counter+1}*${math.pow(10, counter2).toInt}",
+            math.pow(10, counter2).toInt*value)
+        })
+
+
+        constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString
+      })
+
+
+      println("result.size: " + result.size)
+
+
+      result
+    }
+
+
+//    val constraints0 = writeConstraints(filtered, 0)
+//    println("constraints0: " + constraints0.size)
+//    val constraints1 = writeConstraints(filtered, 1)
+//    println("constraints1: " + constraints1.size)
+//    val constraints2 = writeConstraints(filtered, 2)
+//    println("constraints2: " + constraints2.size)
+//    val constraints3 = writeConstraints(filtered, 3)
+//    println("constraints3: " + constraints3.size)
+//    val constraints4 = writeConstraints(filtered, 4)
+//    println("constraints4: " + constraints4.size)
+
+
+    println("create constraints")
+    val maxlayer = filtered.last.size
+    // writeConstraints() for each layer in hashmap
+
+    var layer: Int = 1
+    while(layer <= maxlayer){
+      val output = writeConstraints(filtered, layer)
+      println("output: " + output.size)
+//      constraints.addOne(layer, writeConstraints(filtered, layer))
+      constraints.addOne(layer, output)
+//      constraints.addOne(layer, writeConstraints(allNumbers, layer))
+      layer += 1
+    }
+
+//    constraints.apply(1).size
+
+    val max2 = constraints.size
+    var counter2 =1
+    var sum = 0
+    while(counter2 <= max2){
+      val value = constraints.apply(counter2).size
+      println("layer: " + counter2 + " - " + value)
+      sum += value
+      counter2 += 1
+    }
+
+    println("total: " + sum )
+
+    println("constraints finished ")
+
+//    val sizeTotal = constraints.map(elem => elem._2).reduceLeft((a,b) => a.size + b.size)(0)
+
+
+    // write constraints to json
+
+//    println(constraints0.mkString("[", ", ", "]"))
+//    println(constraints1.mkString("[", ", ", "]"))
+//    println(constraints2.mkString("[", ", ", "]"))
+//    println(constraints3.mkString("[", ", ", "]"))
+
+
     // filter stuff out? -> generalise constraints?
+
 
 //    val allNumbers2 = allNumbers.filter(elem => elem.size == 3)
 //

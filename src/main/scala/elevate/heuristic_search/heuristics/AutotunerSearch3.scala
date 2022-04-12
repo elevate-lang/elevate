@@ -27,8 +27,9 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 //        val tree = generateSearchSpace(panel, initialSolution, depth)
         val tree = createTree(initialSolution, panel)
 
-        val constraintsInverted = tree.getConstraintsInvert()
+//        val constraintsInverted = tree.getConstraintsInvert()
 //        System.exit(0)
+        val filepath2 = tree.toJsonNumbers3("exploration/tree.json")
 
         // export tree
         val filepath = tree.toJsonNumbers("exploration/tree.json")
