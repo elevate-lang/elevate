@@ -252,6 +252,7 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     val doe = 5
     val optimizationIterations = 5
 
+
     val begin = {
       s"""{
       "application_name": "mv_exploration",
@@ -265,19 +266,36 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "design_of_experiment" : {
-        "doe_type" : "random sampling",
-        "number_of_samples" : ${doe}
-      },
-      "scalarization_method": "linear",
-      "models": {
-        "model": "gaussian_process"
-       },
-      "optimization_method": "bayesian_optimization",
-      "optimization_iterations" : ${optimizationIterations},
+      "optimization_method": "exhaustive",
       "input_parameters" : {\n"""
     }
-
+//
+//    val begin = {
+//      s"""{
+//      "application_name": "mv_exploration",
+//      "optimization_objectives": ["runtime"],
+//      "feasible_output" : {
+//        "enable_feasible_predictor" : true,
+//        "name" : "Valid",
+//        "true_value" : "True",
+//        "false_value" : "False"
+//      },
+//      "hypermapper_mode" : {
+//        "mode" : "client-server"
+//      },
+//      "design_of_experiment" : {
+//        "doe_type" : "random sampling",
+//        "number_of_samples" : ${doe}
+//      },
+//      "scalarization_method": "linear",
+//      "models": {
+//        "model": "gaussian_process"
+//       },
+//      "optimization_method": "bayesian_optimization",
+//      "optimization_iterations" : ${optimizationIterations},
+//      "input_parameters" : {\n"""
+//    }
+//
 
     var entries = ""
 
@@ -292,10 +310,12 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
         layer -= 1
       }
 
+//      |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+
       entries +=
         s"""        "s${elem._1}" : {
            |          "parameter_type" : "ordinal",
-           |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+           |          "values" : ${Seq(0, 1, 2, 3).sorted.mkString("[", ", ", "]")},
            |          "constraints" : ${elem._2.mkString("[\"", " | ", "\"]")},
            |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
            |        },
@@ -498,16 +518,7 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "design_of_experiment" : {
-        "doe_type" : "random sampling",
-        "number_of_samples" : ${doe}
-      },
-      "scalarization_method": "linear",
-      "models": {
-        "model": "gaussian_process"
-       },
-      "optimization_method": "bayesian_optimization",
-      "optimization_iterations" : ${optimizationIterations},
+      "optimization_method": "exhaustive",
       "input_parameters" : {\n"""
     }
 
@@ -557,10 +568,12 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
         layer -= 1
       }
 
+//      |           |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+
       entries +=
         s"""        "s${elem._1}" : {
            |          "parameter_type" : "ordinal",
-           |          "values" : ${SearchSpaceHelper.strategies.map(x => x._2).toSeq.sorted.mkString("[", ", ", "]")},
+           |          "values" : ${Seq(0, 1, 2, 3).sorted.mkString("[", ", ", "]")},
            |          "constraints" : ${elem._2.toSeq.sorted.mkString("[\"", "\", \"", "\"]")},
            |          "dependencies" : ${dependencies.toSeq.sorted.mkString("[", ", ", "]")}
            |        },
@@ -586,13 +599,16 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
   }
 
   def getConstraintsInvert(): mutable.HashMap[Int, Set[String]] = {
-    val constraints = mutable.HashMap.empty[Int, Set[String]]
+    var constraints = mutable.HashMap.empty[Int, Set[String]]
+
+
+    val layerLimit = 9
+    val strategies = 4
+//    val strategies = 4
 
 
     def all(numbers: Seq[Int]): Seq[Seq[Int]] = {
 //      println("call all: " + numbers.mkString("[", ",", "]"))
-      val strategies = 17
-      val layerLimit = 4
 //      println("progress: " + numbers.size + "/" + layerLimit)
 
       var output = scala.collection.mutable.Seq.empty[Seq[Int]]
@@ -627,7 +643,10 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
 
     // get rewrite sequence for each leaf
 
-    // doesn't get the leafs here !
+//     doesn't get the leafs here !
+
+    println("leafs: " + leafs().size)
+
     val numbers = leafs().map(elem => {
       var tmp = elem
       val numbers = new ListBuffer[Int]
@@ -645,7 +664,8 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     // invert
 
     println("create all numbers")
-    val allNumbers2 = SearchSpaceHelper.strategies.map(elem => elem._2).toSeq.par.map(elem => all(Seq(elem))).seq
+//    val allNumbers2 = SearchSpaceHelper.strategies.map(elem => elem._2).toSeq.par.map(elem => all(Seq(elem))).seq
+    val allNumbers2 = Seq(0, 1, 2, 3).par.map(elem => all(Seq(elem))).seq
     println("finished all numbers")
 
 
@@ -655,38 +675,129 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     println("finished flatten ")
 
 
-
-
     println("\n")
 
 //    numbers.foreach(elem => println(elem.size))
 
     println("now filter")
-    val filtered_tmp = allNumbers.par.filter(elem => !numbers.contains(elem)).seq
+//    val filtered_tmp = allNumbers.par.filter(elem => !numbers.contains(elem)).seq
+    val filtered_tmp = allNumbers.par.filter(elem => !elem.forall(a => a % 2 == 0)).seq
+//    val filtered_tmp = allNumbers
     println("finished filtering")
+
+
+
+    def fullChildren(node: Seq[Int]): Set[Seq[Int]] = {
+
+      val children = Range(0, strategies).map(child => node.appended(child)).toSet
+
+      if(node.size < layerLimit - 1){
+        children.par.map(child => fullChildren(child)).flatten.seq
+      } else {
+        children
+      }
+    }
+
+    def getChildren(numbers: Seq[Seq[Int]], node: Seq[Int]): Seq[Seq[Int]] = {
+
+      if (node.size < layerLimit) {
+
+        // get full children
+        val children2 = fullChildren(node)
+
+        // filter out existing children
+        numbers.par.intersect(children2.toSeq).seq
+      }else{
+        Seq.empty[Seq[Int]]
+      }
+    }
+
+    def mergeConstraints(numbers3: Set[Seq[Int]], numbers: Seq[Seq[Int]], node: Seq[Int]): Seq[Seq[Int]] = {
+
+      if(node.size < layerLimit){
+
+      val children = getChildren(numbers, node)
+      val remaining = layerLimit - node.size
+      val full = math.pow(strategies, remaining).toInt
+
+      var numbers2 = scala.collection.mutable.Set.empty[Seq[Int]]
+      numbers2 = numbers2 ++ numbers3.toSet
+
+      if(children.size == full){
+        // remove children from numbers
+        children.foreach(child => {
+
+          // remove child from numbers2
+          numbers2.remove(child)
+        })
+
+        // add merged constraint to numbers2
+        numbers2 += (node.appended(-1))
+
+      } else {
+
+        // add children as constraint
+        if(node.size < layerLimit) {
+          children.foreach(child => {
+            numbers2 += child
+          })
+        }
+        if(node.size + 1 < layerLimit) {
+        children.toSet.map((child2: Seq[Int]) => child2.take(node.size + 1)).foreach(child => {
+          numbers2 = mergeConstraints(numbers2.toSet, numbers, child).to(collection.mutable.Set)
+        })
+        }
+      }
+        numbers2.toSeq
+      }else{
+        Seq.empty[Seq[Int]]
+      }
+    }
+
+    // merge constraints
+    // call  this her e
+    println("now merge constraints for: " + filtered_tmp.size)
+    val mc = mergeConstraints(Set.empty[Seq[Int]], filtered_tmp, Seq())
+
+//    val diff = allNumbers.diff(filtered_tmp) ??
+
+    println()
+
+    println("allNumbers: " + allNumbers.size)
+//    println("numbers: " + numbers.size)
+    println("filtered_tmp: " + filtered_tmp.size)
+
+//    println("numbers: " + numbers.mkString(","))
+//    println("allNumbers:   " + allNumbers.mkString(","))
+//    println("filtered_tmp: " + filtered_tmp.mkString(","))
+//    println("diff:         " + diff.mkString(","))
+    println("mc:           " + mc.mkString(","))
+//    println("mc2: " + mc2.mkString(","))
+
+    //    println(allNumbers.mkString("[", ", ", "]"))
+    println("mergedConstraints: " + mc.size)
+//    println("mergedConstraints2 ( should be 0): " + mc2.size)
+
+    println("\n")
+
 
     // filter all uneven values out
     println("now filter2")
-    val filtered = filtered_tmp.par.filter(elem => elem.forall(value => value % 2 == 0)).seq
+//    val filtered = filtered_tmp.par.filter(elem => elem.forall(value => value % 2 == 0)).seq
     println("finished filter2")
 
     println("\n")
 
     println("allNumbers.size: " + allNumbers.size)
-    println("numbers: " + numbers.size)
+//    println("numbers: " + numbers.size)
     println("filtered_tmp: " + filtered_tmp.size)
-    println("filtered: " + filtered.size)
-    println("difference: " + (allNumbers.size - numbers.size).toString)
-
-
+//    println("filtered: " + filtered.size)
+//    println("difference: " + (allNumbers.size - numbers.size).toString)
 
     // write constraints for filtered individually
     // warning! huge amount 83 thousand!
 
-    //
-
-
-    def writeConstraints(constraints: Seq[Seq[Int]], index: Int): Set[String] = {
+    def writeConstraints(constraints: Seq[Seq[Int]], index: Int): mutable.HashMap[Int, Set[String]] = {
 
       val filtered = constraints.map(elem => elem.take(index)).toSet
 
@@ -701,7 +812,10 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
 
       // [0, 1, 2, 3, 4] -> constraint
       // todo fix that
-      val result = filtered.map(elem => {
+      var result = mutable.HashMap.empty[Int, Set[String]]
+//      val result: mutable.HashMap[Int, Set[String]] = filtered.map(elem => {
+        filtered.foreach(elem => {
+          println("elem: " + elem.mkString(","))
 
         // make constraint from element
 
@@ -710,20 +824,65 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
         var counter = -1
         var counter2 = -2
 //        var constraintString = scala.collection.mutable.Seq.empty[String]
-        val constraintString = elem.map(value => {
+
+        val elem2 = elem.last match {
+          case -1 => elem.dropRight(1)
+          case _ => elem//
+        }
+
+//        val elem2 = elem.dropRight(1)
+
+        val constraintString = elem2.map(value => {
           counter += 1
           counter2 += 2
-          (s"s${counter+1}*${math.pow(10, counter2).toInt}",
-            math.pow(10, counter2).toInt*value)
+          (s"s${counter+1}*${math.pow(10, counter2)}",
+            math.pow(10, counter2)*value)
         })
 
 
-        constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString
-      })
+          println("constraintString: " + constraintString.mkString(","))
 
+////
+//          constraintString.foreach(constraintsStringElement => {
+//
+//            // layer
+//            val index2 = constraintsStringElement._3
+//
+//            val resultString2: Set[String] = result.isDefinedAt(index2) match {
+//              case true =>
+//                val test = result.apply(index2)
+//                val result2 = test ++ Set(constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString)
+//
+//                result2
+//              case false =>
+//                Set(constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString)
+//            }
+//
+//            result.addOne(index, resultString2)
+//          })
+
+          val index2 = constraintString.size
+
+          val resultString: Set[String] = result.isDefinedAt(index2) match {
+            case true => {
+              val test = result.apply(index2)
+//              println("test: " + test.mkString(","))
+//              val string = constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString
+//              println("stirng: " + string)
+              val result2 = test ++ Set(constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString)
+
+//              println("result2: " + result2.mkString(","))
+
+              result2
+            }
+            case false => {
+              Set(constraintString.map(x => x._1).mkString("+") + "!=" + constraintString.map(x => x._2).sum.toString)
+            }
+          }
+          result.addOne(index2, resultString)
+        })
 
       println("result.size: " + result.size)
-
 
       result
     }
@@ -742,32 +901,53 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
 
 
     println("create constraints")
-    val maxlayer = filtered.last.size
+//    val filtered = filtered_tmp
+    val filtered = mc
+    val maxlayer = filtered.maxBy(a => a.size).size
+    println("maxLayer: " + maxlayer)
+
+//    filtered.((a,b) => math.max(a.size, b.size))
+
     // writeConstraints() for each layer in hashmap
 
     var layer: Int = 1
-    while(layer <= maxlayer){
-      val output = writeConstraints(filtered, layer)
+//    while(layer <= maxlayer){
+      val output = writeConstraints(filtered, maxlayer)
       println("output: " + output.size)
+      println("output: " + output.mkString(","))
 //      constraints.addOne(layer, writeConstraints(filtered, layer))
-      constraints.addOne(layer, output)
+
+      println("constraints: " + constraints.mkString(","))
+
+      constraints = output.map(elem => {
+        println("elem: " + elem._1)
+        val result = constraints.isDefinedAt(elem._1) match {
+          case true => (elem._1, constraints.apply(elem._1) ++ elem._2)
+          case false =>  (elem._1, elem._2)
+        }
+        result
+      })
+      println("constraints: " + constraints.mkString(","))
+      println("")
+
+//      constraints.addOne(layer, output)
 //      constraints.addOne(layer, writeConstraints(allNumbers, layer))
-      layer += 1
-    }
+//      layer += 1
+//    }
 
 //    constraints.apply(1).size
 
-    val max2 = constraints.size
-    var counter2 =1
-    var sum = 0
-    while(counter2 <= max2){
-      val value = constraints.apply(counter2).size
-      println("layer: " + counter2 + " - " + value)
-      sum += value
-      counter2 += 1
-    }
-
-    println("total: " + sum )
+//    val max2 = constraints.size
+//    var counter2 = 1
+//    var sum = 0
+//    while(counter2 <= max2){
+//      val value = constraints.apply(counter2).size
+//      println("layer: " + counter2 + " - " + value)
+//      sum += value
+//      counter2 += 1
+//    }
+//
+//    println("total: " + sum )
 
     println("constraints finished ")
 
