@@ -1,7 +1,7 @@
 package elevate.heuristic_search
 
 import elevate.core.strategies.basic
-import elevate.core.{Failure, Strategy, Success}
+import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.heuristic_search.util.SearchSpaceHelper.strategies
 import elevate.heuristic_search.util.{SearchSpaceHelper, Solution, hashProgram, hashSolution}
 
@@ -16,9 +16,54 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
   val solutions = new scala.collection.mutable.HashMap[String, Option[Double]]()
   var call = 0
 
+  def checkRewrite(solution: Solution[P], rewrite: Int): Boolean = {
+
+
+    // get strategies from strings
+    var strategiesMap = Map.empty[String, Strategy[P]]
+    strategies.foreach(strat => strategiesMap += (strat.toString() -> strat))
+
+    val strategyString = SearchSpaceHelper.getStrategies(Seq(rewrite)).last
+
+//    println("check rewrite: " + rewrite)
+//    println("strategyString: " + strategyString)
+
+    val strategy = strategyString match {
+      case "id" => basic.id[P]
+      case _ => strategies.filter(strat => strat.toString().equals(strategyString)).last
+    }
+
+    // apply and check
+    try {
+
+      val rewriteResult = strategy.apply(solution.expression)
+
+      val result  = rewriteResult match {
+        case _:Success[P] => Some(new Solution[P](rewriteResult.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+        case _:Failure[P] => None
+      }
+
+      result match {
+        case Some(_) => {
+//          println("true")
+          true
+        }
+        case None =>
+
+//          println("false")
+          false
+      }
+
+    } catch {
+      case e:Throwable =>
+//        println("false")
+        false
+    }
+  }
+
   def getSolution(initial: Solution[P], numbers: Seq[Int]): Option[Solution[P]] = {
 
-    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
+//    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
 
     // get strategies as string
     val strategiesString = SearchSpaceHelper.getStrategies(numbers)
@@ -71,6 +116,50 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
     Ns.seq.flatten
   }
 
+
+  def Np(solution: Solution[P]): Set[Solution[P]]= {
+
+    call += 1
+
+//    val NsOptions = strategies.map(strategy => {
+            val NsOptions  = strategies.par.map(strategy => {
+      try {
+
+//        var result: RewriteResult[P] = null
+
+
+        // check if no race condition happens here
+//        val result = this.synchronized {
+          val result = strategy.apply(solution.expression)
+//        }
+
+//        this.synchronized {
+          result match {
+            case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+            case _: Failure[P] => {
+//              println("failure: " + result.toString)
+              None
+            }
+//          }
+        }
+      } catch {
+        case e:Throwable => None
+      }
+    })
+        val Ns = NsOptions.seq.flatten
+//    val Ns = NsOptions.flatten
+
+    // add id to neighbourhood (use real id strategy instead of null)
+    //        val identity = basic.id[P]
+
+    //    val Ns2 = Ns ++ Set(new Solution[P](solution.expression, solution.strategies :+ identity))
+
+    //    Ns2
+
+    Ns
+  }
+
+
   def N(solution: Solution[P]): Set[Solution[P]]= {
 
     call += 1
@@ -81,10 +170,15 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 
         val result = strategy.apply(solution.expression)
 
-        result match {
-          case _:Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
-          case _:Failure[P] => None
-        }
+//        this.synchronized {
+
+          result match {
+            case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+            case _: Failure[P] =>
+//              println("failure: " + result.toString)
+              None
+          }
+//        }
       } catch {
         case e:Throwable => None
       }
@@ -93,8 +187,11 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
       val Ns = NsOptions.flatten
 
     // add id to neighbourhood (use real id strategy instead of null)
-    //    val identity = basic.id[P]
-    //    neighbours.add(new Solution[P](solution.expression, solution.strategies :+ identity))
+//        val identity = basic.id[P]
+
+//    val Ns2 = Ns ++ Set(new Solution[P](solution.expression, solution.strategies :+ identity))
+
+//    Ns2
 
     Ns
   }

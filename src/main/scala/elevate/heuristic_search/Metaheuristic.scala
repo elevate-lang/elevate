@@ -18,6 +18,10 @@ case class Metaheuristic[P](name: String,
                       ) extends Runner[P] {
   var counter = 0
 
+  def plot() = {
+    runner.plot()
+  }
+
 //  def execute(solution: P): (P, Option[Double]) = {
     def execute(solution: Solution[P]): (P, Option[Double]) = {
 
@@ -43,6 +47,8 @@ case class Metaheuristic[P](name: String,
       println("[METAHEURISTIC] : write path to disk")
 //      result._3.writePathToDisk(output)
 //      result._3.writeToDisk(output)
+
+      plot()
 
       // move tuner to output
       ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)

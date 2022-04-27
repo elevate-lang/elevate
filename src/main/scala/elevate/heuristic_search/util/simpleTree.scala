@@ -602,7 +602,7 @@ class SimpleTree[P] (val initial: SimpleTreeElement[P],
     var constraints = mutable.HashMap.empty[Int, Set[String]]
 
 
-    val layerLimit = 9
+    val layerLimit = 5
     val strategies = 4
 //    val strategies = 4
 

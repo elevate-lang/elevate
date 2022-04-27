@@ -8,4 +8,6 @@ trait Runner[P] {
 
   // helper function to check if solution is valid
   def checkSolution(solution: Solution[P]): Boolean
+
+  def plot(): Unit
 }

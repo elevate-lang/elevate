@@ -11,7 +11,7 @@ import scala.sys.process._
 class AutotunerSearch3[P] extends Heuristic[P] {
   var layerPrint = 0
   var counterTotal = 0
-  val rewriteLimit = 3
+  val rewriteLimit = 4
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
@@ -29,7 +29,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
 //        val constraintsInverted = tree.getConstraintsInvert()
 //        System.exit(0)
-        val filepath2 = tree.toJsonNumbers3("exploration/tree.json")
+//        val filepath2 = tree.toJsonNumbers3("exploration/tree.json")
 
         // export tree
         val filepath = tree.toJsonNumbers("exploration/tree.json")

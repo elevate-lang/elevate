@@ -15,6 +15,8 @@ trait HeuristicPanel[P] {
   // get solutiosn
   def getSolution(solution: Solution[P], numbers: Seq[Int]): Option[Solution[P]]
 
+  def checkRewrite(solution: Solution[P], rewrite: Int): Boolean
+
 }
 
 
