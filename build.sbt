@@ -6,7 +6,7 @@ lazy val elevate = (project in file("."))
 
     javaOptions ++= Seq("-Xss16m"),
 
-    scalaVersion := "3.0.0",
+    scalaVersion := "3.1.2",
     scalacOptions ++= Seq(
       "-Xfatal-warnings",
       "-indent",
@@ -20,5 +20,5 @@ lazy val elevate = (project in file("."))
     fork := true,
 
     // Scalatest
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" % "test"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.12" % "test"
   )
