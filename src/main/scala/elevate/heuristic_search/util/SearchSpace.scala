@@ -8,12 +8,12 @@ import scala.language.postfixOps
 import scala.sys.process._
 
 abstract class SearchSpaceElement[P](val solution: Solution[P],
-                                     val value: Option[Double]){
+                                     val value: Option[Double]) {
 }
 
 trait SearchSpace[P] {
 
-  def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit
+  def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit
 
   def printConsole(): Unit
 
@@ -37,11 +37,11 @@ trait SearchSpace[P] {
 
 object SearchSpaceHelper {
 
-  def getUniqueFilename(filename:String, offset: Int):String= {
+  def getUniqueFilename(filename: String, offset: Int): String = {
     var uniqueFilename_full = filename
 
     // check if file or folder already exists
-    if(Files.exists(Paths.get(uniqueFilename_full))){
+    if (Files.exists(Paths.get(uniqueFilename_full))) {
       //val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
       //println(warningString + "adding System.currentTimeMillis().")
 
@@ -49,8 +49,8 @@ object SearchSpaceHelper {
       Thread.sleep(1)
 
       // append timestamp
-      val end = uniqueFilename_full.substring(uniqueFilename_full.length-offset, uniqueFilename_full.length)
-      uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length-offset)+ "_" + System.currentTimeMillis() + end
+      val end = uniqueFilename_full.substring(uniqueFilename_full.length - offset, uniqueFilename_full.length)
+      uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length - offset) + "_" + System.currentTimeMillis() + end
     }
 
     uniqueFilename_full
@@ -61,7 +61,7 @@ object SearchSpaceHelper {
     "topDownSplitJoin" -> 1,
   )
 
-  val strategies: Map[String, Int] = Map(
+  val strategies3: Map[String, Int] = Map(
     "id" -> 0,
     "lowerGs0" -> 1,
     "lowerGs1" -> 2,
@@ -72,7 +72,7 @@ object SearchSpaceHelper {
     "lowerGsGs" -> 7,
     "lowerWrgLcl" -> 8,
     "lowerWrgWrgLclLcl" -> 9,
-//     split join
+    //     split join
     "allSplitJoin" -> 10,
     "oneSplitJoin" -> 11,
     "someSplitJoin" -> 12,
@@ -80,6 +80,16 @@ object SearchSpaceHelper {
     "topDownSplitJoin" -> 14,
     "allTopdownSplitJoin" -> 15,
     "bottomUpSplitJoin" -> 16
+  )
+
+  val strategies: Map[String, Int] = Map(
+    "id" -> 0,
+    "blocking_step0" -> 1,
+    "blocking_step1" -> 2,
+    "blocking_step2" -> 3,
+    "blocking_step3" -> 4,
+    "vectorization_step0" -> 5,
+    "loopPerm_step2" -> 6
   )
 
   def getStrategies(numbers: Seq[Int]): Seq[String] = {

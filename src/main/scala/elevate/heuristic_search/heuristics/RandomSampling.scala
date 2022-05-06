@@ -5,13 +5,13 @@ import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
 class RandomSampling[P] extends Heuristic[P] {
   // initialize global best
-  var best:Option[Double] = None
+  var best: Option[Double] = None
 
   var sequence = scala.collection.mutable.Seq.empty[Int]
 
   var Ntotal = 0.0
 
-  def start2(panel:HeuristicPanel[P], initialSolution:Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start2(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
 
     var solution = initialSolution
 
@@ -24,7 +24,7 @@ class RandomSampling[P] extends Heuristic[P] {
 
 
     var j = 0
-    while(j < depth){
+    while (j < depth) {
       println("\n")
       println("iteration: " + j)
       j += 1
@@ -35,7 +35,7 @@ class RandomSampling[P] extends Heuristic[P] {
       // start
       var i = 0
       sequence = sequence.empty
-      while(i < rewrites) {
+      while (i < rewrites) {
 
         println("i: " + i)
 
@@ -47,7 +47,7 @@ class RandomSampling[P] extends Heuristic[P] {
 
         println("ns.size: " + ns.size)
 
-        if(ns.size == 0){
+        if (ns.size == 0) {
           // backtrack
 
           // restore solution drop element
@@ -68,7 +68,7 @@ class RandomSampling[P] extends Heuristic[P] {
           sequence = sequence :+ number
           println(number.toString + " - sequ: " + sequence.mkString(","))
 
-        i += 1
+          i += 1
         }
       }
       println("sequence: " + sequence.mkString(","))
@@ -90,7 +90,7 @@ class RandomSampling[P] extends Heuristic[P] {
     (output._1.expression, output._2, path)
   }
 
-  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
 
     val totalStart = System.currentTimeMillis()
 
@@ -104,7 +104,7 @@ class RandomSampling[P] extends Heuristic[P] {
     val max = 10
 
     var j = 0
-    while(j < depth){
+    while (j < depth) {
       println("\n")
       println("iteration: " + j)
       j += 1
@@ -112,52 +112,56 @@ class RandomSampling[P] extends Heuristic[P] {
       val rewrites = random.nextInt(max)
       println("rewrites: " + rewrites)
 
-    // start
-    var i = 0
+
+      // todo avoid duplicates and implement real backtracking
+
+      // start
+      var i = 0
       sequence = sequence.empty
-    while(i < rewrites) {
-      println("i: " + i)
-      var found = false
+      while (i < rewrites) {
+        println("i: " + i)
+        var found = false
 
-      // get neighborhood
+        // get neighborhood
 
 
-      val NStart = System.currentTimeMillis()
-      val ns = panel.N(solution)
-      Ntotal += (System.currentTimeMillis() - NStart)
-//      println("ns: " + ns.size)
+        val NStart = System.currentTimeMillis()
+        val ns = panel.N(solution)
+        Ntotal += (System.currentTimeMillis() - NStart)
+        //      println("ns: " + ns.size)
 
-      // todo fix by replacing with real backtracking
-      if (ns.size + 1 <= 1){
-        // backtrack
-        i -= 1
+        // todo fix by replacing with real backtracking
+        if (ns.size + 1 <= 1) {
+          // backtrack
+          i -= 1
 
-        // remove last number
-        sequence = sequence.dropRight(1)
+          // remove last number
+          sequence = sequence.dropRight(1)
 
-        // restore old solution
-        solution = panel.getSolution(initialSolution, sequence.toSeq).get
+          // restore old solution
+          solution = panel.getSolution(initialSolution, sequence.toSeq).get
 
-      } else {
-        i += 1
+        } else {
+          i += 1
 
-        // check duplicates?
-        while(!found) {
+          // check duplicates?
+          while (!found) {
 
-          val number = random.nextInt(SearchSpaceHelper.strategies.size)
+            // todo avoid duplicates
+            val number = random.nextInt(SearchSpaceHelper.strategies.size)
 
-          val numberCheck = panel.checkRewrite(solution, number)
+            val numberCheck = panel.checkRewrite(solution, number)
 
-          if (numberCheck) {
-            solution = panel.getSolution(solution, Seq(number)).get
-            found = true
-            sequence = sequence :+ number
+            if (numberCheck) {
+              solution = panel.getSolution(solution, Seq(number)).get
+              found = true
+              sequence = sequence :+ number
+            }
           }
         }
+
+
       }
-
-
-    }
       println("sequence: " + sequence.mkString(","))
 
       // execute
