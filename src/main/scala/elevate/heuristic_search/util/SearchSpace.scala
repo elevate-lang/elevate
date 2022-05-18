@@ -82,7 +82,7 @@ object SearchSpaceHelper {
     "bottomUpSplitJoin" -> 16
   )
 
-  val strategies: Map[String, Int] = Map(
+  val strategies4: Map[String, Int] = Map(
     "id" -> 0,
     "blocking_step0" -> 1,
     "blocking_step1" -> 2,
@@ -90,6 +90,15 @@ object SearchSpaceHelper {
     "blocking_step3" -> 4,
     "vectorization_step0" -> 5,
     "loopPerm_step2" -> 6
+  )
+
+  // todo make this more generic
+  // one rule for all?
+  val strategies: Map[String, Int] = Map(
+    "id" -> 0,
+    "tile(32,32)" -> 1,
+    "reduceMapFission" -> 2,
+    "splitStrategy(4)" -> 3,
   )
 
   def getStrategies(numbers: Seq[Int]): Seq[String] = {

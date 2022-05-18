@@ -10,13 +10,13 @@ import scala.sys.process._
 class AutotunerSearch2[P] extends Heuristic[P] {
   var layerPrint = 0
   var counterTotal = 0
-  val rewriteLimit = 7
+  val rewriteLimit = 3
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
 
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Tree[P]) = {
     // we don't need this here
-//    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
+    //    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
 
     val dry = true
     val generate = true
@@ -32,19 +32,19 @@ class AutotunerSearch2[P] extends Heuristic[P] {
         (tree, filepath)
       case false =>
         // read in config file
-            val filepath = "exploration/tree_8.json"
+        val filepath = "exploration/tree_8.json"
 
-            // create empty tree with only one element
-            val tree = new Tree[P](
-              initial = new TreeElement[P](
-                solution = initialSolution,
-                strategy = null,
-                layer = 0,
-                value = None,
-                predecessor = null,
-                successor = Set.empty[TreeElement[P]]
-              )
-            )
+        // create empty tree with only one element
+        val tree = new Tree[P](
+          initial = new TreeElement[P](
+            solution = initialSolution,
+            strategy = null,
+            layer = 0,
+            value = None,
+            predecessor = null,
+            successor = Set.empty[TreeElement[P]]
+          )
+        )
         (tree, filepath)
     }
 
@@ -64,7 +64,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
   // depth first
   def rewriteNode(panel: HeuristicPanel[P], treeElement: TreeElement[P], tree: Tree[P]): Unit = {
 
-    if(counter % 1000 == 0){
+    if (counter % 1000 == 0) {
       println("treeSize: " + tree.getSize())
     }
     counter += 1
@@ -106,7 +106,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
       val dummyElement = new TreeElement[P](
         strategy = elevate.core.strategies.basic.id[P],
         solution = new Solution[P](treeElement.solution.expression, treeElement.solution.strategies :+ elevate.core.strategies.basic.id[P]),
-//        solution = treeElement.solution,
+        //        solution = treeElement.solution,
         layer = treeElement.layer + 1,
         value = None, // maybe not used
         predecessor = treeElement,
@@ -125,7 +125,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
     }
   }
 
-  def generateSearchSpace(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): Tree[P]  = {
+  def generateSearchSpace(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): Tree[P] = {
 
     // create tree with initial element
     val tree = new Tree[P](
@@ -161,14 +161,14 @@ class AutotunerSearch2[P] extends Heuristic[P] {
 
     println("\ngenerate constraints")
     val constraints = tree.getConstraints()
-//    constraints.foreach(constr => {
-//      println("layer: " + constr._1)
-//      constr._2.foreach(elem => {
-//        println(elem)
-//      })
-//      println("\n")
-//
-//    })
+    //    constraints.foreach(constr => {
+    //      println("layer: " + constr._1)
+    //      constr._2.foreach(elem => {
+    //        println(elem)
+    //      })
+    //      println("\n")
+    //
+    //    })
 
     var sum = 0
     constraints.foreach(elem => {
@@ -201,7 +201,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
         val Ns = panel.N(solution)
         Ns.foreach(ns => {
 
-          if(ns.strategies.last.toString().equals(strategy)){
+          if (ns.strategies.last.toString().equals(strategy)) {
             // apply!
             solution = ns
           }
@@ -223,8 +223,8 @@ class AutotunerSearch2[P] extends Heuristic[P] {
     val doe = 100
     val optimizationIterations = 100
 
-//    val configFile = os.pwd.toString() + "/exploration/tree.json"
-//    val configFile = os.pwd.toString() + "/exploration/tree_8.json"
+    //    val configFile = os.pwd.toString() + "/exploration/tree.json"
+    //    val configFile = os.pwd.toString() + "/exploration/tree_8.json"
     val configFile = os.pwd.toString() + "/" + filePath
     println("configFile: " + configFile)
 
@@ -261,7 +261,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
             // read in parameters values
             val parametersValues = hypermapper.stdout.readLine().split(",").map(x => x.trim())
             // compute sample (including function value aka runtime)
-//            print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
+            //            print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
 
             val sample = computeSample(header, parametersValues)
 
@@ -292,7 +292,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
             }
 
             println(j.toString + ": " + sample.runtime)
-//            println(sample)
+            //            println(sample)
             i += 1
             // append sample to Samples
             //            samples += sample
@@ -306,39 +306,40 @@ class AutotunerSearch2[P] extends Heuristic[P] {
               case Some(value) =>
                 // make sure to response int values
                 response += s"${parametersValues.map(x => x.toFloat.toInt).mkString(",")},${value},True\n"
-            }}
+            }
+          }
 
 
           print(s"Response:\n$response")
           println()
-                // send response to Hypermapper
-                hypermapper.stdin.write(response)
-                hypermapper.stdin.flush()
-              case message => println("message: " + message)
-            }
-          }
+          // send response to Hypermapper
+          hypermapper.stdin.write(response)
+          hypermapper.stdin.flush()
+        case message => println("message: " + message)
+      }
+    }
     //
     //    // todo save output generic, avoid overwriting
     // apply this at the end
-        // save output
+    // save output
     println("save output")
-        ("mkdir -p exploration/tuner" !!)
-        ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
-        (s"cp ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
+    ("mkdir -p exploration/tuner" !!)
+    ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
+    (s"cp ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
 
     println("plot results")
-        // plot results using hypermapper
-        val test = ("hm-plot-optimization-results " +
-          "-j " + "exploration/tuner/tuner_exploration.json" + " " +
-          "-i " + "exploration/tuner/" + " " +
-          "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
-          "--y_label \"Log Runtime(ms)\"" !!)
-//          "-log --y_label \"Log Runtime(ms)\"" !!)
+    // plot results using hypermapper
+    val test = ("hm-plot-optimization-results " +
+      "-j " + "exploration/tuner/tuner_exploration.json" + " " +
+      "-i " + "exploration/tuner/" + " " +
+      "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
+      "--y_label \"Log Runtime(ms)\"" !!)
+    //          "-log --y_label \"Log Runtime(ms)\"" !!)
 
     println("output: " + test)
 
-//        val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
-//        println("duration2: " + duration2/1000  + "s")
+    //        val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
+    //        println("duration2: " + duration2/1000  + "s")
     //
     //    println("end")
     //    println("solution: " + solution.expression)

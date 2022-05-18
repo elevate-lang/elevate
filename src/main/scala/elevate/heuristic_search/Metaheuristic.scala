@@ -3,6 +3,7 @@ package elevate.heuristic_search
 import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
 import elevate.heuristic_search.util.{Path, SearchSpace, Solution}
+import jdk.jfr.AnnotationElement
 
 import scala.language.postfixOps
 import scala.sys.process._
@@ -14,7 +15,9 @@ case class Metaheuristic[P](name: String,
                             iterations: Int,
                             runner: Runner[P],
                             strategies: Set[Strategy[P]],
-                            output: String
+                            output: String,
+                            rewriteFunction: Option[Solution[P] => Set[Solution[P]]],
+                            afterRewrite: Option[Strategy[P]]
                            ) extends Runner[P] {
   var counter = 0
 
@@ -26,7 +29,12 @@ case class Metaheuristic[P](name: String,
   def execute(solution: Solution[P]): (P, Option[Double]) = {
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
-    val panel = new HeuristicPanelImplementation[P](runner, strategies)
+    val panel = new HeuristicPanelImplementation[P](
+      runner = runner,
+      strategies = strategies,
+      rewriter = rewriteFunction,
+      afterRewrite = afterRewrite
+    )
 
     // conduct heuristic using panel and configs like depth and iterations
     var best: (P, Option[Double]) = (solution.expression, None)

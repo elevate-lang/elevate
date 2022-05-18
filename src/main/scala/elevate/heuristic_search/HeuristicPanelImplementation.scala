@@ -11,7 +11,13 @@ import scala.collection.parallel.ParSet
 
 
 // encapsulates definition of neighbourhood
-class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[Strategy[P]]) extends HeuristicPanel[P] {
+class HeuristicPanelImplementation[P](
+                                       val runner: Runner[P],
+                                       val strategies: Set[Strategy[P]],
+                                       val afterRewrite: Option[Strategy[P]] = None, // e.g. rewrite normal form
+                                       val beforeExecution: Option[Strategy[P]] = None, // e.g. code-gen normal form
+                                       val rewriter: Option[Solution[P] => Set[Solution[P]]] = None
+                                     ) extends HeuristicPanel[P] {
 
   val solutions = new scala.collection.mutable.HashMap[String, Option[Double]]()
   var call = 0
@@ -25,8 +31,8 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 
     val strategyString = SearchSpaceHelper.getStrategies(Seq(rewrite)).last
 
-//    println("check rewrite: " + rewrite)
-//    println("strategyString: " + strategyString)
+    //    println("check rewrite: " + rewrite)
+    //    println("strategyString: " + strategyString)
 
     val strategy = strategyString match {
       case "id" => basic.id[P]
@@ -38,32 +44,32 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
 
       val rewriteResult = strategy.apply(solution.expression)
 
-      val result  = rewriteResult match {
-        case _:Success[P] => Some(new Solution[P](rewriteResult.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
-        case _:Failure[P] => None
+      val result = rewriteResult match {
+        case _: Success[P] => Some(new Solution[P](rewriteResult.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+        case _: Failure[P] => None
       }
 
       result match {
         case Some(_) => {
-//          println("true")
+          //          println("true")
           true
         }
         case None =>
 
-//          println("false")
+          //          println("false")
           false
       }
 
     } catch {
-      case e:Throwable =>
-//        println("false")
+      case e: Throwable =>
+        //        println("false")
         false
     }
   }
 
   def getSolution(initial: Solution[P], numbers: Seq[Int]): Option[Solution[P]] = {
 
-//    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
+    //    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
 
     // get strategies as string
     val strategiesString = SearchSpaceHelper.getStrategies(numbers)
@@ -97,57 +103,57 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
   }
 
   // parallel without checking
-  def N3(solution: Solution[P]): Set[Solution[P]]= {
+  def N3(solution: Solution[P]): Set[Solution[P]] = {
     call += 1
 
-      val Ns = strategies.par.map(strategy => {
+    val Ns = strategies.par.map(strategy => {
       try {
         val result = strategy.apply(solution.expression)
         result match {
-          case _:Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy))
-          case _:Failure[P] => None
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy))
+          case _: Failure[P] => None
         }
-      }catch{
-        case e:Throwable => None
+      } catch {
+        case e: Throwable => None
       }
     })
 
-//    Ns.flatten
+    //    Ns.flatten
     Ns.seq.flatten
   }
 
 
-  def Np(solution: Solution[P]): Set[Solution[P]]= {
+  def Np(solution: Solution[P]): Set[Solution[P]] = {
 
     call += 1
 
-//    val NsOptions = strategies.map(strategy => {
-            val NsOptions  = strategies.par.map(strategy => {
+    //    val NsOptions = strategies.map(strategy => {
+    val NsOptions = strategies.par.map(strategy => {
       try {
 
-//        var result: RewriteResult[P] = null
+        //        var result: RewriteResult[P] = null
 
 
         // check if no race condition happens here
-//        val result = this.synchronized {
-          val result = strategy.apply(solution.expression)
-//        }
+        //        val result = this.synchronized {
+        val result = strategy.apply(solution.expression)
+        //        }
 
-//        this.synchronized {
-          result match {
-            case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
-            case _: Failure[P] => {
-//              println("failure: " + result.toString)
-              None
-            }
-//          }
+        //        this.synchronized {
+        result match {
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+          case _: Failure[P] => {
+            //              println("failure: " + result.toString)
+            None
+          }
+          //          }
         }
       } catch {
-        case e:Throwable => None
+        case e: Throwable => None
       }
     })
-        val Ns = NsOptions.seq.flatten
-//    val Ns = NsOptions.flatten
+    val Ns = NsOptions.seq.flatten
+    //    val Ns = NsOptions.flatten
 
     // add id to neighbourhood (use real id strategy instead of null)
     //        val identity = basic.id[P]
@@ -159,51 +165,64 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
     Ns
   }
 
+  def N(solution: Solution[P]): Set[Solution[P]] = {
+    rewriter match {
+      // expand strategy mode
+      case Some(rewriteFunction) =>
 
-  def N(solution: Solution[P]): Set[Solution[P]]= {
+        val result: Set[Solution[P]] = afterRewrite match {
+          case Some(aftermath) =>
+            // todo check if normal form can be applied always
+            //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
+            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+          case None =>
+            rewriteFunction.apply(solution)
+        }
+
+        result
+
+      // default mode
+      case None => N_default(solution)
+    }
+  }
+
+  def N_default(solution: Solution[P]): Set[Solution[P]] = {
 
     call += 1
 
     val NsOptions = strategies.map(strategy => {
-//      val NsOptions  = strategies.par.map(strategy => {
+      //      val NsOptions  = strategies.par.map(strategy => {
       try {
 
         val result = strategy.apply(solution.expression)
 
-//        this.synchronized {
+        //        this.synchronized {
 
-          result match {
-            case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
-            case _: Failure[P] =>
-//              println("failure: " + result.toString)
-              None
-          }
-//        }
+        result match {
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+          case _: Failure[P] =>
+            //              println("failure: " + result.toString)
+            None
+        }
+        //        }
       } catch {
-        case e:Throwable => None
+        case e: Throwable => None
       }
     })
-//    val Ns = NsOptions.seq.flatten
-      val Ns = NsOptions.flatten
-
-    // add id to neighbourhood (use real id strategy instead of null)
-//        val identity = basic.id[P]
-
-//    val Ns2 = Ns ++ Set(new Solution[P](solution.expression, solution.strategies :+ identity))
-
-//    Ns2
+    //    val Ns = NsOptions.seq.flatten
+    val Ns = NsOptions.flatten
 
     Ns
   }
 
   // warning: check size of hashmap
-  def f(solution:Solution[P]): Option[Double] = {
+  def f(solution: Solution[P]): Option[Double] = {
     // buffer performance values in hashmap
     solutions.get(hashProgram(solution.expression)) match {
       case Some(value) => solutions.get(hashProgram(solution.expression)).get
       case _ => {
         val performanceValue = runner.execute(solution)._2
-        solutions.+=(hashProgram(solution.expression)-> performanceValue)
+        solutions.+=(hashProgram(solution.expression) -> performanceValue)
         performanceValue
       }
     }

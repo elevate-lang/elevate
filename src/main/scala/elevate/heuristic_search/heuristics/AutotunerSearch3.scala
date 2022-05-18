@@ -142,7 +142,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
         })
 
         // add one for id element
-        // do we need to count this? It is techincally not rewritten, but added to next layer
+        // do we need to count this? It is technically not rewritten, but added to next layer
         layerElements += 1
 
         // add id element manually
