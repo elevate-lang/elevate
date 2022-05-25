@@ -32,6 +32,9 @@ class AutotunerSearch[P] extends Heuristic[P] {
     queue = queue.enqueue((0, solution))
     path.hashmap += (hashProgram(solution.expression) -> solution)
 
+    var searchSpaceEmbeeding = scala.collection.mutable.ListBuffer.empty[Solution[P]]
+    searchSpaceEmbeeding.addOne(initialSolution)
+
     // parallel and synchronized
     def dq(): (Int, (Int, Solution[P])) = this.synchronized {
 
@@ -44,10 +47,17 @@ class AutotunerSearch[P] extends Heuristic[P] {
       (layer, current._1)
     }
 
+
     def enq(layer: Int, Ns: Set[Solution[P]]) = this.synchronized {
       // add elements
       // add elements from neighborhood to queue
-      Ns.foreach(ne => {
+
+      //      Ns.toSeq.sorted((a, b) => a.strategies.last.toString() < b.strategies.last.toString())
+      val NsSorted = Ns.toSeq.sortBy(_.strategies.mkString)
+
+      // sort by string
+
+      NsSorted.foreach(ne => {
         // if last layer is reached don't enqueue
         if (layer < depth) {
           queue = queue.enqueue((layer, ne))
@@ -57,7 +67,14 @@ class AutotunerSearch[P] extends Heuristic[P] {
         val hash = hashProgram(ne.expression)
         path.hashmap.get(hash) match {
           case Some(_) => // do nothing
-          case None => path.hashmap += (hash -> ne)
+          case None =>
+            path.hashmap += (hash -> ne)
+            // add to output
+            //            searchSpaceEmbeeding :+ ne
+
+            searchSpaceEmbeeding.addOne(ne)
+
+            println("search space embedding: " + searchSpaceEmbeeding.size)
         }
       })
     }
@@ -136,7 +153,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
     }
 
     // convert hashmap to sequence
-    val searchSpace = path.hashmap.toSeq.map(elem => elem._2)
+    //    val searchSpace = path.hashmap.toSeq.map(elem => elem._2)
+    val searchSpace = searchSpaceEmbeeding.toSeq
     val size = searchSpace.size
 
     // compare sizes
@@ -156,8 +174,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     // todo read in these values
     //    val doe = size
-    val doe = 10
-    val optimizationIterations = 10
+    val doe = 5
+    val optimizationIterations = 15
 
     val configString = {
       s"""{
@@ -172,10 +190,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "design_of_experiment": {
-        "doe_type": "random sampling",
-        "number_of_samples": ${doe}
-      },
+      "optimization_method": "opentuner",
       "optimization_iterations": ${optimizationIterations},
       "input_parameters" : {
         "i": {

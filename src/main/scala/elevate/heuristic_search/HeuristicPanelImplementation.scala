@@ -173,8 +173,8 @@ class HeuristicPanelImplementation[P](
         val result: Set[Solution[P]] = afterRewrite match {
           case Some(aftermath) =>
             // todo check if normal form can be applied always
-            //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
-            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
+          //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
           case None =>
             rewriteFunction.apply(solution)
         }
