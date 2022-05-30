@@ -156,8 +156,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     // todo read in these values
 //    val doe = size
-    val doe = 10
-    val optimizationIterations = 10
+    val doe = 2
+    val optimizationIterations = 10 - doe
 
     val configString = {
       s"""{
