@@ -49,7 +49,7 @@ class Random[P] extends Heuristic[P] {
             }
           case _ =>
             path.add(result.expression, result.strategies.last, None)
-            path.add(current.program, elevate.core.strategies.basic.revert, current.value)
+            path.add(current.solution.expression, elevate.core.strategies.basic.revert, current.value)
         }
       }
     }
