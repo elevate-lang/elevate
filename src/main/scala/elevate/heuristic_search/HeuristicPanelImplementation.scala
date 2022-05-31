@@ -1,7 +1,7 @@
 package elevate.heuristic_search
 
 import elevate.core.strategies.basic
-import elevate.core.{Failure, Strategy, Success}
+import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.heuristic_search.util.SearchSpaceHelper.strategies
 import elevate.heuristic_search.util.{SearchSpaceHelper, Solution, hashProgram, hashSolution}
 
@@ -11,38 +11,65 @@ import scala.collection.parallel.ParSet
 
 
 // encapsulates definition of neighbourhood
-class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[Strategy[P]]) extends HeuristicPanel[P] {
+class HeuristicPanelImplementation[P](
+                                       val runner: Runner[P],
+                                       val strategies: Set[Strategy[P]],
+                                       val afterRewrite: Option[Strategy[P]] = None, // e.g. rewrite normal form
+                                       val beforeExecution: Option[Strategy[P]] = None, // e.g. code-gen normal form
+                                       val rewriter: Option[Solution[P] => Set[Solution[P]]] = None
+                                     ) extends HeuristicPanel[P] {
 
   val solutions = new scala.collection.mutable.HashMap[String, Option[Double]]()
   var call = 0
 
-
-  // todo optimize this
-  def computeSample2(panel: HeuristicPanel[P], initialSolution: Solution[P], numbers: Seq[Int]): Solution[P] = {
+  def checkRewrite(solution: Solution[P], rewrite: Int): Boolean = {
 
 
-    var solution = initialSolution
-    strategies.foreach(strategy => {
+    // get strategies from strings
+    var strategiesMap = Map.empty[String, Strategy[P]]
+    strategies.foreach(strat => strategiesMap += (strat.toString() -> strat))
 
-      // get neighbourhood
-      val Ns = panel.N(solution)
-      Ns.foreach(ns => {
+    val strategyString = SearchSpaceHelper.getStrategies(Seq(rewrite)).last
 
-        if (ns.strategies.last.toString().equals(strategy)) {
-          // apply!
-          solution = ns
+    //    println("check rewrite: " + rewrite)
+    //    println("strategyString: " + strategyString)
+
+    val strategy = strategyString match {
+      case "id" => basic.id[P]
+      case _ => strategies.filter(strat => strat.toString().equals(strategyString)).last
+    }
+
+    // apply and check
+    try {
+
+      val rewriteResult = strategy.apply(solution.expression)
+
+      val result = rewriteResult match {
+        case _: Success[P] => Some(new Solution[P](rewriteResult.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+        case _: Failure[P] => None
+      }
+
+      result match {
+        case Some(_) => {
+          //          println("true")
+          true
         }
-        // check if this is your number
-      })
-    })
+        case None =>
 
-    solution
+          //          println("false")
+          false
+      }
+
+    } catch {
+      case e: Throwable =>
+        //        println("false")
+        false
+    }
   }
 
+  def getSolution(initial: Solution[P], numbers: Seq[Int]): Option[Solution[P]] = {
 
-  def getSolution(solution: Solution[P], numbers: Seq[Int]): Solution[P] = {
-
-//    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
+    //    println("getSolution for: " + numbers.mkString("[", ", ", "]"))
 
     // get strategies as string
     val strategiesString = SearchSpaceHelper.getStrategies(numbers)
@@ -52,158 +79,150 @@ class HeuristicPanelImplementation[P](val runner:Runner[P], val strategies:Set[S
     strategies.foreach(strat => strategiesMap += (strat.toString() -> strat))
 
     // rewrite expression
-    var tmp = solution
-    strategiesString.foreach(strat => {
-//      println("look for: " + strat)
-      val strategy = strat match {
-        case "id" => basic.id[P]
-        case _ => strategiesMap.apply(strat)
+    var solution = initial
+    try {
+
+      strategiesString.foreach(strat => {
+        //        println("look for: " + strat)
+        val strategy = strat match {
+          case "id" => basic.id[P]
+          case _ => strategiesMap.apply(strat)
+        }
+        solution = new Solution[P](strategy.apply(solution.expression).get, solution.strategies :+ strategy)
+      })
+      Some(solution)
+    } catch {
+      case e: Throwable => {
+        throw new Exception("Could not reproduce rewrites: " + e)
+        None
       }
-      tmp = new Solution[P](strategy.apply(tmp.expression).get, tmp.strategies :+ strategy)
-    })
+    }
 
-//    println("solution: " + hashSolution(tmp))
-//    println("\n")
-
-    tmp
+    //    println("solution: " + hashSolution(tmp))
+    //    println("\n")
   }
 
   // parallel without checking
-  def N3(solution: Solution[P]): Set[Solution[P]]= {
+  def N3(solution: Solution[P]): Set[Solution[P]] = {
     call += 1
 
-//    val Ns = strategies.map(strategy => {
-      val Ns = strategies.par.map(strategy => {
+    val Ns = strategies.par.map(strategy => {
       try {
         val result = strategy.apply(solution.expression)
         result match {
-          case _:Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy))
-          case _:Failure[P] => None
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy))
+          case _: Failure[P] => None
         }
-      }catch{
-        case e:Throwable => None
+      } catch {
+        case e: Throwable => None
       }
     })
 
-//    Ns.flatten
+    //    Ns.flatten
     Ns.seq.flatten
   }
 
-  def N2(solution: Solution[P]): Set[Solution[P]]= {
+
+  def Np(solution: Solution[P]): Set[Solution[P]] = {
 
     call += 1
-//    val neighbours = scala.collection.mutable.Set[Solution[P]]()
 
-    // try each strategy and add result to neighbourhood set
-
-    val NsOptions = strategies.map(strategy => {
-//      val NsOptions  = strategies.par.map(strategy => {
+    //    val NsOptions = strategies.map(strategy => {
+    val NsOptions = strategies.par.map(strategy => {
       try {
-        //        println("apply strategy")
-        // apply strategy
+
+        //        var result: RewriteResult[P] = null
+
+
+        // check if no race condition happens here
+        //        val result = this.synchronized {
         val result = strategy.apply(solution.expression)
-        //        println("finished")
+        //        }
 
-        // check rewriting result and it add to neighbourhood set
+        //        this.synchronized {
         result match {
-          case _:Success[P] => {
-            // check if expression is valid
-            val newSolution = new Solution[P](result.get, solution.strategies :+ strategy)
-
-            if(runner.checkSolution(newSolution)){
-
-//              neighbours.add(newSolution)
-              //                new Solution[P](result.get, solution.strategies :+ strategy))
-              //add to neighbourhood
-              Some(newSolution)
-            }else{
-              // do nothing, drop result/ candidate
-
-              None
-            }
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+          case _: Failure[P] => {
+            //              println("failure: " + result.toString)
+            None
           }
-          case _:Failure[P] => None
+          //          }
         }
-      }catch{
-        case e:Throwable => None
+      } catch {
+        case e: Throwable => None
       }
     })
-//    val Ns = NsOptions.seq.flatten
-      val Ns = NsOptions.flatten
-    //    val identity = basic.id[P]
+    val Ns = NsOptions.seq.flatten
+    //    val Ns = NsOptions.flatten
 
     // add id to neighbourhood (use real id strategy instead of null)
-    //    neighbours.add(new Solution[P](solution.expression, solution.strategies :+ identity))
+    //        val identity = basic.id[P]
 
-//    neighbours.toSet
+    //    val Ns2 = Ns ++ Set(new Solution[P](solution.expression, solution.strategies :+ identity))
+
+    //    Ns2
+
     Ns
   }
 
-  def N(solution: Solution[P]): Set[Solution[P]]= {
-//    println("\n call number: " + call + "---------------------------------------------------")
-//    println("solution.strategy: " + solution.strategies.size)
-//    solution.strategies.foreach(elem =>{
-//      println("strategy: " + elem)
-//    })
-//    println()
+  def N(solution: Solution[P]): Set[Solution[P]] = {
+    rewriter match {
+      // expand strategy mode
+      case Some(rewriteFunction) =>
+
+        val result: Set[Solution[P]] = afterRewrite match {
+          case Some(aftermath) =>
+            // todo check if normal form can be applied always
+            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
+          //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+          case None =>
+            rewriteFunction.apply(solution)
+        }
+
+        result
+
+      // default mode
+      case None => N_default(solution)
+    }
+  }
+
+  def N_default(solution: Solution[P]): Set[Solution[P]] = {
+
     call += 1
-    val neighbours = scala.collection.mutable.Set[Solution[P]]()
 
-    // try each strategy and add result to neighbourhood set
-    var row = 0
-    strategies.foreach(strategy  => {
-//      println("row: " + row)
-      row += 1
+    val NsOptions = strategies.map(strategy => {
+      //      val NsOptions  = strategies.par.map(strategy => {
       try {
-//        println("apply strategy")
-        // apply strategy
+
         val result = strategy.apply(solution.expression)
-//        println("finished")
 
-        // check rewriting result and it add to neighbourhood set
+        //        this.synchronized {
+
         result match {
-          case _:Success[P] => {
-//            println("solution.strategies: \n" + solution.strategies)
-//            println("strategy: " + strategy)
-//            val tmp = solution.strategies :+ strategy
-
-            // check if expression is valid
-            val newSolution = new Solution[P](result.get, solution.strategies :+ strategy)
-//            if(runner.checkSolution(newSolution)){
-
-              neighbours.add(newSolution)
-//                new Solution[P](result.get, solution.strategies :+ strategy))
-              //add to neighbourhood
-//            }else{
-              // do nothing, drop result/ candidate
-
-//            }
-          }
-          case _:Failure[P] => //nothing
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+          case _: Failure[P] =>
+            //              println("failure: " + result.toString)
+            None
         }
-      }catch{
-        case e:Throwable => {
-//          print("rewriting error: " + e +  "\n")
-        }
+        //        }
+      } catch {
+        case e: Throwable => None
       }
     })
+    //    val Ns = NsOptions.seq.flatten
+    val Ns = NsOptions.flatten
 
-//    val identity = basic.id[P]
-
-    // add id to neighbourhood (use real id strategy instead of null)
-//    neighbours.add(new Solution[P](solution.expression, solution.strategies :+ identity))
-
-    neighbours.toSet
+    Ns
   }
 
   // warning: check size of hashmap
-  def f(solution:Solution[P]): Option[Double] = {
+  def f(solution: Solution[P]): Option[Double] = {
     // buffer performance values in hashmap
     solutions.get(hashProgram(solution.expression)) match {
       case Some(value) => solutions.get(hashProgram(solution.expression)).get
       case _ => {
         val performanceValue = runner.execute(solution)._2
-        solutions.+=(hashProgram(solution.expression)-> performanceValue)
+        solutions.+=(hashProgram(solution.expression) -> performanceValue)
         performanceValue
       }
     }

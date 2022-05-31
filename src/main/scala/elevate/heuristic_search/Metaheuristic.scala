@@ -3,6 +3,7 @@ package elevate.heuristic_search
 import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
 import elevate.heuristic_search.util.{Path, SearchSpace, Solution}
+import jdk.jfr.AnnotationElement
 
 import scala.language.postfixOps
 import scala.sys.process._
@@ -14,15 +15,26 @@ case class Metaheuristic[P](name: String,
                             iterations: Int,
                             runner: Runner[P],
                             strategies: Set[Strategy[P]],
-                            output: String
-                      ) extends Runner[P] {
+                            output: String,
+                            rewriteFunction: Option[Solution[P] => Set[Solution[P]]],
+                            afterRewrite: Option[Strategy[P]]
+                           ) extends Runner[P] {
   var counter = 0
 
-//  def execute(solution: P): (P, Option[Double]) = {
-    def execute(solution: Solution[P]): (P, Option[Double]) = {
+  def plot() = {
+    runner.plot()
+  }
+
+  //  def execute(solution: P): (P, Option[Double]) = {
+  def execute(solution: Solution[P]): (P, Option[Double]) = {
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
-    val panel = new HeuristicPanelImplementation[P](runner, strategies)
+    val panel = new HeuristicPanelImplementation[P](
+      runner = runner,
+      strategies = strategies,
+      rewriter = rewriteFunction,
+      afterRewrite = afterRewrite
+    )
 
     // conduct heuristic using panel and configs like depth and iterations
     var best: (P, Option[Double]) = (solution.expression, None)
@@ -37,17 +49,23 @@ case class Metaheuristic[P](name: String,
 
       // print path
       println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
-//      result._3.writeToDot(output + "/" + name + ".dot")
+      result._3.writeToDot(output + "/" + name + ".dot")
       println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
-//      result._3.writePathToDisk(output + "/" )
+      //      result._3.writePathToDisk(output + "/" )
       println("[METAHEURISTIC] : write path to disk")
-//      result._3.writePathToDisk(output)
-//      result._3.writeToDisk(output)
+      //      result._3.writePathToDisk(output)
+      //      result._3.writeToDisk(output)
+
+      plot()
 
       // move tuner to output
-      ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)
-      ("mv exploration/tuner/tuner_exploration.pdf " + output + "/Executor" !!)
-      ("mv exploration/tuner/tuner_exploration.json " + output + "/Executor" !!)
+      try {
+        ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)
+        ("mv exploration/tuner/tuner_exploration.pdf " + output + "/Executor" !!)
+        ("mv exploration/tuner/tuner_exploration.json " + output + "/Executor" !!)
+      } catch {
+        case e: Throwable => // ignore
+      }
 
       best._2 match {
         case Some(currentBest) =>
@@ -87,9 +105,9 @@ case class Metaheuristic[P](name: String,
       new FileOutputStream(new File(path), true))
 
     // create string to write to file
-    var string =s"$counter, $name, ${System.currentTimeMillis()}, " +
+    var string = s"$counter, $name, ${System.currentTimeMillis()}, " +
       s"${Integer.toHexString(result._1.hashCode())}, "
-    result._2 match{
+    result._2 match {
       case Some(value) => string += value.toString + "\n"
       case _ => string += "-1 \n"
     }
@@ -100,7 +118,7 @@ case class Metaheuristic[P](name: String,
     file.close()
   }
 
-  def writeHeader(path:String): Unit = {
+  def writeHeader(path: String): Unit = {
     // open file for appendix
     val file = new PrintWriter(
       new FileOutputStream(new File(path), true))

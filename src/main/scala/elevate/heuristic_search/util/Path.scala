@@ -10,34 +10,34 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 
-class PathElement[P] (override val solution: Solution[P],
-                      override val value: Option[Double],
-                      val strategy: Strategy[P],
-                      var predecessor: PathElement[P],
-                      var successor: PathElement[P],
-                      val visitNumber: Int
-                     ) extends SearchSpaceElement[P](solution, value) {
+class PathElement[P](override val solution: Solution[P],
+                     override val value: Option[Double],
+                     val strategy: Strategy[P],
+                     var predecessor: PathElement[P],
+                     var successor: PathElement[P],
+                     val visitNumber: Int
+                    ) extends SearchSpaceElement[P](solution, value) {
 
-  def setSuccessor(elem:PathElement[P]): Unit ={
+  def setSuccessor(elem: PathElement[P]): Unit = {
     successor = elem
   }
 
 }
 
-class Path[P](program:P,
-              value:Option[Double],
-              var initial:PathElement[P] = null,
-              var current:PathElement[P] = null,
+class Path[P](program: P,
+              value: Option[Double],
+              var initial: PathElement[P] = null,
+              var current: PathElement[P] = null,
               var elements: Int
-             ) extends SearchSpace[P]{
+             ) extends SearchSpace[P] {
 
-    elements = 1
-    // create initial path element
-    initial = new PathElement[P](Solution(program, Seq.empty[Strategy[P]]), value, null, null, null, elements)
-    // set initial path element to current element
-    current = initial
-    val hashmap = mutable.HashMap.empty[String, Solution[P]]
-    val visited = mutable.HashMap.empty[String, Solution[P]]
+  elements = 1
+  // create initial path element
+  initial = new PathElement[P](Solution(program, Seq.empty[Strategy[P]]), value, null, null, null, elements)
+  // set initial path element to current element
+  current = initial
+  val hashmap = mutable.HashMap.empty[String, Solution[P]]
+  val visited = mutable.HashMap.empty[String, Solution[P]]
 
   override def getSize(): Int = {
     hashmap.size
@@ -60,7 +60,7 @@ class Path[P](program:P,
     var counter = 0
     var tmp = initial
 
-    while(tmp != null){
+    while (tmp != null) {
       counter += 1
       tmp = tmp.successor
     }
@@ -75,7 +75,7 @@ class Path[P](program:P,
     var counter = 0
     var tmp = initial
 
-    while(tmp != null && counter < i){
+    while (tmp != null && counter < i) {
       counter += 1
       tmp = tmp.successor
     }
@@ -95,11 +95,11 @@ class Path[P](program:P,
     hashmap += (hashProgram(tmp.solution.expression) -> tmp.solution)
 
     // iterate over all path nodes
-    while(tmp.successor != null) {
+    while (tmp.successor != null) {
       tmp = tmp.successor
 
       // duplicates?
-//      hashmap.addOne(hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
+      //      hashmap.addOne(hashProgram(tmp.program) -> Solution(tmp.program, Seq(tmp.strategy)))
       hashmap += (hashProgram(tmp.solution.expression) -> tmp.solution)
     }
 
@@ -114,7 +114,7 @@ class Path[P](program:P,
   }
 
 
-  def add(program: P, strategy: Strategy[P], value:Option[Double]): Unit = {
+  def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit = {
     elements += 1
 
     // create new path element
@@ -134,18 +134,19 @@ class Path[P](program:P,
     var tmp = initial
 
     // prepare file
-    var full:String = "strict digraph path {\n"
-    var full2:String = "strict digraph path {\n"
-    var reduced:String = "strict digraph path {\n"
-    var reduced2:String = "strict digraph path {\n"
-    var reduced3:String = "strict digraph path {\n"
+    var full: String = "strict digraph path {\n"
+    var full2: String = "strict digraph path {\n"
+    var reduced: String = "strict digraph path {\n"
+    var reduced2: String = "strict digraph path {\n"
+    var reduced3: String = "strict digraph path {\n"
+    var reduced4: String = "strict digraph path {\n"
 
     println("write nodes")
     // write nodes
     var counter = 0
     while (tmp != null) {
-//      println("node: " + counter)
-//      counter += 1
+      //      println("node: " + counter)
+      //      counter += 1
       // for each node traverse tree and match for given hash code
       var tmp2 = initial
       val visitCounter = new ListBuffer[Int]
@@ -156,21 +157,21 @@ class Path[P](program:P,
         case value => value.toString()
       }
 
-//      while(tmp2 != null){
-//        // if element was visited later in graph
-//        if(tmp2.program.hashCode() == tmp.program.hashCode()){
-//          visitCounter += tmp2.visitNumber
-//
-//          // count strategies
-//          // todo reduce this to actual strategies
-//          strategyString = tmp2.strategy match {
-//            case null => strategyString
-//            case value => strategyString + "\n" + value.toString()
-//          }
-//
-//        }
-//        tmp2 = tmp2.successor
-//      }
+      //      while(tmp2 != null){
+      //        // if element was visited later in graph
+      //        if(tmp2.program.hashCode() == tmp.program.hashCode()){
+      //          visitCounter += tmp2.visitNumber
+      //
+      //          // count strategies
+      //          // todo reduce this to actual strategies
+      //          strategyString = tmp2.strategy match {
+      //            case null => strategyString
+      //            case value => strategyString + "\n" + value.toString()
+      //          }
+      //
+      //        }
+      //        tmp2 = tmp2.successor
+      //      }
 
 
       // todo fix bugs in path!
@@ -181,12 +182,19 @@ class Path[P](program:P,
 
       val hash = hashProgram(tmp.solution.expression)
 
-      full += "\"" + hash + "\" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n n" + tmp.solution.expression.toString + "\n" + tmp.value + "\"]; \n"
-      full2 += "\"" + hash + "\" [label = \" " + tmp.solution.expression.toString  + "\n" + tmp.value + "\"]; \n"
+      val value = tmp.value match {
+        case Some(runtime) => runtime.toString
+        case None => "None"
+      }
 
-      reduced  += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + strategyString + "\\n" + tmp.value + "\"]; \n"
-      reduced2 += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + tmp.value + "\"]; \n"
-      reduced3 += "\"" + hash + "\" [label = \"" + hash + "\\n" + tmp.value + "\"]; \n"
+      full += "\"" + hash + "\" [label = \" " + "[" + visitCounter.toSeq.mkString(",") + "] \n n" + tmp.solution.expression.toString + "\n" + value + "\"]; \n"
+      full2 += "\"" + hash + "\" [label = \" " + tmp.solution.expression.toString + "\n" + value + "\"]; \n"
+
+      reduced += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + strategyString + "\\n" + value + "\"]; \n"
+      reduced2 += "\"" + hash + "\" [label = \"" + "[" + visitCounter.toSeq.mkString(",") + "] \n" + hash + "\\n" + value + "\"]; \n"
+      reduced3 += "\"" + hash + "\" [label = \"" + hash + "\\n" + value + "\"]; \n"
+
+      reduced4 += "\"" + hash + "\" [label = \"" + hash.substring(0, 2) + "\\n" + value + "\"]; \n"
       tmp = tmp.successor
     }
 
@@ -195,7 +203,7 @@ class Path[P](program:P,
     // write edges
     tmp = initial.successor
     var appendix = ""
-    while(tmp != null){
+    while (tmp != null) {
 
       val hash = hashProgram(tmp.solution.expression)
       val hashPredecessor = hashProgram(tmp.predecessor.solution.expression)
@@ -204,12 +212,12 @@ class Path[P](program:P,
       appendix += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
 
 
-//      full += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
-//      full2 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+      //      full += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+      //      full2 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
 
-//      reduced += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
-//      reduced2 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
-//      reduced3 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+      //      reduced += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+      //      reduced2 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
+      //      reduced3 += "\"" + hashPredecessor + "\" -> \"" + hash + "\"  [label = \"" + tmp.strategy + "\"]; \n"
 
       tmp = tmp.successor
     }
@@ -231,6 +239,7 @@ class Path[P](program:P,
     reduced += appendix
     reduced2 += appendix
     reduced3 += appendix
+    reduced4 += appendix
 
     // finish file
     full += "}"
@@ -238,14 +247,16 @@ class Path[P](program:P,
     reduced += "}"
     reduced2 += "}"
     reduced3 += "}"
+    reduced4 += "}"
 
     //check if file exists and avoid overwriting
     val uniqueFilename_full = getUniqueFilename(filename, 4)
-    val uniqueFilename_full2 = uniqueFilename_full.substring(0, uniqueFilename_full.length-4) + "_no_numbers" + ".dot"
+    val uniqueFilename_full2 = uniqueFilename_full.substring(0, uniqueFilename_full.length - 4) + "_no_numbers" + ".dot"
 
-    val uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain_strategies" + ".dot"
-    val uniqueFilename_reduced2 = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain" + ".dot"
-    val uniqueFilename_reduced3 = uniqueFilename_full.substring(0, uniqueFilename_full.length-4)  + "_plain_no_numbers" + ".dot"
+    val uniqueFilename_reduced = uniqueFilename_full.substring(0, uniqueFilename_full.length - 4) + "_plain_strategies" + ".dot"
+    val uniqueFilename_reduced2 = uniqueFilename_full.substring(0, uniqueFilename_full.length - 4) + "_plain" + ".dot"
+    val uniqueFilename_reduced3 = uniqueFilename_full.substring(0, uniqueFilename_full.length - 4) + "_plain_no_numbers" + ".dot"
+    val uniqueFilename_reduced4 = uniqueFilename_full.substring(0, uniqueFilename_full.length - 4) + "_plain_no_numbers_reduced" + ".dot"
 
     // create new files
     val pwFull = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
@@ -254,6 +265,7 @@ class Path[P](program:P,
     val pwReduced = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced), false))
     val pwReduced2 = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced2), false))
     val pwReduced3 = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced3), false))
+    val pwReduced4 = new PrintWriter(new FileOutputStream(new File(uniqueFilename_reduced4), false))
 
     // write string encoding path to file
     pwFull.write(full)
@@ -262,6 +274,7 @@ class Path[P](program:P,
     pwReduced.write(reduced)
     pwReduced2.write(reduced2)
     pwReduced3.write(reduced3)
+    pwReduced4.write(reduced4)
 
     // close files
     pwFull.close()
@@ -270,6 +283,7 @@ class Path[P](program:P,
     pwReduced.close()
     pwReduced2.close()
     pwReduced3.close()
+    pwReduced4.close()
 
 
     // visualize dot graph
@@ -288,6 +302,9 @@ class Path[P](program:P,
     (s"dot -Tpng -O " + uniqueFilename_reduced3 !!)
     (s"dot -Tpdf -O " + uniqueFilename_reduced3 !!)
 
+    (s"dot -Tpng -O " + uniqueFilename_reduced4 !!)
+    (s"dot -Tpdf -O " + uniqueFilename_reduced4 !!)
+
   }
 
   // todo same export for hashmap
@@ -300,7 +317,7 @@ class Path[P](program:P,
     do {
       val hash = hashProgram(tmp.solution.expression)
       // get unique filename
-      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash , 0)
+      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash, 0)
       // create folder
       (s"mkdir ${uniqueFilename}" !!)
 
@@ -314,14 +331,14 @@ class Path[P](program:P,
       pwProgram.write(tmp.solution.expression.toString)
 
       // strategy list
-     val list = getStrategies(tmp)
+      val list = getStrategies(tmp)
 
       // create strategy string for file
       var strategyString = ""
-      list.foreach(elem=>{
+      list.foreach(elem => {
         elem match {
-          case null => strategyString +=  "null" + "\n"
-          case _ => strategyString +=  elem.toString + "\n"
+          case null => strategyString += "null" + "\n"
+          case _ => strategyString += elem.toString + "\n"
         }
       })
 
@@ -333,7 +350,7 @@ class Path[P](program:P,
       pwStrategies.close()
 
       tmp = tmp.successor
-    } while(tmp != null)
+    } while (tmp != null)
 
   }
 
@@ -343,11 +360,11 @@ class Path[P](program:P,
     hashmap.foreach(elem => {
 
       // hash program
-//      val hash = hashProgram(solution.expression)
+      //      val hash = hashProgram(solution.expression)
       val hash = elem._1
 
       // create unique output folder
-      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash , 0)
+      val uniqueFilename = getUniqueFilename(filename + "/Expressions/" + hash, 0)
       // create folder
       (s"mkdir ${uniqueFilename}" !!)
 
@@ -365,10 +382,10 @@ class Path[P](program:P,
 
       // create strategy string for file
       var strategyString = ""
-      list.foreach(elem=>{
+      list.foreach(elem => {
         elem match {
-          case null => strategyString +=  "null" + "\n"
-          case _ => strategyString +=  elem.toString + "\n"
+          case null => strategyString += "null" + "\n"
+          case _ => strategyString += elem.toString + "\n"
         }
       })
 
@@ -382,14 +399,14 @@ class Path[P](program:P,
     })
   }
 
-  def getStrategies(element: PathElement[P]):Seq[P=>RewriteResult[P]] = {
+  def getStrategies(element: PathElement[P]): Seq[P => RewriteResult[P]] = {
     var tmp = initial
-    val strategies = scala.collection.mutable.ListBuffer.empty[P=>RewriteResult[P]]
+    val strategies = scala.collection.mutable.ListBuffer.empty[P => RewriteResult[P]]
 
     // there is no first strategy resulting in the initial expression
 
     // add elements to list (start with second)
-    while(tmp != element) {
+    while (tmp != element) {
       tmp = tmp.successor
       strategies += tmp.strategy
     }
@@ -398,11 +415,11 @@ class Path[P](program:P,
     strategies.toSeq
   }
 
-  def getUniqueFilename(filename:String, offset: Int):String= {
+  def getUniqueFilename(filename: String, offset: Int): String = {
     var uniqueFilename_full = filename
 
     // check if file or folder already exists
-    if(Files.exists(Paths.get(uniqueFilename_full))){
+    if (Files.exists(Paths.get(uniqueFilename_full))) {
       //val warningString = "Warning! Clash at " + uniqueFilename_full + ".\n"
       //println(warningString + "adding System.currentTimeMillis().")
 
@@ -410,8 +427,8 @@ class Path[P](program:P,
       Thread.sleep(1)
 
       // append timestamp
-      val end = uniqueFilename_full.substring(uniqueFilename_full.length-offset, uniqueFilename_full.length)
-      uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length-offset)+ "_" + System.currentTimeMillis() + end
+      val end = uniqueFilename_full.substring(uniqueFilename_full.length - offset, uniqueFilename_full.length)
+      uniqueFilename_full = uniqueFilename_full.substring(0, uniqueFilename_full.length - offset) + "_" + System.currentTimeMillis() + end
     }
 
     uniqueFilename_full

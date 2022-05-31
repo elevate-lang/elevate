@@ -24,6 +24,8 @@ lazy val elevate = (project in file("."))
     name    := "elevate",
     version := "1.0",
 
+    javaOptions ++= Seq("-Xmx8g"),
+
     commonSettings,
 
     // Scala libraries

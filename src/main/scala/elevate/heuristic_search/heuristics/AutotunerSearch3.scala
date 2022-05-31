@@ -3,6 +3,7 @@ package elevate.heuristic_search.heuristics
 import elevate.heuristic_search.util._
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 import scala.language.postfixOps
 import scala.sys.process._
@@ -15,62 +16,41 @@ class AutotunerSearch3[P] extends Heuristic[P] {
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
 
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SimpleTree[P]) = {
 
-  // todo optimize this
-  def computeSample2(panel: HeuristicPanel[P], initialSolution: Solution[P], numbers: Seq[Int]): Solution[P] = {
-
-    val strategies = SearchSpaceHelper.getStrategies(numbers)
-
-    var solution = initialSolution
-    strategies.foreach(strategy => {
-
-      // get neighbourhood
-      val Ns = panel.N(solution)
-      Ns.foreach(ns => {
-
-        if (ns.strategies.last.toString().equals(strategy)) {
-          // apply!
-          solution = ns
-        }
-        // check if this is your number
-      })
-    })
-
-    solution
-  }
-
-
-    def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SimpleTree[P]) = {
-    // we don't need this here
-//    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
-
-    val dry = true
+    val dry = false
     val generate = true
 
     val (tree, filepath) = generate match {
       case true =>
         // generate search space
-        val tree = generateSearchSpace(panel, initialSolution, depth)
+        //        val tree = generateSearchSpace(panel, initialSolution, depth)
+        val tree = createTree(initialSolution, panel)
+
+        //        val constraintsInverted = tree.getConstraintsInvert()
+        //        System.exit(0)
+        //        val filepath2 = tree.toJsonNumbers3("exploration/tree.json")
 
         // export tree
         val filepath = tree.toJsonNumbers("exploration/tree.json")
 
+
         (tree, filepath)
       case false =>
         // read in config file
-            val filepath = "exploration/tree_8.json"
+        val filepath = "exploration/tree_5_big.json"
 
-            // create empty tree with only one element
-            val tree = new SimpleTree[P](
-              initial = new SimpleTreeElement[P](
-                solutionHash = hashProgram(initialSolution),
-                rewrite = -1, // edge case
-                layer = 0,
-                predecessor = null,
-                successor = Set.empty[SimpleTreeElement[P]]
-              ),
-              initialSolution = initialSolution
-            )
+        // create empty tree with only one element
+        val tree = new SimpleTree[P](
+          initial = new SimpleTreeElement[P](
+            solutionHash = hashProgram(initialSolution),
+            rewrite = -1, // edge case
+            layer = 0,
+            predecessor = null,
+            successor = Set.empty[SimpleTreeElement[P]]
+          ),
+          initialSolution = initialSolution
+        )
         (tree, filepath)
     }
 
@@ -78,11 +58,131 @@ class AutotunerSearch3[P] extends Heuristic[P] {
     dry match {
       case true => (initialSolution.expression, None, tree)
       case false =>
-        //     explore search sapce
+        //     explore search space
         val (solution, solutionValue) = explore(panel, initialSolution, depth, filepath)
         (solution.expression, solutionValue, tree)
     }
 
+  }
+
+  // breadth first
+  def createTree(initialSolution: Solution[P], panel: HeuristicPanel[P]): SimpleTree[P] = {
+
+    // create empty tree
+    val tree = new SimpleTree[P](
+      initial = new SimpleTreeElement[P](
+        solutionHash = hashProgram(initialSolution.expression),
+        rewrite = -1,
+        layer = 0,
+        predecessor = null,
+        successor = Set.empty[SimpleTreeElement[P]]
+      ),
+      initialSolution = initialSolution
+    )
+
+    // create queue
+    var queue = Queue.empty[SimpleTreeElement[P]]
+
+    // empty tree
+    // initial tree element
+    queue = queue.enqueue(tree.initial)
+
+    println("queue: " + queue.size)
+    println("queue.empty: " + !queue.isEmpty)
+
+    var layer = 0
+    while (!queue.isEmpty) {
+      val layerDurationStart = System.currentTimeMillis()
+      println("\nlayer: " + layer)
+      println("queue.size: " + queue.size)
+
+      // dequeue complete layer
+      var layerElements = 0
+      val layerNodes = queue.size
+      for (i <- 1 to queue.size) {
+
+        // dequeue element
+        val (currentElement, currentQueue) = queue.dequeue
+        queue = currentQueue
+
+        val rewriteNumbers = tree.getRewriteNumbers(currentElement)
+        val solution = panel.getSolution(tree.initialSolution, rewriteNumbers)
+
+        val Ns = panel.N(solution.get)
+        layerElements += Ns.size
+
+        // rewrite
+        Ns.foreach(ne => {
+
+          val hash = hashProgram(ne.expression)
+
+          // add new element if condition is met
+          val cond = globalLeaves.contains(hash)
+          if (!cond) {
+
+            // create new tree element
+            val currentTreeElement = new SimpleTreeElement[P](
+              solutionHash = hash,
+              rewrite = SearchSpaceHelper.strategies.apply(ne.strategies.last.toString()),
+              layer = currentElement.layer + 1,
+              predecessor = currentElement,
+              successor = Set.empty[SimpleTreeElement[P]]
+            )
+
+            // add element to predecessor
+            currentElement.successor += currentTreeElement
+
+            globalLeaves.addOne(hash)
+
+            // add to queue
+            if (layer < rewriteLimit) {
+              queue = queue.enqueue(currentTreeElement)
+            }
+          }
+        })
+
+        // add one for id element
+        // do we need to count this? It is technically not rewritten, but added to next layer
+        layerElements += 1
+
+        // add id element manually
+        val dummyElement = new SimpleTreeElement[P](
+          solutionHash = currentElement.solutionHash,
+          rewrite = 0,
+          layer = currentElement.layer + 1,
+          predecessor = currentElement,
+          successor = Set.empty[SimpleTreeElement[P]]
+        )
+
+        // add element to predecessor
+        currentElement.successor += dummyElement
+
+        // add to queue if limit is not reached
+        if (layer < rewriteLimit) {
+          queue = queue.enqueue(dummyElement)
+        } else {
+
+        }
+      }
+
+      // todo collect intermediate jsons at output folder
+      // write json
+      //      val test = tree.toJsonNumbers2("exploration/tree_" + layer.toString + ".json")
+      val test = tree.toJsonNumbers("exploration/tree_" + layer.toString + ".json")
+      println("write json: " + test)
+      layer += 1
+
+      // todo write this to file
+      // layer end
+      val layerDuration = System.currentTimeMillis() - layerDurationStart
+      println("duration: " + layerDuration.toDouble / 1000 + " s")
+      println("duration: " + layerDuration.toDouble / 1000 / 60 + " m")
+      println("elements: " + layerElements)
+      println("durationPerElement: " + layerDuration / layerElements + " ms")
+      println("avg children per node: " + layerElements.toDouble / layerNodes.toDouble)
+    }
+
+    tree
   }
 
   var counter = 0
@@ -90,14 +190,14 @@ class AutotunerSearch3[P] extends Heuristic[P] {
   // depth first
   def rewriteNode(panel: HeuristicPanel[P], simpleTreeElement: SimpleTreeElement[P], simpleTree: SimpleTree[P]): Unit = {
 
-    if(counter % 1000 == 0){
+    if (counter % 1000 == 0) {
       println("treeSize: " + simpleTree.getSize())
     }
     counter += 1
 
-//    simpleTree.printConsole()
+    //    simpleTree.printConsole()
 
-    if (simpleTreeElement.layer < rewriteLimit) {
+    if (simpleTreeElement.layer <= rewriteLimit) {
 
 
       // reproduce element from numbers
@@ -105,31 +205,31 @@ class AutotunerSearch3[P] extends Heuristic[P] {
       val getSolutionStart = System.currentTimeMillis()
       // get solution from current SimpleTreeElement
       val rewriteNumbers = simpleTree.getRewriteNumbers(simpleTreeElement)
-//      val solution = computeSample2(panel, simpleTree.initialSolution, rewriteNumbers)
+      //      val solution = computeSample2(panel, simpleTree.initialSolution, rewriteNumbers)
       val solution = panel.getSolution(simpleTree.initialSolution, rewriteNumbers)
       durationGetSolution += (System.currentTimeMillis() - getSolutionStart)
 
       val rewritesStart = System.currentTimeMillis()
-      val Ns = panel.N(solution)
+      val Ns = panel.N(solution.get)
       durationRewriting += (System.currentTimeMillis() - rewritesStart)
 
-//      solution.strategies.size match {
-//        case 0 => println("solution: " + "initial - " + Ns.size)
-//        case _ => println("solution: " + solution.strategies.last.toString() + " - " + Ns.size)
-//      }
-//
-//      println("globalLeafs: " + globalLeaves.size)
+      //      solution.strategies.size match {
+      //        case 0 => println("solution: " + "initial - " + Ns.size)
+      //        case _ => println("solution: " + solution.strategies.last.toString() + " - " + Ns.size)
+      //      }
+      //
+      //      println("globalLeafs: " + globalLeaves.size)
 
       Ns.foreach(ne => {
         // check if we have this node already
         val cond = globalLeaves.contains(hashProgram(ne.expression))
 
         if (cond) {
-//          println("already in: " + hashProgram(ne.expression) + " - " + ne.strategies.last.toString())
+          //          println("already in: " + hashProgram(ne.expression) + " - " + ne.strategies.last.toString())
           // don't add
         } else {
           // add
-//          println("add: " + hashProgram(ne.expression) + " - " + ne.strategies.last.toString())
+          //          println("add: " + hashProgram(ne.expression) + " - " + ne.strategies.last.toString())
 
           // create new tree element
           val neTree = new SimpleTreeElement[P](
@@ -160,21 +260,21 @@ class AutotunerSearch3[P] extends Heuristic[P] {
       // add element to predecessor
       simpleTreeElement.successor += dummyElement
 
-//      println("globalLeafs: " + globalLeaves.size)
-//      println("tree size: " + simpleTree.countNodes(simpleTree.initial))
-//      println("tree leafs: " + simpleTree.getSize())
-//      println("tree leafs: " + simpleTree.countLeafs(simpleTree.initial))
+      //      println("globalLeafs: " + globalLeaves.size)
+      //      println("tree size: " + simpleTree.countNodes(simpleTree.initial))
+      //      println("tree leafs: " + simpleTree.getSize())
+      //      println("tree leafs: " + simpleTree.countLeafs(simpleTree.initial))
 
       simpleTreeElement.successor.foreach(succ => {
         // call rewrite node
-        if (succ.layer < rewriteLimit) {
+        if (succ.layer <= rewriteLimit) {
           rewriteNode(panel, succ, simpleTree)
         }
       })
     }
   }
 
-  def generateSearchSpace(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): SimpleTree[P]  = {
+  def generateSearchSpace(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): SimpleTree[P] = {
 
     // create simple tree with initial element
     val tree = new SimpleTree[P](
@@ -190,7 +290,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
     println("create tree")
     // create tree
-    val upperBound = math.pow((SearchSpaceHelper.strategies.size + 1)/2, rewriteLimit).toLong
+    val upperBound = math.pow((SearchSpaceHelper.strategies.size + 1) / 2, rewriteLimit).toLong
     println("upper bound: " + upperBound)
 
     val startTime = System.currentTimeMillis()
@@ -220,14 +320,6 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
     println("\ngenerate constraints")
     val constraints = tree.getConstraints()
-//    constraints.foreach(constr => {
-//      println("layer: " + constr._1)
-//      constr._2.foreach(elem => {
-//        println(elem)
-//      })
-//      println("\n")
-//
-//    })
 
     var sum = 0
     constraints.foreach(elem => {
@@ -253,24 +345,25 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
       val strategies = SearchSpaceHelper.getStrategies(parametersValuesMap.toSeq.sortBy(x => x._1).map(x => x._2))
 
-      var solution = initialSolution
-      strategies.foreach(strategy => {
+      val rewriteNumbers = parametersValuesMap.toSeq.sortBy(x => x._1).map(x => x._2)
 
-        // get neighbourhood
-        val Ns = panel.N(solution)
-        Ns.foreach(ns => {
+      val solution = panel.getSolution(initialSolution, rewriteNumbers)
 
-          if(ns.strategies.last.toString().equals(strategy)){
-            // apply!
-            solution = ns
-          }
-          // check if this is your number
-        })
-      })
+      solution match {
+        case Some(value) => {
 
-      val runtime = panel.f(solution)
+          val runtime = panel.f(solution.get)
 
-      Sample(solution, runtime)
+          Sample(solution.get, runtime)
+        }
+        // todo fix problem with initial solution
+        case None => {
+          println(rewriteNumbers.mkString("[", ",", "]"))
+          println(strategies.mkString("[", ", ", "]"))
+          //          throw new Exception("cannot reproduce expression")
+          Sample(initialSolution, None)
+        }
+      }
     }
 
     val totalDurationStart = System.currentTimeMillis()
@@ -282,8 +375,6 @@ class AutotunerSearch3[P] extends Heuristic[P] {
     val doe = 100
     val optimizationIterations = 100
 
-//    val configFile = os.pwd.toString() + "/exploration/tree.json"
-//    val configFile = os.pwd.toString() + "/exploration/tree_8.json"
     val configFile = os.pwd.toString() + "/" + filePath
     println("configFile: " + configFile)
 
@@ -320,7 +411,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
             // read in parameters values
             val parametersValues = hypermapper.stdout.readLine().split(",").map(x => x.trim())
             // compute sample (including function value aka runtime)
-//            print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
+            //            print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
 
             val sample = computeSample(header, parametersValues)
 
@@ -351,10 +442,10 @@ class AutotunerSearch3[P] extends Heuristic[P] {
             }
 
             println(j.toString + ": " + sample.runtime)
-//            println(sample)
+            //            println(sample)
             i += 1
             // append sample to Samples
-            //            samples += sample
+            //                        samples += sample
             // append response
             sample.runtime match {
               case None =>
@@ -365,46 +456,42 @@ class AutotunerSearch3[P] extends Heuristic[P] {
               case Some(value) =>
                 // make sure to response int values
                 response += s"${parametersValues.map(x => x.toFloat.toInt).mkString(",")},${value},True\n"
-            }}
+            }
+          }
 
 
           print(s"Response:\n$response")
           println()
-                // send response to Hypermapper
-                hypermapper.stdin.write(response)
-                hypermapper.stdin.flush()
-              case message => println("message: " + message)
-            }
-          }
-    //
-    //    // todo save output generic, avoid overwriting
+          // send response to Hypermapper
+          hypermapper.stdin.write(response)
+          hypermapper.stdin.flush()
+        case message => println("message: " + message)
+      }
+    }
+
     // apply this at the end
-        // save output
+    // save output
     println("save output")
-        ("mkdir -p exploration/tuner" !!)
-        ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
-        (s"cp ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
+    ("mkdir -p exploration/tuner" !!)
+    ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
+    (s"cp ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
 
     println("plot results")
-        // plot results using hypermapper
-        val test = ("hm-plot-optimization-results " +
-          "-j " + "exploration/tuner/tuner_exploration.json" + " " +
-          "-i " + "exploration/tuner/" + " " +
-          "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
-          "--y_label \"Log Runtime(ms)\"" !!)
-//          "-log --y_label \"Log Runtime(ms)\"" !!)
+    // plot results using hypermapper
+    val test = ("hm-plot-optimization-results " +
+      "-j " + "exploration/tuner/tuner_exploration.json" + " " +
+      "-i " + "exploration/tuner/" + " " +
+      "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
+      "--y_label \"Log Runtime(ms)\"" !!)
+    //          "-log --y_label \"Log Runtime(ms)\"" !!)
 
     println("output: " + test)
 
-//        val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
-//        println("duration2: " + duration2/1000  + "s")
-    //
-    //    println("end")
-    //    println("solution: " + solution.expression)
-    //    println("solutionValue: " + solutionValue)
-    //    println("strategies: ")
-    //    solution.strategies.foreach(println)
-    //
+
+    val duration = (System.currentTimeMillis() - totalDurationStart).toDouble
+
+    println("duration2: " + duration / 1000 + " s")
+    println("duration2: " + duration / 1000 / 60 + " m")
 
     (solution, solutionValue)
   }

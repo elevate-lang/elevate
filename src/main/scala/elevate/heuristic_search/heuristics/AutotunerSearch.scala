@@ -15,7 +15,7 @@ import scala.sys.process._
 
 class AutotunerSearch[P] extends Heuristic[P] {
 
-  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
 
     println("depth: " + depth)
 
@@ -32,22 +32,32 @@ class AutotunerSearch[P] extends Heuristic[P] {
     queue = queue.enqueue((0, solution))
     path.hashmap += (hashProgram(solution.expression) -> solution)
 
+    var searchSpaceEmbeeding = scala.collection.mutable.ListBuffer.empty[Solution[P]]
+    searchSpaceEmbeeding.addOne(initialSolution)
+
     // parallel and synchronized
-    def dq():(Int, (Int, Solution[P])) = this.synchronized {
+    def dq(): (Int, (Int, Solution[P])) = this.synchronized {
 
-        val current = queue.dequeue
+      val current = queue.dequeue
 
-        // update queue
-        queue = current._2
-        val layer = current._1._1 + 1
+      // update queue
+      queue = current._2
+      val layer = current._1._1 + 1
 
       (layer, current._1)
     }
 
+
     def enq(layer: Int, Ns: Set[Solution[P]]) = this.synchronized {
       // add elements
       // add elements from neighborhood to queue
-      Ns.foreach(ne => {
+
+      //      Ns.toSeq.sorted((a, b) => a.strategies.last.toString() < b.strategies.last.toString())
+      val NsSorted = Ns.toSeq.sortBy(_.strategies.mkString)
+
+      // sort by string
+
+      NsSorted.foreach(ne => {
         // if last layer is reached don't enqueue
         if (layer < depth) {
           queue = queue.enqueue((layer, ne))
@@ -57,7 +67,14 @@ class AutotunerSearch[P] extends Heuristic[P] {
         val hash = hashProgram(ne.expression)
         path.hashmap.get(hash) match {
           case Some(_) => // do nothing
-          case None => path.hashmap += (hash -> ne)
+          case None =>
+            path.hashmap += (hash -> ne)
+            // add to output
+            //            searchSpaceEmbeeding :+ ne
+
+            searchSpaceEmbeeding.addOne(ne)
+
+            println("search space embedding: " + searchSpaceEmbeeding.size)
         }
       })
     }
@@ -75,7 +92,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
       while (!queue.isEmpty) {
         i += 1
 
-        println("iteration: " + i )
+        println("iteration: " + i)
         println("nodes: " + path.hashmap.size)
         println("queue size: " + queue.size)
 
@@ -85,9 +102,9 @@ class AutotunerSearch[P] extends Heuristic[P] {
           threads = 1
         }
 
-        val work = queue.size/threads
+        val work = queue.size / threads
         println("threads: " + threads)
-        println("work per thread: "  + work)
+        println("work per thread: " + work)
         println("rewrites total: " + rewritesTotal)
 
         val threadList = mutable.ListBuffer.empty[Thread]
@@ -128,15 +145,16 @@ class AutotunerSearch[P] extends Heuristic[P] {
         threadList.foreach(thread => thread.join())
 
         val durationLayer = System.currentTimeMillis() - layerStart
-        println("durationTotal: " + durationLayer.toDouble/1000 + " s")
-        println("rewriteDuration: " + rewriteDuration.toDouble/1000 + " s")
-        println("hashMapDuration: " + hashMapDuration.toDouble/1000 + " s")
+        println("durationTotal: " + durationLayer.toDouble / 1000 + " s")
+        println("rewriteDuration: " + rewriteDuration.toDouble / 1000 + " s")
+        println("hashMapDuration: " + hashMapDuration.toDouble / 1000 + " s")
         println("\n")
       }
     }
 
     // convert hashmap to sequence
-    val searchSpace = path.hashmap.toSeq.map(elem => elem._2)
+    //    val searchSpace = path.hashmap.toSeq.map(elem => elem._2)
+    val searchSpace = searchSpaceEmbeeding.toSeq
     val size = searchSpace.size
 
     // compare sizes
@@ -144,11 +162,11 @@ class AutotunerSearch[P] extends Heuristic[P] {
     println("hashmap size: " + path.hashmap.size)
 
     // measurement point for duration
-    val duration:Double = (System.currentTimeMillis() - totalDurationStart).toDouble
+    val duration: Double = (System.currentTimeMillis() - totalDurationStart).toDouble
 
     println("duration: " + (duration) + "ms")
-    println("duration: " + (duration/1000) + "s")
-    println("duration: " +  (duration/1000/60) + "m")
+    println("duration: " + (duration / 1000) + "s")
+    println("duration: " + (duration / 1000 / 60) + "m")
 
     // start hm with default config file
     println("start random exploration")
@@ -158,6 +176,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
 //    val doe = size
     val doe = 2
     val optimizationIterations = 10 - doe
+
 
     val configString = {
       s"""{
@@ -172,17 +191,14 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "design_of_experiment": {
-        "doe_type": "random sampling",
-        "number_of_samples": ${doe}
-      },
+      "optimization_method": "opentuner",
       "optimization_iterations": ${optimizationIterations},
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",
-        "values" : [0, ${size-1}],
+        "values" : [0, ${size - 1}],
         "constraints" : [],
-        "dependencies" : []
+        "dependencies": []
       }
       }
     }"""
@@ -248,7 +264,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
             // update solution value if better performance is found
             solutionValue = result match {
               case Some(value) => {
-                value <= solutionValue.get  match {
+                value <= solutionValue.get match {
                   case true =>
                     //              println("better")
                     // update solution
@@ -297,10 +313,10 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "-i " + "exploration/tuner/" + " " +
       "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
       "--y_label \"Log Runtime(ms)\"" !!)
-//      "-log --y_label \"Log Runtime(ms)\"" !!)
+    //      "-log --y_label \"Log Runtime(ms)\"" !!)
 
     val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
-    println("duration2: " + duration2/1000  + "s")
+    println("duration2: " + duration2 / 1000 + "s")
 
     println("end")
     println("solution: " + solution.expression)
