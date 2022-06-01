@@ -114,13 +114,16 @@ class Path[P](program: P,
   }
 
 
-  def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit = {
+  def add(solution: Solution[P], value: Option[Double]): Unit = {
     elements += 1
 
+    // todo check if we want to append full solution strategies or if all necessary information is in solution
     // create new path element
-    val elem = new PathElement[P](Solution(program, current.solution.strategies :+ strategy), value, strategy, current, null, elements)
+    val elem = new PathElement[P](solution, value, solution.strategies.last, current, null, elements)
+    //    val elem = new PathElement[P](Solution(program, current.solution.strategies ++ solution.strategies), value, solution.strategies.last, current, null, elements)
 
-    hashmap += (hashProgram(program) -> Solution(program, current.solution.strategies :+ strategy))
+
+    hashmap += (hashProgram(program) -> solution)
 
     // set new element as successor of current element
     current.successor = elem
@@ -398,6 +401,8 @@ class Path[P](program: P,
 
     })
   }
+
+  override def writeSearchSpace(filename: String): Unit = ???
 
   def getStrategies(element: PathElement[P]): Seq[P => RewriteResult[P]] = {
     var tmp = initial

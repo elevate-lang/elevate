@@ -13,7 +13,7 @@ abstract class SearchSpaceElement[P](val solution: Solution[P],
 
 trait SearchSpace[P] {
 
-  def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit
+  def add(solution: Solution[P], value: Option[Double]): Unit
 
   def printConsole(): Unit
 
@@ -32,6 +32,8 @@ trait SearchSpace[P] {
   def writeToDot(filename: String): String
 
   def writeToDisk(filename: String): Unit
+
+  def writeSearchSpace(filename: String): Unit
 
 }
 

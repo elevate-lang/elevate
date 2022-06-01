@@ -10,7 +10,7 @@ class Exhaustive[P] extends Heuristic[P] {
 
   // todo cleanup
   // breadth first
-  def start(panel:HeuristicPanel[P], initialSolution:Solution[P], depth:Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
 
     println("depth: " + depth)
 
@@ -24,21 +24,21 @@ class Exhaustive[P] extends Heuristic[P] {
     queue = queue.enqueue(solution, path.initial)
 
     var i = 0
-    while(!queue.isEmpty && i < depth) {
+    while (!queue.isEmpty && i < depth) {
       i = i + 1
 
-//      println("i: " + i)
-//      println("queue: " + queue)
+      //      println("i: " + i)
+      //      println("queue: " + queue)
 
       // get element from queue
       val current = queue.dequeue
 
-//      println("current: " + current)
+      //      println("current: " + current)
 
       // update current path element
       //      path.setCurrent(current._1._2)
       // todo reach this from start (step by step)
-//      path.add(current._1._2.program, current._1._2.strategy, current._1._2.value)
+      //      path.add(current._1._2.program, current._1._2.strategy, current._1._2.value)
 
       // start at initial node
       var down = path.initial
@@ -53,7 +53,7 @@ class Exhaustive[P] extends Heuristic[P] {
         down = down.successor
         //        tmp.program.hashCode() == tmp.successor.program.hashCode()){
         // go one step down
-        path.add(down.solution.expression, down.strategy, down.value)
+        path.add(down.solution, down.value)
       }
       println(" --------- finished ---------- ")
       println("\n")
@@ -66,23 +66,23 @@ class Exhaustive[P] extends Heuristic[P] {
       val Ns = panel.N(current._1._1)
 
       Ns.foreach(ne => {
-//        path.writePathToDot("/home/jo/development/rise-lang/shine/exploration/dot/mv.dot")
+        //        path.writePathToDot("/home/jo/development/rise-lang/shine/exploration/dot/mv.dot")
         // eval function value
 
         // change this value!
 
         // todo make this configurable option!
         val fne = panel.f(ne)
-//        val fne = None
+        //        val fne = None
 
         // add path element
-        path.add(ne.expression, ne.strategies.last, fne)
+        path.add(ne, fne)
 
         // add path element and solution to queue
         queue = queue.enqueue((ne, path.current))
 
         // revert path
-        path.add(current._1._1.expression, elevate.core.strategies.basic.revert, current._1._2.value)
+        path.add(Solution(current._1._1.expression, current._1._1.strategies ++ Seq(elevate.core.strategies.basic.revert)), current._1._2.value)
       })
 
 
@@ -91,16 +91,16 @@ class Exhaustive[P] extends Heuristic[P] {
       var up = current._1._2
       while (up.predecessor != null) {
         up = up.predecessor
-        path.add(up.solution.expression, elevate.core.strategies.basic.revert, up.value)
+        path.add(Solution(up.solution.expression, up.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), up.value)
       }
       println(" --------- finished ---------- ")
       println("\n")
-//      current._1._2.predecessor match {
-//        case null => // do nothing
-//        case _ =>
-//           go back to parent
-//          path.add(current._1._2.predecessor.program, elevate.core.strategies.basic.revert, current._1._2.predecessor.value)
-//      }
+      //      current._1._2.predecessor match {
+      //        case null => // do nothing
+      //        case _ =>
+      //           go back to parent
+      //          path.add(current._1._2.predecessor.program, elevate.core.strategies.basic.revert, current._1._2.predecessor.value)
+      //      }
 
     }
 

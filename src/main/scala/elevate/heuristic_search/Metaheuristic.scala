@@ -17,7 +17,8 @@ case class Metaheuristic[P](name: String,
                             strategies: Set[Strategy[P]],
                             output: String,
                             rewriteFunction: Option[Solution[P] => Set[Solution[P]]],
-                            afterRewrite: Option[Strategy[P]]
+                            afterRewrite: Option[Strategy[P]],
+                            importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)]
                            ) extends Runner[P] {
   var counter = 0
 
@@ -33,7 +34,8 @@ case class Metaheuristic[P](name: String,
       runner = runner,
       strategies = strategies,
       rewriter = rewriteFunction,
-      afterRewrite = afterRewrite
+      afterRewrite = afterRewrite,
+      importExport = importExport
     )
 
     // conduct heuristic using panel and configs like depth and iterations
@@ -49,10 +51,12 @@ case class Metaheuristic[P](name: String,
 
       // print path
       println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
-      result._3.writeToDot(output + "/" + name + ".dot")
+      //      result._3.writeToDot(output + "/" + name + ".dot")
       println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
       //      result._3.writePathToDisk(output + "/" )
       println("[METAHEURISTIC] : write path to disk")
+
+      result._3.writeSearchSpace(output + "/SearchSpace")
       //      result._3.writePathToDisk(output)
       //      result._3.writeToDisk(output)
 

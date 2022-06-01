@@ -16,7 +16,8 @@ class HeuristicPanelImplementation[P](
                                        val strategies: Set[Strategy[P]],
                                        val afterRewrite: Option[Strategy[P]] = None, // e.g. rewrite normal form
                                        val beforeExecution: Option[Strategy[P]] = None, // e.g. code-gen normal form
-                                       val rewriter: Option[Solution[P] => Set[Solution[P]]] = None
+                                       val rewriter: Option[Solution[P] => Set[Solution[P]]] = None,
+                                       val importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)]
                                      ) extends HeuristicPanel[P] {
 
   val solutions = new scala.collection.mutable.HashMap[String, Option[Double]]()
@@ -225,6 +226,21 @@ class HeuristicPanelImplementation[P](
         solutions.+=(hashProgram(solution.expression) -> performanceValue)
         performanceValue
       }
+    }
+  }
+
+  override def importSolution(filename: String): Solution[P] = {
+    importExport match {
+      case None => throw new Exception("don't know how to read a solution from disk")
+      case Some(function) =>
+        function._1.apply(filename)
+    }
+  }
+
+  override def exportSolution(solution: Solution[P], filename: String): Unit = {
+    importExport match {
+      case None => throw new Exception("don't know how to write a solution to disk")
+      case Some(function) => function._2.apply(solution, filename)
     }
   }
 }

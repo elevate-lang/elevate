@@ -1,6 +1,6 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, Solution, hashProgram}
+import elevate.heuristic_search.util.{Embedding, Path, SearchSpace, Solution, hashProgram, hashSolution}
 import elevate.heuristic_search.{Heuristic, HeuristicPanel}
 import jdk.jfr.Timespan
 
@@ -15,7 +15,7 @@ import scala.sys.process._
 
 class AutotunerSearch[P] extends Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SearchSpace[P]) = {
 
     println("depth: " + depth)
 
@@ -28,6 +28,12 @@ class AutotunerSearch[P] extends Heuristic[P] {
     // create path, queue and hashmap
     val path = new Path(solution.expression, solutionValue, null, null, 0) // still necessary?
     var queue = Queue.empty[(Int, Solution[P])]
+
+    val embedding = new Embedding[P](
+      panel = panel
+    )
+
+    embedding.add(initialSolution, None)
 
     queue = queue.enqueue((0, solution))
     path.hashmap += (hashProgram(solution.expression) -> solution)
@@ -73,8 +79,10 @@ class AutotunerSearch[P] extends Heuristic[P] {
             //            searchSpaceEmbeeding :+ ne
 
             searchSpaceEmbeeding.addOne(ne)
+            embedding.add(ne, None)
 
             println("search space embedding: " + searchSpaceEmbeeding.size)
+            println("search space embedding: " + embedding.getSize())
         }
       })
     }
@@ -152,6 +160,18 @@ class AutotunerSearch[P] extends Heuristic[P] {
       }
     }
 
+
+    // write search space to disk here
+    val searchSpace2 = embedding.getSearchSpace()
+
+    println("searchSpace2: " + searchSpace2.size)
+    searchSpace2.foreach(s => println(hashSolution(s)))
+
+    // read in Search Space from disk
+
+    //    return (solution.expression, solutionValue, embedding)
+
+
     // convert hashmap to sequence
     //    val searchSpace = path.hashmap.toSeq.map(elem => elem._2)
     val searchSpace = searchSpaceEmbeeding.toSeq
@@ -190,8 +210,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "optimization_method": "opentuner",
-      "optimization_iterations": ${optimizationIterations},
+      "optimization_method": "exhaustive",
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",

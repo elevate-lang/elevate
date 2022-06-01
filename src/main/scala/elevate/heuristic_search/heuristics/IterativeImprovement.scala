@@ -8,14 +8,14 @@ import elevate.heuristic_search.util.Solution
 class IterativeImprovement[P] extends Heuristic[P] {
 
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
-//    var solution:P = initialSolution
+    //    var solution:P = initialSolution
     var solution = initialSolution
-    var solutionValue:Option[Double] = panel.f(solution)
+    var solutionValue: Option[Double] = panel.f(solution)
     var solutionStrategies = Seq.empty[Strategy[P]]
     val path = new Path(solution.expression, solutionValue, null, null, 0)
 
     var oldSolution = solution
-    var oldSolutionValue:Option[Double] = solutionValue
+    var oldSolutionValue: Option[Double] = solutionValue
     var i = 0
     var l = 0
     do {
@@ -40,7 +40,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
 
         val current = path.current
         // test this node, so add this node to the path
-        path.add(ns.expression, ns.strategies.last, fns)
+        path.add(ns, fns)
 
 
         (fns, fsolution) match {
@@ -52,31 +52,32 @@ class IterativeImprovement[P] extends Heuristic[P] {
               solutionValue = fns
               solutionStrategies = ns.strategies
 
-//              path.add(ns.expression, ns.strategies.last, fns)
+              //              path.add(ns.expression, ns.strategies.last, fns)
             }
           case _ =>
         }
 
         // after testing go one node back
-        path.add(current.solution.expression, elevate.core.strategies.basic.revert, current.value)
+        path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value)
+
       })
 
       // add chosen solution to path
 
-      val solutionStrategy:Strategy[P] = solutionStrategies.size match{
+      val solutionStrategy: Strategy[P] = solutionStrategies.size match {
         case 0 => elevate.core.strategies.basic.id
         case _ => solutionStrategies.last
       }
 
-//      solution.equals(oldSolution) match {
-//        case true => path.add(solution.expression, solutionStrategy, solutionValue)
-//        case false => path.add(solution.expression, solutionStrategy, solutionValue)
-//      }
+      //      solution.equals(oldSolution) match {
+      //        case true => path.add(solution.expression, solutionStrategy, solutionValue)
+      //        case false => path.add(solution.expression, solutionStrategy, solutionValue)
+      //      }
 
-    path.add(solution.expression, solutionStrategy, solutionValue)
+      path.add(solution, solutionValue)
 
       // check if chosen solution is better and limit is not reached
-    } while((i < depth) &&
+    } while ((i < depth) &&
       ((solutionValue, oldSolutionValue) match {
         case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
         case _ => false

@@ -1,4 +1,5 @@
 package elevate.heuristic_search.util
+
 import elevate.core.Strategy
 
 import java.io.{File, FileOutputStream, PrintWriter}
@@ -7,20 +8,20 @@ import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 import scala.sys.process._
 
-class TreeElement[P] (override val solution: Solution[P], // do we need this here?
-                      override val value: Option[Double], // later
-                      val strategy: Strategy[P], // node itself
-                      val layer: Int,
-                      val predecessor: TreeElement[P],
-                      var successor: Set[TreeElement[P]], // mutable ? -> tree in scala?
-                     ) extends SearchSpaceElement[P](solution, value) {
+class TreeElement[P](override val solution: Solution[P], // do we need this here?
+                     override val value: Option[Double], // later
+                     val strategy: Strategy[P], // node itself
+                     val layer: Int,
+                     val predecessor: TreeElement[P],
+                     var successor: Set[TreeElement[P]], // mutable ? -> tree in scala?
+                    ) extends SearchSpaceElement[P](solution, value) {
 }
 
 
-class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
+class Tree[P](val initial: TreeElement[P]) extends SearchSpace[P] {
 
   // we don't need the add here
-  override def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit = ???
+  override def add(solution: Solution[P], value: Option[Double]): Unit = ???
 
   override def printConsole(): Unit = {
     printNode(initial)
@@ -34,7 +35,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     val countStart = System.currentTimeMillis()
     val result = countLeafs(initial)
     val duration = System.currentTimeMillis() - countStart
-    print("getSize: " + duration.toDouble/1000 + "s - ")
+    print("getSize: " + duration.toDouble / 1000 + "s - ")
 
 
     result
@@ -51,26 +52,26 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
   }
 
   override def writeToDot(filename: String): String = {
-      // write string to file
-      val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 4)
-      val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
+    // write string to file
+    val uniqueFilename_full = SearchSpaceHelper.getUniqueFilename(filename, 4)
+    val pw = new PrintWriter(new FileOutputStream(new File(uniqueFilename_full), false))
 
-      val begin = "strict digraph path {\n"
-      pw.write(begin)
-      println("writen nodes")
-      writeNodesDot(initial, pw)
-      println("write edges")
-      writeEdgesDot(initial, pw)
-      val end = "}"
-      pw.write(end)
-      pw.close()
+    val begin = "strict digraph path {\n"
+    pw.write(begin)
+    println("writen nodes")
+    writeNodesDot(initial, pw)
+    println("write edges")
+    writeEdgesDot(initial, pw)
+    val end = "}"
+    pw.write(end)
+    pw.close()
 
-      // visualize dot graph
-      (s"dot -Tpng -O " + uniqueFilename_full !!)
-      (s"dot -Tpdf -O " + uniqueFilename_full !!)
+    // visualize dot graph
+    (s"dot -Tpng -O " + uniqueFilename_full !!)
+    (s"dot -Tpdf -O " + uniqueFilename_full !!)
 
-     ""
-    }
+    ""
+  }
 
   override def writeToDisk(filename: String): Unit = {
 
@@ -79,10 +80,13 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     writeExpressionsDisk(filename)
 
     // save json for export
-//    toJsonNumbers(filename)
+    //    toJsonNumbers(filename)
     // todo make this more generic, currently json is written and copied elsewhere
 
   }
+
+  override def writeSearchSpace(filename: String): Unit = ???
+
 
   // helper
 
@@ -91,7 +95,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
     println("treeElement: " + treeElement.strategy)
     println("layer: " + treeElement.layer)
-    if(treeElement.predecessor == null){
+    if (treeElement.predecessor == null) {
       println("predecessor: " + "null")
     } else {
       println("predecessor: " + treeElement.predecessor.strategy)
@@ -112,7 +116,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     val output = "\"" + hash + "\" [label = \" " + hashProgram(treeElement.solution.expression).substring(0, 2) + "\"]; \n"
     pw.write(output)
 
-    if(treeElement.successor.size != 0) {
+    if (treeElement.successor.size != 0) {
       // write successor nodes
       treeElement.successor.foreach(succ => {
         writeNodesDot(succ, pw)
@@ -122,7 +126,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
   def writeEdgesDot(treeElement: TreeElement[P], pw: PrintWriter): Unit = {
 
-    if(treeElement.successor.size != 0) {
+    if (treeElement.successor.size != 0) {
 
       // write edges to successors
       treeElement.successor.foreach(succ => {
@@ -147,7 +151,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     // count this node
     var counter = 0
 
-    if(treeElement.successor.size != 0){
+    if (treeElement.successor.size != 0) {
 
       // count successor nodes
       treeElement.successor.foreach(succ => {
@@ -164,7 +168,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
     // count this node
     var counter = 1
 
-    if(treeElement.successor.size != 0){
+    if (treeElement.successor.size != 0) {
 
       // count successor nodes
       treeElement.successor.foreach(succ => {
@@ -187,7 +191,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
       // count this node
       var counter = 0
 
-      if(treeElement.successor.size != 0){
+      if (treeElement.successor.size != 0) {
 
         // count successor nodes
         treeElement.successor.foreach(succ => {
@@ -248,7 +252,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
       val dependency: String = elem._1 == 1 match {
         case true => ""
-        case false => "\"" + s"s${elem._1-1}" + "\""
+        case false => "\"" + s"s${elem._1 - 1}" + "\""
       }
 
       entries +=
@@ -283,6 +287,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
     // generateConstraints
     val constraints = mutable.HashMap.empty[Int, Set[String]]
+
     def generateConstraints(treeElement: TreeElement[P]): Unit = {
 
       val constraint = treeElement.predecessor.strategy match {
@@ -316,13 +321,11 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
   }
 
 
-
   // todo think about this? compare to writeToDisk
   def writeExpressionsDisk(filename: String) = {
 
-//    val searchSpace =getSearchSpace()
+    //    val searchSpace =getSearchSpace()
     val searchSpace = leafs()
-
 
 
     searchSpace.foreach(elem => {
@@ -331,7 +334,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
       val hash = hashProgram(elem.solution.expression)
 
       // create unique output folder
-      val uniqueFilename = SearchSpaceHelper.getUniqueFilename(filename + "/Expressions/" + hash , 0)
+      val uniqueFilename = SearchSpaceHelper.getUniqueFilename(filename + "/Expressions/" + hash, 0)
       // create folder
       (s"mkdir ${uniqueFilename}" !!)
 
@@ -342,7 +345,7 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
       val pwStrategies = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/strategies"), false))
 
       // create file for value todo (add tuning results?)
-//      val pwValue = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/value"), false))
+      //      val pwValue = new PrintWriter(new FileOutputStream(new File(uniqueFilename + "/value"), false))
 
       // write expression to file
       pwProgram.write(elem.solution.expression.toString)
@@ -352,10 +355,10 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
 
       // create strategy string for file
       var strategyString = ""
-      list.foreach(elem=>{
+      list.foreach(elem => {
         elem match {
-          case null => strategyString +=  "null" + "\n"
-          case _ => strategyString +=  elem.toString + "\n"
+          case null => strategyString += "null" + "\n"
+          case _ => strategyString += elem.toString + "\n"
         }
       })
 
@@ -363,12 +366,12 @@ class Tree[P] (val initial: TreeElement[P]) extends SearchSpace[P]{
       pwStrategies.write(strategyString)
 
       // write value to file
-//      pwValue.write(elem.value.toString)
+      //      pwValue.write(elem.value.toString)
 
       // close files
       pwProgram.close()
       pwStrategies.close()
-//      pwValue.close()
+      //      pwValue.close()
     })
   }
 }
