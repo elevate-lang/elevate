@@ -1,6 +1,6 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search._
 import elevate.heuristic_search.util.{Path, PathElement, Solution, hashProgram}
 
 import scala.collection.immutable.Queue
@@ -10,7 +10,7 @@ class Exhaustive[P] extends Heuristic[P] {
 
   // todo cleanup
   // breadth first
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
 
     println("depth: " + depth)
 
@@ -105,6 +105,10 @@ class Exhaustive[P] extends Heuristic[P] {
     }
 
     // last?
-    (solution.expression, solutionValue, path)
+    ExplorationResult(
+      solution,
+      solutionValue,
+      Some(path)
+    )
   }
 }

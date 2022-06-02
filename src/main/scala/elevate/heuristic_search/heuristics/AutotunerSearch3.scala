@@ -1,7 +1,7 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search.util._
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search._
 
 import scala.collection.immutable.Queue
 import scala.collection.mutable
@@ -16,7 +16,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SimpleTree[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
 
     val dry = false
     val generate = true
@@ -56,11 +56,20 @@ class AutotunerSearch3[P] extends Heuristic[P] {
 
 
     dry match {
-      case true => (initialSolution.expression, None, tree)
+      case true =>
+        ExplorationResult(
+          initialSolution,
+          None,
+          Some(tree)
+        )
       case false =>
         //     explore search space
         val (solution, solutionValue) = explore(panel, initialSolution, depth, filepath)
-        (solution.expression, solutionValue, tree)
+        ExplorationResult(
+          solution,
+          solutionValue,
+          Some(tree)
+        )
     }
 
   }
