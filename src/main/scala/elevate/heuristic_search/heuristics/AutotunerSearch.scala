@@ -1,7 +1,7 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Embedding, Path, SearchSpace, Solution, hashProgram, hashSolution}
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search.util._
+import elevate.heuristic_search._
 import jdk.jfr.Timespan
 
 import java.io.{File, FileOutputStream, PrintWriter}
@@ -15,7 +15,7 @@ import scala.sys.process._
 
 class AutotunerSearch[P] extends Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], SearchSpace[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
 
     println("depth: " + depth)
 
@@ -343,7 +343,11 @@ class AutotunerSearch[P] extends Heuristic[P] {
     solution.strategies.foreach(println)
 
 
-    (solution.expression, solutionValue, path)
+    ExplorationResult(
+      solution,
+      solutionValue,
+      Some(path)
+    )
   }
 
 }

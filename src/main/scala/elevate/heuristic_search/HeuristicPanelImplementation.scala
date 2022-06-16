@@ -222,7 +222,7 @@ class HeuristicPanelImplementation[P](
     solutions.get(hashProgram(solution.expression)) match {
       case Some(value) => solutions.get(hashProgram(solution.expression)).get
       case _ => {
-        val performanceValue = runner.execute(solution)._2
+        val performanceValue = runner.execute(solution).performance
         solutions.+=(hashProgram(solution.expression) -> performanceValue)
         performanceValue
       }

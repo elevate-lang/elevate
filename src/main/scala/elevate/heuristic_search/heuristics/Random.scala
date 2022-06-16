@@ -2,13 +2,13 @@ package elevate.heuristic_search.heuristics
 
 import elevate.core.Strategy
 import elevate.heuristic_search.util.{Path, Solution}
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search._
 
 class Random[P] extends Heuristic[P] {
   // initialize global best
   var best: Option[Double] = None
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
     var solution = initialSolution
     //    var solution = new Solution[P](initialSolution, scala.collection.mutable.Seq.empty[Strategy[P]])
 
@@ -54,7 +54,11 @@ class Random[P] extends Heuristic[P] {
       }
     }
 
-    (solution.expression, best, path)
+    ExplorationResult(
+      solution,
+      best,
+      Some(path)
+    )
   }
 
 }
