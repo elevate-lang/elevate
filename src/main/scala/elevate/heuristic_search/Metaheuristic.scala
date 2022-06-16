@@ -41,6 +41,7 @@ case class Metaheuristic[P](name: String,
     // conduct heuristic using panel and configs like depth and iterations
     var best: (P, Option[Double]) = (solution.expression, None)
     for (_ <- Range(0, iterations)) {
+      // todo remove this from metaheuristic to exploration (Although generic)
       println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
       val result = heuristic.start(panel, solution, depth)
 
