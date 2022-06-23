@@ -2,6 +2,7 @@ package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search.util._
 import elevate.heuristic_search._
+import elevate.heuristic_search.util.Path
 import jdk.jfr.Timespan
 
 import java.io.{File, FileOutputStream, PrintWriter}

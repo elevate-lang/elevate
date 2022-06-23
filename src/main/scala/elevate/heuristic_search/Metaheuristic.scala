@@ -2,7 +2,7 @@ package elevate.heuristic_search
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
-import elevate.heuristic_search.util.{Path, SearchSpace, Solution}
+import elevate.heuristic_search.util.{SearchSpace, Solution}
 import jdk.jfr.AnnotationElement
 
 import scala.language.postfixOps

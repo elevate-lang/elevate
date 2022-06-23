@@ -1,7 +1,8 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search._
-import elevate.heuristic_search.util.{Path, PathElement, Solution, hashProgram}
+import elevate.heuristic_search.util.{Solution, hashProgram}
+import elevate.heuristic_search.util.{Path, PathElement}
 
 import scala.collection.immutable.Queue
 

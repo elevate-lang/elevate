@@ -3,7 +3,8 @@ package elevate.heuristic_search
 import elevate.core.strategies.basic
 import elevate.core.{Failure, RewriteResult, Strategy, Success}
 import elevate.heuristic_search.util.SearchSpaceHelper.strategies
-import elevate.heuristic_search.util.{SearchSpaceHelper, Solution, hashProgram, hashSolution}
+import elevate.heuristic_search.util.{SearchSpaceHelper, Solution}
+import elevate.heuristic_search.util.{hashProgram, hashSolution}
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.CollectionConverters._

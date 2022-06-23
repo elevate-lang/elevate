@@ -1,4 +1,4 @@
-package elevate.heuristic_search.util2
+package elevate.heuristic_search.util
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import java.nio.file.{Files, Paths}
