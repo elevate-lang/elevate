@@ -3,7 +3,7 @@ package elevate.heuristic_search
 import java.security.MessageDigest
 import java.util.HexFormat
 
-package object util {
+package object util2 {
 
   val sha256 = MessageDigest.getInstance("SHA-256")
 
