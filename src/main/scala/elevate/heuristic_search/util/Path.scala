@@ -5,6 +5,7 @@ import java.nio.file.{Files, Paths}
 import scala.sys.process._
 import scala.language.postfixOps
 import elevate.core.{RewriteResult, Strategy}
+import elevate.heuristic_search.util.{SearchSpace, SearchSpaceElement, Solution}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
