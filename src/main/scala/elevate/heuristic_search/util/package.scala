@@ -1,5 +1,7 @@
 package elevate.heuristic_search
 
+import elevate.heuristic_search.util.Solution
+
 import java.security.MessageDigest
 //import java.util.HexFormat
 
