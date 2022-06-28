@@ -24,7 +24,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     var solution = initialSolution
     //    var solutionValue = panel.f(solution)
-    var solutionValue: Option[Double] = Some(1000.toDouble)
+    var solutionValue: Option[Double] = Some(100000.toDouble)
 
     // create path, queue and hashmap
     val path = new Path(solution.expression, solutionValue, null, null, 0) // still necessary?
@@ -195,10 +195,10 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     // todo read in these values
     //    val doe = size
-    val doe = 5
-    val optimizationIterations = 15
+    val doe = 0
+    val optimizationIterations = 20 - doe
 
-    val configString = {
+    val configStringOpentuner = {
       s"""{
       "application_name": "mv_exploration",
       "optimization_objectives": ["runtime"],
@@ -211,7 +211,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
       "hypermapper_mode" : {
         "mode" : "client-server"
       },
-      "optimization_method": "exhaustive",
+      "optimization_method": "opentuner",
+      "optimization_iterations" : ${optimizationIterations},
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",
@@ -223,126 +224,177 @@ class AutotunerSearch[P] extends Heuristic[P] {
     }"""
     }
 
-    // write config String to file
-    val file = new File(os.pwd.toString() + "/exploration/configuration/hm_tuning.json")
-    new PrintWriter(file) {
-      try {
-        write(configString)
-      } finally {
-        close()
+    val configStringRandomSampling = {
+      s"""{
+      "application_name": "mv_exploration",
+      "optimization_objectives": ["runtime"],
+      "feasible_output" : {
+        "enable_feasible_predictor" : true,
+        "name" : "Valid",
+        "true_value" : "True",
+        "false_value" : "False"
+      },
+      "hypermapper_mode" : {
+        "mode" : "client-server"
+      },
+      "design_of_experiment": {
+        "doe_type": "random sampling",
+        "number_of_samples": ${optimizationIterations}
+       },
+      "optimization_iterations": 0,
+      "input_parameters" : {
+        "i": {
+        "parameter_type" : "integer",
+        "values" : [0, ${size - 1}],
+        "constraints" : [],
+        "dependencies": []
       }
+      }
+    }"""
     }
 
-    val configFile = os.pwd.toString() + "/exploration/configuration/hm_tuning.json"
-    println("configFile: " + configFile)
+    def search(configFileString: String, iterations: Int, output: String, version: String) = {
 
-    // spawn hm process for client-server mode
-    val hypermapper = os.proc("hypermapper", configFile).spawn()
+      // save configFile
 
-    var i = 1
-    // main tuning loop
-    var done = false
-    while (hypermapper.isAlive() && !done) {
-      hypermapper.stdout.readLine() match {
-        case null =>
-          done = true
-          println("End of HyperMapper -- error")
-        case "End of HyperMapper" =>
-          done = true
-          println("End of HyperMapper -- done")
-        case "Best point found:" =>
-          val headers = hypermapper.stdout.readLine()
-          val values = hypermapper.stdout.readLine()
-          hypermapper.stdout.readLine() // consume empty line
-          println(s"Best point found\nHeaders: ${headers}Values: $values")
-        case request if request.contains("warning") =>
-          println(s"[Hypermapper] $request")
-        case request if request.contains("Request") =>
-          println(s"Request: $request")
-          val numberOfEvalRequests = request.split(" ")(1).toInt
-          // read in header
-          val header = hypermapper.stdout.readLine().split(",").map(x => x.trim())
-          // start forming response
-          var response = s"${header.mkString(",")},runtime,Valid\n"
-          for (_ <- Range(0, numberOfEvalRequests)) {
-            // read in parameters values
-            //              val parametersValues = hypermapper.stdout.readLine().split(",").map(x => x.trim())
-            val index = hypermapper.stdout.readLine().toInt
-            // compute sample (including function value aka runtime)
-            print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
-            print(index.toString + " ")
+      // reset solution and value
+      solution = initialSolution
+      solutionValue = Some(100000.toDouble)
 
-            val candidate = searchSpace.apply(index)
 
-            // add candidate to visited
-            path.visited += (hashProgram(candidate.expression) -> candidate)
+      // prepare output
+      (s"mkdir -p ${output}/${version}" !!)
 
-            // change this value
-            val result = panel.f(candidate)
 
-            // update solution value if better performance is found
-            solutionValue = result match {
-              case Some(value) => {
-                value <= solutionValue.get match {
-                  case true =>
-                    //              println("better")
-                    // update solution
-                    solution = candidate
-                    // return result as new solution value
-                    result
-                  case false =>
-                    //              println("not better")
-                    solutionValue
+      // write config String to file
+      val file = new File(os.pwd.toString() + "/exploration/configuration/hm_tuning.json")
+      new PrintWriter(file) {
+        try {
+          write(configFileString)
+        } finally {
+          close()
+        }
+      }
+
+      val configFile = os.pwd.toString() + "/exploration/configuration/hm_tuning.json"
+      println("configFile: " + configFile)
+
+
+      for (k <- Range(0, iterations)) {
+
+        // spawn hm process for client-server mode
+        val hypermapper = os.proc("hypermapper", configFile).spawn()
+
+        var i = 1
+        // main tuning loop
+        var done = false
+        while (hypermapper.isAlive() && !done) {
+          hypermapper.stdout.readLine() match {
+            case null =>
+              done = true
+              println("End of HyperMapper -- error")
+            case "End of HyperMapper" =>
+              done = true
+              println("End of HyperMapper -- done")
+            case "Best point found:" =>
+              val headers = hypermapper.stdout.readLine()
+              val values = hypermapper.stdout.readLine()
+              hypermapper.stdout.readLine() // consume empty line
+              println(s"Best point found\nHeaders: ${headers}Values: $values")
+            case request if request.contains("warning") =>
+              println(s"[Hypermapper] $request")
+            case request if request.contains("Request") =>
+              println(s"Request: $request")
+              val numberOfEvalRequests = request.split(" ")(1).toInt
+              // read in header
+              val header = hypermapper.stdout.readLine().split(",").map(x => x.trim())
+              // start forming response
+              var response = s"${header.mkString(",")},runtime,Valid\n"
+              for (_ <- Range(0, numberOfEvalRequests)) {
+                // read in parameters values
+                //              val parametersValues = hypermapper.stdout.readLine().split(",").map(x => x.trim())
+                val index = hypermapper.stdout.readLine().toInt
+                // compute sample (including function value aka runtime)
+                print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
+                print(index.toString + " ")
+
+                val candidate = searchSpace.apply(index)
+
+                // add candidate to visited
+                path.visited += (hashProgram(candidate.expression) -> candidate)
+
+                // change this value
+                val result = panel.f(candidate)
+
+                // update solution value if better performance is found
+                solutionValue = result match {
+                  case Some(value) => {
+                    value <= solutionValue.get match {
+                      case true =>
+                        //              println("better")
+                        // update solution
+                        solution = candidate
+                        // return result as new solution value
+                        result
+                      case false =>
+                        //              println("not better")
+                        solutionValue
+                    }
+                  }
+                  case None => solutionValue
+                }
+
+                //            println(sample.runtime)
+                println(result)
+                println(result)
+                println()
+                i += 1
+                // append sample to Samples
+
+                // append response
+                result match {
+                  case None => response += s"${index},-1,False\n"
+                  case Some(value) =>
+                    response += s"${index},${value},True\n"
                 }
               }
-              case None => solutionValue
-            }
-
-            //            println(sample.runtime)
-            println(result)
-            println(result)
-            println()
-            i += 1
-            // append sample to Samples
-
-            // append response
-            result match {
-              case None => response += s"${index},-1,False\n"
-              case Some(value) =>
-                response += s"${index},${value},True\n"
-            }
+              print(s"Response: $response")
+              // send response to Hypermapper
+              hypermapper.stdin.write(response)
+              hypermapper.stdin.flush()
+            case message => println("message: " + message)
           }
-          print(s"Response: $response")
-          // send response to Hypermapper
-          hypermapper.stdin.write(response)
-          hypermapper.stdin.flush()
-        case message => println("message: " + message)
+        }
+
+        // copy file to outpout (avoid overwriting)
+        ("mv mv_exploration_output_samples.csv " + s"${output}/${version}_${k}.csv" !!)
+
       }
+
+
+      (s"mv ${configFile} " + s"${output}/${version}/tuner_exploration.json" !!)
+
+      // plot results using hypermapper
+      ("hm-plot-optimization-results " +
+        "-j " + s"${output}/${version}/tuner_exploration.json" + " " +
+        "-i " + s"${output}/${version}" + " " +
+        "-o" + s"${output}/${version}/tuner_exploration.pdf" + " " +
+        "--y_label \"Log Runtime(ms)\"" !!)
+      //      "-log --y_label \"Log Runtime(ms)\"" !!)
+
+      val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
+      println("duration2: " + duration2 / 1000 + "s")
+
+      println("end")
+      //      println("solution: " + solution.expression)
+      //      println("solutionValue: " + solutionValue)
+      //      println("strategies: ")
+      //      solution.strategies.foreach(println)
+
     }
 
-    // todo save output generic, avoid overwriting
-    // save output
-    ("mkdir -p exploration/tuner" !!)
-    ("mv mv_exploration_output_samples.csv " + "exploration/tuner/tuner_exploration.csv" !!)
-    (s"mv ${configFile} " + "exploration/tuner/tuner_exploration.json" !!)
-
-    // plot results using hypermapper
-    ("hm-plot-optimization-results " +
-      "-j " + "exploration/tuner/tuner_exploration.json" + " " +
-      "-i " + "exploration/tuner/" + " " +
-      "-o" + "exploration/tuner/tuner_exploration.pdf" + " " +
-      "--y_label \"Log Runtime(ms)\"" !!)
-    //      "-log --y_label \"Log Runtime(ms)\"" !!)
-
-    val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
-    println("duration2: " + duration2 / 1000 + "s")
-
-    println("end")
-    println("solution: " + solution.expression)
-    println("solutionValue: " + solutionValue)
-    println("strategies: ")
-    solution.strategies.foreach(println)
-
+    search(configStringOpentuner, 2, "exploration", "opentuner")
+    search(configStringRandomSampling, 2, "exploration", "random_sampling")
 
     ExplorationResult(
       solution,
