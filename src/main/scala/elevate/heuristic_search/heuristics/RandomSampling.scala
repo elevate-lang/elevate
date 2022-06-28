@@ -1,7 +1,7 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search.util.{Path, SearchSpaceHelper, Solution}
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search._
 
 class RandomSampling[P] extends Heuristic[P] {
   // initialize global best
@@ -11,7 +11,7 @@ class RandomSampling[P] extends Heuristic[P] {
 
   var Ntotal = 0.0
 
-  def start2(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start2(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
 
     var solution = initialSolution
 
@@ -87,10 +87,16 @@ class RandomSampling[P] extends Heuristic[P] {
         case None => output
       }
     }
-    (output._1.expression, output._2, path)
+    //    (output._1.expression, output._2, path)
+
+    ExplorationResult(
+      output._1,
+      output._2,
+      Some(path)
+    )
   }
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Path[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
 
     val totalStart = System.currentTimeMillis()
 
@@ -184,6 +190,10 @@ class RandomSampling[P] extends Heuristic[P] {
     println("total: " + total)
     println("Ntotal: " + Ntotal)
 
-    (output._1.expression, output._2, path)
+    ExplorationResult(
+      output._1,
+      output._2,
+      Some(path)
+    )
   }
 }

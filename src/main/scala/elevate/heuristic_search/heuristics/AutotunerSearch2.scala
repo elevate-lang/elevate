@@ -1,7 +1,7 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search.util.{SearchSpaceHelper, Solution, Tree, TreeElement, hashProgram}
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search._
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -14,7 +14,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): (P, Option[Double], Tree[P]) = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
     // we don't need this here
     //    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
 
@@ -50,11 +50,16 @@ class AutotunerSearch2[P] extends Heuristic[P] {
 
 
     dry match {
-      case true => (initialSolution.expression, None, tree)
+      case true =>
+        ExplorationResult(
+          initialSolution, None, Some(tree)
+        )
       case false =>
         //     explore search sapce
         val (solution, solutionValue) = explore(panel, initialSolution, depth, filepath)
-        (solution.expression, solutionValue, tree)
+        ExplorationResult(
+          solution, solutionValue, Some(tree)
+        )
     }
 
   }

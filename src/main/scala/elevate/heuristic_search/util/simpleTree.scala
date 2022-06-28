@@ -29,7 +29,7 @@ class SimpleTree[P](val initial: SimpleTreeElement[P],
                     val initialSolution: Solution[P]) extends SearchSpace[P] {
 
   // we do not need add here
-  override def add(program: P, strategy: Strategy[P], value: Option[Double]): Unit = ???
+  override def add(solution: Solution[P], value: Option[Double]): Unit = ???
 
   def getRewriteNumbers(simpleTreeElement: SimpleTreeElement[P]): Seq[Int] = {
 
@@ -72,6 +72,8 @@ class SimpleTree[P](val initial: SimpleTreeElement[P],
   override def getSearchSpace(): Seq[Solution[P]] = {
     Seq.empty[Solution[P]]
   }
+
+  override def writeSearchSpace(filename: String): Unit = ???
 
   override def getElement(i: Int): SearchSpaceElement[P] = ???
 

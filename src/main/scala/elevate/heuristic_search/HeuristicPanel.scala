@@ -17,6 +17,11 @@ trait HeuristicPanel[P] {
 
   def checkRewrite(solution: Solution[P], rewrite: Int): Boolean
 
+  def importSolution(filename: String): Solution[P]
+
+  def exportSolution(solution: Solution[P], filename: String): Unit
+
+
 }
 
 
