@@ -2,6 +2,7 @@ package elevate.heuristic_search
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
+import elevate.heuristic_search.panel_implementations.StandardPanel
 import elevate.heuristic_search.util.{SearchSpace, Solution}
 import jdk.jfr.AnnotationElement
 
@@ -31,7 +32,7 @@ case class Metaheuristic[P](name: String,
   def execute(solution: Solution[P]): ExplorationResult[P] = {
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
-    val panel = new HeuristicPanelImplementation[P](
+    val panel = new StandardPanel[P](
       runner = runner,
       strategies = strategies,
       rewriter = rewriteFunction,
@@ -44,29 +45,31 @@ case class Metaheuristic[P](name: String,
     for (_ <- Range(0, iterations)) {
       // todo remove this from metaheuristic to exploration (Although generic)
       println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
+      s"mkdir -p ${output}" !!
       val result = heuristic.start(panel, solution, depth)
 
       // todo move this to output or is this part of exploration?
+
 
       // only do this if export is enabled?
 
       //      // write runtimes
       //      println("[METAHEURISTIC] : write values")
-      //      writeValues(output + "/" + name + ".csv", result, name)
-      //
-      //
+      //            writeValues(output + "/" + name + ".csv", result, name)
+
+
       //      // print path
       //      println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
       //      //      result._3.writeToDot(output + "/" + name + ".dot")
       //      println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
-      //      //      result._3.writePathToDisk(output + "/" )
+      //      result.searchSpace.get.writeSearchSpace(output + "/")
       //      println("[METAHEURISTIC] : write path to disk")
       //
-      //      result._3.writeSearchSpace(output + "/SearchSpace")
-      //      //      result._3.writePathToDisk(output)
-      //      //      result._3.writeToDisk(output)
+      //            result._3.writeSearchSpace(output + "/SearchSpace")
+      //                  result._3.writePathToDisk(output)
+      //                  result._3.writeToDisk(output)
       //
-      //      plot()
+      plot()
 
       // move tuner to output
       //      try {
