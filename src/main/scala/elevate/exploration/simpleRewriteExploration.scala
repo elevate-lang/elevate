@@ -1,9 +1,9 @@
 package elevate.exploration
 
 import elevate.core.Strategy
-import elevate.heuristic_search.Metaheuristic
+import elevate.heuristic_search.{Metaheuristic, SimpleRewritePanelChoice}
 import elevate.heuristic_search.heuristic.IterativeImprovement
-import elevate.heuristic_search.heuristics.{Random, RandomSampling}
+import elevate.heuristic_search.heuristics.{AutotunerSearch, Exhaustive, Random, RandomSampling}
 import elevate.heuristic_search.util.Solution
 
 import java.nio.file.{Files, Paths}
@@ -29,14 +29,13 @@ object simpleRewriteExploration {
 
     val N = new ListBuffer[Solution[SimpleRewrite]]
 
-    //    println("NSize: " + NSize)
+    // todo think about exponential growth -> explore rule @ everywhere
     for (_ <- Range(0, NSize)) {
 
       val strategy = r.nextInt(strategies)
-      // todo append strategies as Ints?
+      // todo append strategies as Ints that they are fully represented in the search space structure
       val result = Solution[SimpleRewrite](solution.expression :+ strategy, solution.strategies)
       N.addOne(result)
-      //      println("result: " + result.expression.mkString("[", ", ", "]"))
     }
 
 
@@ -76,18 +75,34 @@ object simpleRewriteExploration {
       output = executorOutput
     )
 
+    // todo allow to go up again?
+
+
+    // todo implement methods
+    // multi-start local search
+    //    - fuse random and ii to a multi start local search?
+    // tabu search
+    // annealing
+
+    // ant system more adjustments?
+
+    // todo implement proper exploration (heuristics as runner and so on)
     val exploration = new Metaheuristic[SimpleRewrite](
       name = "simple rewrite",
-      //      heuristic = new IterativeImprovement[SimpleRewrite],
-      heuristic = new Random[SimpleRewrite],
-      depth = 1000,
-      iterations = 1,
+      heuristic = new IterativeImprovement[SimpleRewrite],
+      //      heuristic = new Exhaustive[SimpleRewrite],
+      //      heuristic = new AutotunerSearch[SimpleRewrite],
+      //      heuristic = new Random[SimpleRewrite],
+      //      heuristic = new RandomSampling[SimpleRewrite],
+      depth = 2000,
+      iterations = 1, // todo adjust this for random search
       runner = executor,
       strategies = Set.empty[Strategy[SimpleRewrite]],
       output = nameList.last,
       rewriteFunction = Some(rewriteFunction),
       afterRewrite = None,
-      importExport = None
+      importExport = None,
+      heuristicPanel = SimpleRewritePanelChoice
     )
 
     val id: Strategy[SimpleRewrite] = elevate.core.strategies.basic.id[SimpleRewrite]

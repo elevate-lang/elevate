@@ -1,8 +1,10 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.core.Strategy
-import elevate.heuristic_search.util.{Path, Solution}
+import elevate.heuristic_search.util.{Path, Solution, hashProgram}
 import elevate.heuristic_search._
+
+import scala.Console.flush
 
 class Random[P] extends Heuristic[P] {
   // initialize global best
@@ -15,43 +17,102 @@ class Random[P] extends Heuristic[P] {
     val path = new Path(solution.expression, panel.f(solution), null, null, 0)
     val random = scala.util.Random
 
-    for (_ <- Range(0, depth)) {
-      val Ns = panel.N(solution)
-      var valid = false
-      var j = 0
-      while (!valid && j < Ns.size) {
-        j = j + 1
-        val randomIndex = random.nextInt(Ns.size)
-        val result = Ns.toSeq(randomIndex)
+    val iterations = 50
+    val maxDepth = depth
 
-        //        val oldSolution = solution
-        //        val oldSolutionValue = solutionValue
-        //        solution = result
+    for (i <- Range(0, iterations)) {
+      println(s"Iteration: [${i}]")
+      flush()
 
-        val current = path.current
+      // repeat
+      println("solution: " + hashProgram(solution.expression))
+      println("strategos: " + solution.strategies.size)
+      solution.strategies.foreach(println)
 
-        panel.f(result) match {
-          case Some(value) =>
-            valid = true
-            //              val oldSolution = solution
-            solution = result
-            //add to path
-            path.add(solution, Some(value))
+      println("get random number ")
+      //      val depth = random.nextInt(maxDepth - 1) // make sure we don't have zero
+      val depth = maxDepth
+      println(s"[${i}] : depth: ${depth}")
 
-            // check if new global best is found
-            best match {
-              case None => best = Some(value)
-              case Some(_) =>
-                value < best.get match {
-                  case true => best = Some(value)
-                  case false =>
-                }
-            }
-          case _ =>
-            path.add(result, None)
-            path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value)
+      for (k <- Range(0, depth + 1)) {
+        flush()
+        //        println(s"k: ${k}")
+        flush()
+
+        //        println("rewrite")
+        flush()
+        val Ns = panel.N(solution)
+        //        println("rewrite finished")
+        flush()
+        val size = Ns.size
+        //        println("size: " + size)
+        var valid = false
+        var j = 0
+        while (!valid && j < size) {
+          //          println("loop started")
+          flush()
+          //          println(s"j: ${j}")
+          j = j + 1
+          //          println("throw dice")
+          val randomIndex = random.nextInt(size)
+          //          println("throw dice finished")
+
+          //          println("get result from Ns")
+          val result = Ns.toSeq(randomIndex)
+          //          println("got result from Ns")
+
+          //        val oldSolution = solution
+          //        val oldSolutionValue = solutionValue
+          //        solution = result
+
+          val current = path.current
+
+          //          println("execute ... ")
+          flush()
+          panel.f(result) match {
+            case Some(value) =>
+              valid = true
+              //              val oldSolution = solution
+              println(value)
+              solution = result
+              //add to path
+              //              println("path.add")
+              //              path.add(solution, Some(value))
+              //              println("path.add finished")
+
+              //              println("check best")
+              // check if new global best is found
+              best match {
+                case None => best = Some(value)
+                case Some(_) =>
+                  value < best.get match {
+                    case true => best = Some(value)
+                    case false =>
+                  }
+              }
+            //              println("check best finished")
+            case _ =>
+            //              println("None")
+            //              path.add(result, None) // why do we add this here?
+            //              path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value) // and why this?
+          }
+          //          println("loop finished")
+          flush()
         }
       }
+
+      //      print("backtrack ...")
+      // backtrack to initial
+      //      var up = path.current
+      //      while (up.predecessor != null) {
+      //        up = up.predecessor
+      //        path.add(Solution(up.solution.expression, up.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), up.value)
+      //      }
+
+      // reset solution
+      // todo maybe keep track of global solution
+      solution = initialSolution
+      println("finished \n")
     }
 
     ExplorationResult(

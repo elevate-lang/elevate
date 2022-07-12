@@ -16,4 +16,11 @@ package object heuristic_search {
   }
 
 
+  sealed trait HeuristicPanelChoice
+
+  case object StandardPanelChoice extends HeuristicPanelChoice
+
+  case object SimpleRewritePanelChoice extends HeuristicPanelChoice
+
+
 }

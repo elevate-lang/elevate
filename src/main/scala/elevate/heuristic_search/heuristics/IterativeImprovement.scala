@@ -9,7 +9,14 @@ class IterativeImprovement[P] extends Heuristic[P] {
 
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
     //    var solution:P = initialSolution
-    var solution = initialSolution
+    //    val test = Seq(elevate.core.strategies.basic.id[P])
+
+    var solution = initialSolution.strategies.size match {
+      case 0 => Solution(initialSolution.expression, Seq(elevate.core.strategies.basic.id[P]))
+      case _ => initialSolution
+    }
+
+    //    var solution = initialSolution
     var solutionValue: Option[Double] = panel.f(solution)
     var solutionStrategies = Seq.empty[Strategy[P]]
     val path = new Path(solution.expression, solutionValue, null, null, 0)

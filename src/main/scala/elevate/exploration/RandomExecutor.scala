@@ -7,6 +7,7 @@ import elevate.heuristic_search.util.{Solution, hashProgram}
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import java.nio.file.{Files, Paths}
+import java.security.MessageDigest
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 import scala.sys.process._
@@ -40,7 +41,10 @@ case class RandomExecutor(
                        )
 
 
+  val sha = MessageDigest.getInstance("SHA-1")
+
   // todo iterate on this method
+  // todo think about the search space shape
   override def execute(solution: Solution[SimpleRewrite]): ExplorationResult[SimpleRewrite] = {
     number += 1
 
@@ -49,18 +53,33 @@ case class RandomExecutor(
 
     //    println("size: " + Long.MaxValue.toString.size)
 
+
+    // hash to 64 bit
+
+    val hash = sha.digest(solution.expression.mkString("").getBytes("UTF-8"))
+
+    import java.math.BigInteger
+    val hash2 = new BigInteger(hash).longValue()
+
+    //    println()
+    //    println(s"number: [${number}]")
+    //    println("solution: " + solution.expression.mkString(""))
+    //    println("hash: " + hash)
+    //    println("hash2: " + hash2)
+    random.setSeed(hash2)
+
     // set seed based on solution
-    solution.expression.size match {
-      case 0 =>
-        random.setSeed(0)
-      case _ =>
-        solution.expression.size % 19 == 0 match {
-          case true =>
-            random.setSeed(solution.expression.mkString("").substring(0, (19)).toLong)
-          case false =>
-            random.setSeed(solution.expression.mkString("").substring(0, (solution.expression.size % 19)).toLong)
-        }
-    }
+    //    solution.expression.size match {
+    //      case 0 =>
+    //        random.setSeed(0)
+    //      case _ =>
+    //        solution.expression.size % 19 == 0 match {
+    //          case true =>
+    //            random.setSeed(solution.expression.mkString("").substring(0, (19)).toLong)
+    //          case false =>
+    //            random.setSeed(solution.expression.mkString("").substring(0, (solution.expression.size % 19)).toLong)
+    //        }
+    //    }
 
     val performance = failure.nextInt(100000) > failureRate * 100 * 1000 match {
       case true =>
@@ -68,7 +87,7 @@ case class RandomExecutor(
       case false => None
     }
 
-    println(s"[${number}] : " + performance)
+    //    println(s"[${number}] : " + performance)
 
     val tresult =
       TuningResultStatistic(
@@ -190,7 +209,9 @@ case class RandomExecutor(
     (s"mv ${output}/tuningStatistics_hm.csv ${output}/hm" !!)
 
     // call plot
-    (s"hm-plot-optimization-results -j ${configFilePath} -i ${output}/hm -l exploration -o ${output}/plot.pdf --y_label 'Log Runtime(ms)' --title exploration" !!)
+    val command = s"hm-plot-optimization-results -j ${configFilePath} -i ${output}/hm -l exploration -o ${output}/plot.pdf --y_label 'Runtime(ms)' --plot_log --title exploration"
+    println("plot: " + command)
+    command !!
 
   }
 

@@ -2,7 +2,7 @@ package elevate.heuristic_search
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
-import elevate.heuristic_search.panel_implementations.StandardPanel
+import elevate.heuristic_search.panel_implementations.{SimpleRewritePanel, StandardPanel}
 import elevate.heuristic_search.util.{SearchSpace, Solution}
 import jdk.jfr.AnnotationElement
 
@@ -19,7 +19,8 @@ case class Metaheuristic[P](name: String,
                             output: String,
                             rewriteFunction: Option[Solution[P] => Set[Solution[P]]],
                             afterRewrite: Option[Strategy[P]],
-                            importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)]
+                            importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)],
+                            heuristicPanel: HeuristicPanelChoice = StandardPanelChoice
                            ) extends Runner[P] {
   var counter = 0
 
@@ -32,13 +33,26 @@ case class Metaheuristic[P](name: String,
   def execute(solution: Solution[P]): ExplorationResult[P] = {
 
     // new heuristicPanel with runner (is either new metaheuristic or executor)
-    val panel = new StandardPanel[P](
-      runner = runner,
-      strategies = strategies,
-      rewriter = rewriteFunction,
-      afterRewrite = afterRewrite,
-      importExport = importExport
-    )
+
+    val panel = heuristicPanel match {
+      case StandardPanelChoice =>
+        new StandardPanel[P](
+          runner = runner,
+          strategies = strategies,
+          rewriter = rewriteFunction,
+          afterRewrite = afterRewrite,
+          importExport = importExport
+        )
+      case SimpleRewritePanelChoice =>
+        new SimpleRewritePanel[P](
+          runner = runner,
+          strategies = strategies,
+          rewriter = rewriteFunction,
+          afterRewrite = afterRewrite,
+          importExport = importExport
+        )
+    }
+
 
     // conduct heuristic using panel and configs like depth and iterations
     var best: ExplorationResult[P] = ExplorationResult(solution, None, None)
@@ -60,7 +74,29 @@ case class Metaheuristic[P](name: String,
 
       //      // print path
       //      println("[METAHEURISTIC] : write path to dot with size: " + result._3.getSize())
-      //      //      result._3.writeToDot(output + "/" + name + ".dot")
+      //      result._3.writeToDot(output + "/" + name + ".dot")
+
+      //      result.searchSpace match {
+      //        case Some(value) => value.writeToDot(output + "/" + name + ".dot")
+      //        case None => // do nothing
+      //      }
+      //
+      //      try {
+      //
+      //        result.searchSpace match {
+      //          case Some(value) => value.writeSearchSpace(output + "/")
+      //          case None => // do nothing
+      //        }
+      //      } catch {
+      //        case e: Throwable => println("could not write search space")
+      //      }
+      //
+      //      result.searchSpace match {
+      //        case Some(value) => value.writeToDisk(output)
+      //        case None => // do nothing
+      //      }
+
+
       //      println("[METAHEURISTIC] : collapsed size: " + result._3.getSearchSpace().size)
       //      result.searchSpace.get.writeSearchSpace(output + "/")
       //      println("[METAHEURISTIC] : write path to disk")

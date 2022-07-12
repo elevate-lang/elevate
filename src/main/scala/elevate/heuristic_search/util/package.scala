@@ -8,6 +8,7 @@ import java.security.MessageDigest
 package object util {
 
   val sha256 = MessageDigest.getInstance("SHA-256")
+  //  val sha64 = MessageDigest.getInstance("SHA-64")
 
   def convertBytesToHex(bytes: Seq[Byte]): String = {
     val sb = new StringBuilder

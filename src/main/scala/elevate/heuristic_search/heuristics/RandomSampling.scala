@@ -156,7 +156,9 @@ class RandomSampling[P] extends Heuristic[P] {
             // todo avoid duplicates
             val number = random.nextInt(SearchSpaceHelper.strategies.size)
 
-            val numberCheck = panel.checkRewrite(solution, number)
+            // we don't have duplicates in fake search space
+            //            val numberCheck = panel.checkRewrite(solution, number)
+            val numberCheck = true
 
             if (numberCheck) {
               solution = panel.getSolution(solution, Seq(number)).get
