@@ -1,7 +1,7 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.core.Strategy
-import elevate.heuristic_search.util.{Path, Solution, hashProgram}
+import elevate.heuristic_search.util.{Path, Solution, hashProgram, hashSolution}
 import elevate.heuristic_search._
 
 import scala.Console.flush
@@ -17,11 +17,11 @@ class Random[P] extends Heuristic[P] {
     val path = new Path(solution.expression, panel.f(solution), null, null, 0)
     val random = scala.util.Random
 
-    val iterations = 50
+    val iterations = 10
     val maxDepth = depth
 
     for (i <- Range(0, iterations)) {
-      println(s"Iteration: [${i}]")
+      //      println(s"Iteration: [${i}]")
       flush()
 
       // repeat
@@ -35,19 +35,20 @@ class Random[P] extends Heuristic[P] {
       println(s"[${i}] : depth: ${depth}")
 
       for (k <- Range(0, depth + 1)) {
-        flush()
-        //        println(s"k: ${k}")
-        flush()
+        println(s"Rewrite: [${k}]")
 
-        //        println("rewrite")
-        flush()
         val Ns = panel.N(solution)
         //        println("rewrite finished")
         flush()
         val size = Ns.size
-        //        println("size: " + size)
+        println("Neighbourhood size: " + size)
         var valid = false
         var j = 0
+
+        //        Ns.foreach(elem => {
+        //          println("solution: " + hashSolution(elem) + "  --  " + elem.strategies.mkString("[", ", ", "]"))
+        //        })
+
         while (!valid && j < size) {
           //          println("loop started")
           flush()
@@ -59,13 +60,14 @@ class Random[P] extends Heuristic[P] {
 
           //          println("get result from Ns")
           val result = Ns.toSeq(randomIndex)
+
           //          println("got result from Ns")
 
           //        val oldSolution = solution
           //        val oldSolutionValue = solutionValue
           //        solution = result
 
-          val current = path.current
+          //          val current = path.current
 
           //          println("execute ... ")
           flush()
@@ -73,7 +75,7 @@ class Random[P] extends Heuristic[P] {
             case Some(value) =>
               valid = true
               //              val oldSolution = solution
-              println(value)
+              //              println(value)
               solution = result
               //add to path
               //              println("path.add")
@@ -91,7 +93,7 @@ class Random[P] extends Heuristic[P] {
                   }
               }
             //              println("check best finished")
-            case _ =>
+            case None =>
             //              println("None")
             //              path.add(result, None) // why do we add this here?
             //              path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value) // and why this?

@@ -10,17 +10,22 @@ package object heuristic_search {
                                    searchSpace: Option[SearchSpace[P]] // search space (path, embedding, tree)
                                  ) {
     override def toString: String = {
-      // print information here
-      "ExplorationResult: "
+      s"""
+         |ExplorationResult:
+         |Solution (exp): ${hashProgram(solution.expression)}
+         |Solution (exp + strat): ${hashProgram(solution)}
+         |Strategies: ${solution.strategies.mkString("[", ", ", "]")}
+         |Performance: ${performance}
+         |Expression: \n ${solution.expression}
+         |
+         |""".stripMargin
     }
   }
-
 
   sealed trait HeuristicPanelChoice
 
   case object StandardPanelChoice extends HeuristicPanelChoice
 
   case object SimpleRewritePanelChoice extends HeuristicPanelChoice
-
 
 }

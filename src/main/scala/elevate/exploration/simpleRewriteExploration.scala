@@ -2,8 +2,7 @@ package elevate.exploration
 
 import elevate.core.Strategy
 import elevate.heuristic_search.{Metaheuristic, SimpleRewritePanelChoice}
-import elevate.heuristic_search.heuristic.IterativeImprovement
-import elevate.heuristic_search.heuristics.{AutotunerSearch, Exhaustive, Random, RandomSampling}
+import elevate.heuristic_search.heuristics.{AutotunerSearch, Exhaustive, IterativeImprovement, Random, RandomSampling}
 import elevate.heuristic_search.util.Solution
 
 import java.nio.file.{Files, Paths}
@@ -22,6 +21,11 @@ object simpleRewriteExploration {
 
   // todo check if we can switch to seq
   val rewriteFunction: Solution[SimpleRewrite] => Set[Solution[SimpleRewrite]] = solution => {
+
+
+    // set seed based on solution here
+    // hash
+    // set seed for random number generator
 
 
     // todo handle 0 strategy if necessary
@@ -89,10 +93,10 @@ object simpleRewriteExploration {
     // todo implement proper exploration (heuristics as runner and so on)
     val exploration = new Metaheuristic[SimpleRewrite](
       name = "simple rewrite",
-      heuristic = new IterativeImprovement[SimpleRewrite],
+      //      heuristic = new IterativeImprovement[SimpleRewrite],
       //      heuristic = new Exhaustive[SimpleRewrite],
       //      heuristic = new AutotunerSearch[SimpleRewrite],
-      //      heuristic = new Random[SimpleRewrite],
+      heuristic = new Random[SimpleRewrite],
       //      heuristic = new RandomSampling[SimpleRewrite],
       depth = 2000,
       iterations = 1, // todo adjust this for random search

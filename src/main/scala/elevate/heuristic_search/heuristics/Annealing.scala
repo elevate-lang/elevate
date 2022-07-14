@@ -1,14 +1,14 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search.util.{Path, Solution}
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search.{ExplorationResult, Heuristic, HeuristicPanel}
 
 class Annealing[P] extends Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], initialSolution:Solution[P], depth: Int):(P, Option[Double], Path[P])  = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
     var solution = initialSolution
 
-    val path = new Path(solution.expression, panel.f(solution))
+    val path = new Path(solution.expression, panel.f(solution), null, null, 0)
 
     // initialization of helper
     val random = scala.util.Random
@@ -20,7 +20,7 @@ class Annealing[P] extends Heuristic[P] {
 
     println("welcome to simulated annealing")
 
-    while(k < depth){
+    while (k < depth) {
       println("layer: " + k)
       println("current: " + solution)
       k = k + 1
@@ -33,31 +33,31 @@ class Annealing[P] extends Heuristic[P] {
 
       var validCandidate = false
 
-      var solutionCandidate:Solution[P] = null
+      var solutionCandidate: Solution[P] = null
       solution
       // get new solution candidate
-      while(!validCandidate) {
+      while (!validCandidate) {
         //pick element from neighborhodd
         solutionCandidate = Ns.toSeq(random.nextInt(Ns.size))
 
         // rewrite
         // save state lambda
         val stateLambda = solution
-          // execute
-            solutionCandidateRuntime = panel.f(solutionCandidate)
-            // check if execution is valid
-            solutionCandidateRuntime match {
-              case Some(_) => {
-                validCandidate = true
-                println("candidate has valid runtime, so lets try it")
-              }
-              case None => println("can't execute current expression")
-            }
+        // execute
+        solutionCandidateRuntime = panel.f(solutionCandidate)
+        // check if execution is valid
+        solutionCandidateRuntime match {
+          case Some(_) => {
+            validCandidate = true
+            println("candidate has valid runtime, so lets try it")
+          }
+          case None => println("can't execute current expression")
         }
+      }
 
       println("valid candidate")
 
-      if(solutionRuntime.get > 0){
+      if (solutionRuntime.get > 0) {
         // second chance using probability function
         if (solutionCandidateRuntime.get > solutionRuntime.get) {
           // get random number
@@ -70,7 +70,7 @@ class Annealing[P] extends Heuristic[P] {
           println("randomNumber: " + randomNumber)
           println("f(s') - f(s): " + math.abs(solutionCandidateRuntime.get - solutionRuntime.get))
 
-          val probability = (T*100) / math.abs(solutionCandidateRuntime.get - solutionRuntime.get)
+          val probability = (T * 100) / math.abs(solutionCandidateRuntime.get - solutionRuntime.get)
           println("probability: " + probability)
 
           // check number
@@ -89,10 +89,14 @@ class Annealing[P] extends Heuristic[P] {
       T = alpha * T
     }
 
+    // best = null
+    val best = null
 
-
-    // dummy return value
-    (solution.expression, None, path)
+    ExplorationResult(
+      solution,
+      best,
+      Some(path)
+    )
   }
 
 }

@@ -1,25 +1,35 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, Solution}
-import elevate.heuristic_search.{Heuristic, HeuristicPanel}
+import elevate.heuristic_search.util.{Path, Solution, hashProgram}
+import elevate.heuristic_search.{ExplorationResult, Heuristic, HeuristicPanel}
 
 
 class TabuSearch[P] extends Heuristic[P] {
 
 
-  def start(panel: HeuristicPanel[P], initialSolution:Solution[P], depth: Int):(P, Option[Double], Path[P])  = {
+  def start(
+             panel: HeuristicPanel[P],
+             initialSolution: Solution[P],
+             depth: Int
+           ): ExplorationResult[P] = {
 
     var solution = initialSolution
-    var solutionValue:Option[Double] = panel.f(solution)
-    val path = new Path(solution.expression, panel.f(solution))
+    var solutionValue: Option[Double] = panel.f(solution)
+    val path = new Path(
+      program = solution.expression,
+      value = panel.f(solution),
+      initial = null,
+      current = null,
+      elements = 0
+    )
 
     // initalize tabu list
-    val tabuList = scala.collection.mutable.Queue.empty[Int]
-    val tabuListSize = 10  // change this during exploration
+    val tabuList = scala.collection.mutable.Queue.empty[String]
+    val tabuListSize = 10 // change this during exploration
 
     // main loop
     var k = 0
-    while(k < 0) {
+    while (k < 0) {
       println("layer: " + k)
       println("current: " + solution)
 
@@ -32,7 +42,7 @@ class TabuSearch[P] extends Heuristic[P] {
 
         // if ns is not in tabu list do this
         // else do nothing
-        tabuList.contains(ns.hashCode()) match {
+        tabuList.contains(hashProgram(ns.expression)) match {
           case true => {
             val fns = panel.f(ns)
             val fsolution = solutionValue
@@ -47,15 +57,15 @@ class TabuSearch[P] extends Heuristic[P] {
 
                   // update solution and add to path
                   solution = ns
-                  path.add(ns.expression, ns.strategies.last, fns)
+                  path.add(ns, fns)
 
                   // update tabu list
 
                   // add element to list
-                  tabuList.enqueue(solution.hashCode())
+                  tabuList.enqueue(hashProgram(solution.expression))
 
                   // remove first element if certain size is reached
-                  if(tabuList.size > tabuListSize) {
+                  if (tabuList.size > tabuListSize) {
                     tabuList.dequeue()
                   }
                 }
@@ -71,8 +81,12 @@ class TabuSearch[P] extends Heuristic[P] {
       k = k + 1
     }
 
-
-    null
+    // todo adjust this
+    ExplorationResult(
+      solution = solution,
+      performance = None,
+      searchSpace = None
+    )
   }
 
 }
