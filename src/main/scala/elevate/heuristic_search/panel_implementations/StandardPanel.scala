@@ -172,7 +172,14 @@ class StandardPanel[P](
         val result: Set[Solution[P]] = afterRewrite match {
           case Some(aftermath) =>
             // todo check if normal form can be applied always
-            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
+            //            println("rewrite: ")
+            val candidates = rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+            //            println("candidates: " + candidates.size)
+            //            println("check")
+            //            val checked = candidates.filter(runner.checkSolution)
+            val checked = candidates
+            //            println("checked: " + checked.size)
+            checked
           //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
           case None =>
             rewriteFunction.apply(solution)
