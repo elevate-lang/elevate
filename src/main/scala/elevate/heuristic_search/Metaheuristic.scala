@@ -13,11 +13,12 @@ import scala.sys.process._
 case class Metaheuristic[P](name: String,
                             heuristic: Heuristic[P],
                             depth: Int,
-                            iterations: Int,
+                            samples: Int,
+                            repetitions: Int,
                             runner: Runner[P],
-                            strategies: Set[Strategy[P]],
+                            strategies: Seq[Strategy[P]],
                             output: String,
-                            rewriteFunction: Option[Solution[P] => Set[Solution[P]]],
+                            rewriteFunction: Option[Solution[P] => Seq[Solution[P]]],
                             afterRewrite: Option[Strategy[P]],
                             importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)],
                             heuristicPanel: HeuristicPanelChoice = StandardPanelChoice
@@ -56,11 +57,11 @@ case class Metaheuristic[P](name: String,
 
     // conduct heuristic using panel and configs like depth and iterations
     var best: ExplorationResult[P] = ExplorationResult(solution, None, None)
-    for (_ <- Range(0, iterations)) {
+    for (_ <- Range(0, repetitions)) {
       // todo remove this from metaheuristic to exploration (Although generic)
       println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
       s"mkdir -p ${output}" !!
-      val result = heuristic.start(panel, solution, depth)
+      val result = heuristic.start(panel, solution, depth, samples)
 
       // todo move this to output or is this part of exploration?
 

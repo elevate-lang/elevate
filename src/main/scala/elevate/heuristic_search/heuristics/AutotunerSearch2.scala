@@ -14,7 +14,7 @@ class AutotunerSearch2[P] extends Heuristic[P] {
   var globalLeaves = mutable.Set.empty[String]
   var durationRewriting: Long = 0
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     // we don't need this here
     //    val path = new Path(initialSolution.expression, null, null, null, 0) // still necessary?
 

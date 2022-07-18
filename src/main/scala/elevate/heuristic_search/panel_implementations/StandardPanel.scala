@@ -11,10 +11,10 @@ import scala.collection.parallel.CollectionConverters._
 // encapsulates definition of neighbourhood
 class StandardPanel[P](
                         val runner: Runner[P],
-                        val strategies: Set[Strategy[P]],
+                        val strategies: Seq[Strategy[P]],
                         val afterRewrite: Option[Strategy[P]] = None, // e.g. rewrite normal form
                         val beforeExecution: Option[Strategy[P]] = None, // e.g. code-gen normal form
-                        val rewriter: Option[Solution[P] => Set[Solution[P]]] = None,
+                        val rewriter: Option[Solution[P] => Seq[Solution[P]]] = None,
                         val importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)]
                       ) extends HeuristicPanel[P] {
 
@@ -102,7 +102,7 @@ class StandardPanel[P](
   }
 
   // parallel without checking
-  def N3(solution: Solution[P]): Set[Solution[P]] = {
+  def N3(solution: Solution[P]): Seq[Solution[P]] = {
     call += 1
 
     val Ns = strategies.par.map(strategy => {
@@ -122,7 +122,7 @@ class StandardPanel[P](
   }
 
 
-  def Np(solution: Solution[P]): Set[Solution[P]] = {
+  def Np(solution: Solution[P]): Seq[Solution[P]] = {
 
     call += 1
 
@@ -164,20 +164,20 @@ class StandardPanel[P](
     Ns
   }
 
-  def N(solution: Solution[P]): Set[Solution[P]] = {
+  def N(solution: Solution[P]): Seq[Solution[P]] = {
     rewriter match {
       // expand strategy mode
       case Some(rewriteFunction) =>
 
-        val result: Set[Solution[P]] = afterRewrite match {
+        val result: Seq[Solution[P]] = afterRewrite match {
           case Some(aftermath) =>
             // todo check if normal form can be applied always
             //            println("rewrite: ")
             val candidates = rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
             //            println("candidates: " + candidates.size)
             //            println("check")
-            //            val checked = candidates.filter(runner.checkSolution)
-            val checked = candidates
+            val checked = candidates.filter(runner.checkSolution)
+            //            val checked = candidates
             //            println("checked: " + checked.size)
             checked
           //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
@@ -192,7 +192,7 @@ class StandardPanel[P](
     }
   }
 
-  def N_default(solution: Solution[P]): Set[Solution[P]] = {
+  def N_default(solution: Solution[P]): Seq[Solution[P]] = {
 
     call += 1
 

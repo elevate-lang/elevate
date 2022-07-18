@@ -10,7 +10,8 @@ class TabuSearch[P] extends Heuristic[P] {
   def start(
              panel: HeuristicPanel[P],
              initialSolution: Solution[P],
-             depth: Int
+             depth: Int,
+             samples: Int
            ): ExplorationResult[P] = {
 
     var solution = initialSolution

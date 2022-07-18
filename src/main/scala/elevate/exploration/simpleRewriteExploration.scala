@@ -20,7 +20,7 @@ object simpleRewriteExploration {
   val r = new scala.util.Random(seeed)
 
   // todo check if we can switch to seq
-  val rewriteFunction: Solution[SimpleRewrite] => Set[Solution[SimpleRewrite]] = solution => {
+  val rewriteFunction: Solution[SimpleRewrite] => Seq[Solution[SimpleRewrite]] = solution => {
 
 
     // set seed based on solution here
@@ -43,7 +43,7 @@ object simpleRewriteExploration {
     }
 
 
-    N.toSet
+    N.toSeq
   }
 
   def explore(): Unit = {
@@ -99,9 +99,10 @@ object simpleRewriteExploration {
       heuristic = new Random[SimpleRewrite],
       //      heuristic = new RandomSampling[SimpleRewrite],
       depth = 2000,
-      iterations = 1, // todo adjust this for random search
+      samples = 1000,
+      repetitions = 1, // todo adjust this for random search
       runner = executor,
-      strategies = Set.empty[Strategy[SimpleRewrite]],
+      strategies = Seq.empty[Strategy[SimpleRewrite]],
       output = nameList.last,
       rewriteFunction = Some(rewriteFunction),
       afterRewrite = None,

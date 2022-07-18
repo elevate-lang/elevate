@@ -7,7 +7,7 @@ import elevate.heuristic_search.util.Solution
 trait HeuristicPanel[P] {
 
   //get neighborhood of solution
-  def N(solution: Solution[P]): Set[Solution[P]]
+  def N(solution: Solution[P]): Seq[Solution[P]]
 
   //get function value of solution
   def f(solution: Solution[P]): Option[Double]

@@ -16,7 +16,7 @@ import scala.sys.process._
 
 class AutotunerSearch[P] extends Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
 
     println("depth: " + depth)
 
@@ -55,12 +55,13 @@ class AutotunerSearch[P] extends Heuristic[P] {
     }
 
 
-    def enq(layer: Int, Ns: Set[Solution[P]]) = this.synchronized {
+    def enq(layer: Int, Ns: Seq[Solution[P]]) = this.synchronized {
       // add elements
       // add elements from neighborhood to queue
 
       //      Ns.toSeq.sorted((a, b) => a.strategies.last.toString() < b.strategies.last.toString())
-      val NsSorted = Ns.toSeq.sortBy(_.strategies.mkString)
+      //      val NsSorted = Ns.toSeq.sortBy(_.strategies.mkString)
+      val NsSorted = Ns
 
       // sort by string
 
@@ -89,7 +90,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
     }
 
     // parallel
-    def grow(current: (Int, Solution[P])): Set[Solution[P]] = {
+    def grow(current: (Int, Solution[P])): Seq[Solution[P]] = {
       // get neighborhood of current solution
       panel.N(current._2)
     }
@@ -195,8 +196,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     // todo read in these values
     //    val doe = size
-    val doe = 0
-    val optimizationIterations = 20 - doe
+    val doe = 10
+    val optimizationIterations = 200 - doe
 
     val configStringOpentuner = {
       s"""{
@@ -239,9 +240,9 @@ class AutotunerSearch[P] extends Heuristic[P] {
       },
       "design_of_experiment": {
         "doe_type": "random sampling",
-        "number_of_samples": ${optimizationIterations}
+        "number_of_samples": ${doe}
        },
-      "optimization_iterations": 0,
+      "optimization_iterations": ${optimizationIterations},
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",
@@ -393,7 +394,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     }
 
-    search(configStringOpentuner, 2, "exploration", "opentuner")
+    //    search(configStringOpentuner, 1, "exploration", "opentuner")
     search(configStringRandomSampling, 2, "exploration", "random_sampling")
 
     ExplorationResult(

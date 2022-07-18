@@ -7,7 +7,7 @@ import elevate.heuristic_search.util.Solution
 
 class IterativeImprovement[P] extends Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     //    var solution:P = initialSolution
     //    val test = Seq(elevate.core.strategies.basic.id[P])
 

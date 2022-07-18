@@ -96,7 +96,7 @@ class RandomSampling[P] extends Heuristic[P] {
     )
   }
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
 
     val totalStart = System.currentTimeMillis()
 

@@ -5,7 +5,7 @@ import elevate.heuristic_search.{ExplorationResult, Heuristic, HeuristicPanel}
 
 class Annealing[P] extends Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     var solution = initialSolution
 
     val path = new Path(solution.expression, panel.f(solution), null, null, 0)

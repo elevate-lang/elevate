@@ -9,10 +9,10 @@ import elevate.heuristic_search.util.{Solution, hashProgram}
 // todo implement class
 class SimpleRewritePanel[P](
                              val runner: Runner[P],
-                             val strategies: Set[Strategy[P]],
+                             val strategies: Seq[Strategy[P]],
                              val afterRewrite: Option[Strategy[P]] = None, // e.g. rewrite normal form
                              val beforeExecution: Option[Strategy[P]] = None, // e.g. code-gen normal form
-                             val rewriter: Option[Solution[P] => Set[Solution[P]]] = None,
+                             val rewriter: Option[Solution[P] => Seq[Solution[P]]] = None,
                              val importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)]
                            ) extends HeuristicPanel[P] {
 
@@ -28,13 +28,13 @@ class SimpleRewritePanel[P](
   //                          val importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)]
   //                        ) extends HeuristicPanel[P] {
 
-  override def N(solution: Solution[P]): Set[Solution[P]] = {
+  override def N(solution: Solution[P]): Seq[Solution[P]] = {
 
     rewriter match {
       // expand strategy mode
       case Some(rewriteFunction) =>
 
-        val result: Set[Solution[P]] = afterRewrite match {
+        val result: Seq[Solution[P]] = afterRewrite match {
           case Some(aftermath) =>
             // todo check if normal form can be applied always
             rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
@@ -50,7 +50,7 @@ class SimpleRewritePanel[P](
     }
   }
 
-  def N_default(solution: Solution[P]): Set[Solution[P]] = {
+  def N_default(solution: Solution[P]): Seq[Solution[P]] = {
 
     val NsOptions = strategies.map(strategy => {
       //      val NsOptions  = strategies.par.map(strategy => {

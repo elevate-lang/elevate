@@ -13,7 +13,7 @@ class DepthFirst[P] extends Heuristic[P] {
   // match for given expression?
   // how to print path
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
 
     println("depth: " + depth)
 

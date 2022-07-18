@@ -10,17 +10,20 @@ class Random[P] extends Heuristic[P] {
   // initialize global best
   var best: Option[Double] = None
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     var solution = initialSolution
     //    var solution = new Solution[P](initialSolution, scala.collection.mutable.Seq.empty[Strategy[P]])
 
     val path = new Path(solution.expression, panel.f(solution), null, null, 0)
     val random = scala.util.Random
 
-    val iterations = 10
+    // iterations in total
     val maxDepth = depth
 
-    for (i <- Range(0, iterations)) {
+    // how many rounds
+    val rounds = samples / depth
+
+    for (i <- Range(0, rounds)) {
       //      println(s"Iteration: [${i}]")
       flush()
 

@@ -4,7 +4,7 @@ import elevate.heuristic_search.util.{SearchSpace, Solution}
 
 trait Heuristic[P] {
 
-  def start(panel: HeuristicPanel[P], solution: Solution[P], depth: Int): ExplorationResult[P]
+  def start(panel: HeuristicPanel[P], solution: Solution[P], depth: Int, samples: Int): ExplorationResult[P]
 
   //get metadata in future
 }

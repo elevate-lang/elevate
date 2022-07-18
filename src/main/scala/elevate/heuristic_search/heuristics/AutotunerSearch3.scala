@@ -16,7 +16,7 @@ class AutotunerSearch3[P] extends Heuristic[P] {
   var durationRewriting: Long = 0
   var durationGetSolution: Long = 0
 
-  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int): ExplorationResult[P] = {
+  def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
 
     val dry = false
     val generate = true
