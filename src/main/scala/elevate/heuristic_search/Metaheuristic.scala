@@ -21,7 +21,8 @@ case class Metaheuristic[P](name: String,
                             rewriteFunction: Option[Solution[P] => Seq[Solution[P]]],
                             afterRewrite: Option[Strategy[P]],
                             importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)],
-                            heuristicPanel: HeuristicPanelChoice = StandardPanelChoice
+                            heuristicPanel: HeuristicPanelChoice = StandardPanelChoice,
+                            iteration: Option[Int] = None
                            ) extends Runner[P] {
   var counter = 0
 
@@ -60,10 +61,34 @@ case class Metaheuristic[P](name: String,
     for (_ <- Range(0, repetitions)) {
       // todo remove this from metaheuristic to exploration (Although generic)
       println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
-      s"mkdir -p ${output}" !!
+      val real_output = iteration match {
+        case None => output
+        case Some(value) => s"${output}_${value}"
+      }
+      s"mkdir -p ${real_output}" !!
       val result = heuristic.start(panel, solution, depth, samples)
 
       // todo move this to output or is this part of exploration?
+
+      // write strategies to file
+      val strategiesString = strategies.mkString("\n")
+
+      val file = new PrintWriter(
+        new FileOutputStream(new File(real_output + "/" + "strategies"), false))
+
+      file.write(strategiesString)
+      file.close()
+
+      plot()
+
+      // copy result to top folder
+      val command = iteration match {
+        case None => s"cp ${real_output}/Executor/hm/executor_hm.csv ${real_output}/${name}.csv"
+        case Some(value) => s"cp ${real_output}/Executor/hm/executor_hm.csv ${real_output}/${name}_${value}.csv"
+      }
+
+      println("command: " + command)
+      command !!
 
 
       // only do this if export is enabled?
@@ -106,7 +131,6 @@ case class Metaheuristic[P](name: String,
       //                  result._3.writePathToDisk(output)
       //                  result._3.writeToDisk(output)
       //
-      plot()
 
       // move tuner to output
       //      try {
