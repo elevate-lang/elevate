@@ -142,7 +142,10 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
                 val hashMapStart: Long = System.currentTimeMillis()
                 this.synchronized {
+
+
                   enq(layer, Ns) // add elements synchronized
+
                 }
                 hashMapDuration += (System.currentTimeMillis() - hashMapStart)
 
@@ -394,8 +397,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     }
 
-    //    search(configStringOpentuner, 1, "exploration", "opentuner")
-    search(configStringRandomSampling, 2, "exploration", "random_sampling")
+    search(configStringOpentuner, 1, "exploration", "opentuner")
+    //    search(configStringRandomSampling, 1, "exploration", "random_sampling")
 
     ExplorationResult(
       solution,

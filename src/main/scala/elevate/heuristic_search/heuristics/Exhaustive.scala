@@ -81,11 +81,18 @@ class Exhaustive[P] extends Heuristic[P] {
           val fne = panel.f(ne)
           counter += 1
           fne match {
+            // allow to enqueue invalid results
             case None => // don't enqueue
+
+              // we don't know the predecessors
+              // no information if current rewrite sequence is invalid?
+
+              if (layer < depth) {
+                queue = queue.enqueue((layer, ne))
+              }
             case Some(_) => {
 
               if (layer < depth) {
-
                 queue = queue.enqueue((layer, ne))
               }
 

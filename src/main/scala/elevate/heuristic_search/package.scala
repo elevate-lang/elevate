@@ -16,9 +16,9 @@ package object heuristic_search {
          |Solution (exp + strat): ${hashProgram(solution)}
          |Strategies: ${solution.strategies.mkString("[", ", ", "]")}
          |Performance: ${performance}
-         |Expression: \n ${solution.expression}
          |
          |""".stripMargin
+      //         |Expression: \n ${solution.expression}
     }
   }
 

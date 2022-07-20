@@ -97,6 +97,12 @@ class Random[P] extends Heuristic[P] {
               }
             //              println("check best finished")
             case None =>
+
+              // todo check this
+              valid = true
+              solution = result
+
+
             //              println("None")
             //              path.add(result, None) // why do we add this here?
             //              path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value) // and why this?
