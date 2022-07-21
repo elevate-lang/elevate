@@ -34,6 +34,7 @@ case class Metaheuristic[P](name: String,
   //  def execute(solution: Solution[P]): (P, Option[Double]) = {
   def execute(solution: Solution[P]): ExplorationResult[P] = {
 
+
     // new heuristicPanel with runner (is either new metaheuristic or executor)
 
     val panel = heuristicPanel match {
@@ -61,10 +62,12 @@ case class Metaheuristic[P](name: String,
     for (_ <- Range(0, repetitions)) {
       // todo remove this from metaheuristic to exploration (Although generic)
       println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
-      val real_output = iteration match {
-        case None => output
-        case Some(value) => s"${output}_${value}"
-      }
+      //      val real_output = iteration match {
+      //        case None => output
+      //        case Some(value) => s"${output}_${value}"
+      //      }
+
+      val real_output = output
       s"mkdir -p ${real_output}" !!
       val result = heuristic.start(panel, solution, depth, samples)
 
@@ -81,15 +84,40 @@ case class Metaheuristic[P](name: String,
 
       plot()
 
+      //      println("runner is : " + runner.toString)
+      val runnerNameHm = runner match {
+        case metaheuristic: Metaheuristic[P] => metaheuristic.name + "_0" + "/" + metaheuristic.name + "_hm_0.csv"
+        case _ => "Executor/hm/executor_hm.csv"
+      }
+
+      // todo copy results from down folder top-folder
+
+      // either copy from executor
+      // else copy from heurisitc
+
       // copy result to top folder
       val command = iteration match {
-        case None => s"cp ${real_output}/Executor/hm/executor_hm.csv ${real_output}/${name}.csv"
-        case Some(value) => s"cp ${real_output}/Executor/hm/executor_hm.csv ${real_output}/${name}_${value}.csv"
+        case None => s"cp ${real_output}/${runnerNameHm} ${real_output}/${name}_hm.csv"
+        case Some(value) => s"cp ${real_output}/${runnerNameHm} ${real_output}/${name}_hm_${value}.csv"
       }
+
 
       println("command: " + command)
       command !!
 
+      val runnerName = runner match {
+        case metaheuristic: Metaheuristic[P] => metaheuristic.name + "_0" + "/" + metaheuristic.name + "_0.csv"
+        case _ => "Executor/executor.csv"
+      }
+
+      // copy result to top folder
+      val command2 = iteration match {
+        case None => s"cp ${real_output}/${runnerName} ${real_output}/${name}.csv"
+        case Some(value) => s"cp ${real_output}/${runnerName} ${real_output}/${name}_${value}.csv"
+      }
+
+      println("command2: " + command2)
+      command2 !!
 
       // only do this if export is enabled?
 

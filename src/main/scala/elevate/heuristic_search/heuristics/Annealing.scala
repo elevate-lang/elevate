@@ -5,6 +5,10 @@ import elevate.heuristic_search.{ExplorationResult, Heuristic, HeuristicPanel}
 
 class Annealing[P] extends Heuristic[P] {
 
+
+  // todo allow to go up
+
+
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     var solution = initialSolution
 

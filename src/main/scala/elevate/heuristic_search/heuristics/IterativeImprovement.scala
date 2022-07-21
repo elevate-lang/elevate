@@ -84,7 +84,8 @@ class IterativeImprovement[P] extends Heuristic[P] {
       path.add(solution, solutionValue)
 
       // check if chosen solution is better and limit is not reached
-    } while ((i < depth) &&
+
+    } while ((solution.strategies.size < depth) &&
       ((solutionValue, oldSolutionValue) match {
         case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
         case _ => false
