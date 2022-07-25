@@ -199,8 +199,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     // todo read in these values
     //    val doe = size
-    val doe = 10
-    val optimizationIterations = 200 - doe
+    val doe = 1000
+    val optimizationIterations = 1000 - doe
 
     val configStringOpentuner = {
       s"""{
@@ -378,13 +378,13 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
       (s"mv ${configFile} " + s"${output}/${version}/tuner_exploration.json" !!)
 
-      // plot results using hypermapper
-      ("hm-plot-optimization-results " +
-        "-j " + s"${output}/${version}/tuner_exploration.json" + " " +
-        "-i " + s"${output}/${version}" + " " +
-        "-o" + s"${output}/${version}/tuner_exploration.pdf" + " " +
-        "--y_label \"Log Runtime(ms)\"" !!)
-      //      "-log --y_label \"Log Runtime(ms)\"" !!)
+      //      // plot results using hypermapper
+      //      ("hm-plot-optimization-results " +
+      //        "-j " + s"${output}/${version}/tuner_exploration.json" + " " +
+      //        "-i " + s"${output}/${version}" + " " +
+      //        "-o" + s"${output}/${version}/tuner_exploration.pdf" + " " +
+      //        "--y_label \"Log Runtime(ms)\"" !!)
+      //      //      "-log --y_label \"Log Runtime(ms)\"" !!)
 
       val duration2 = (System.currentTimeMillis() - explorationStartingPoint).toDouble
       println("duration2: " + duration2 / 1000 + "s")
@@ -397,8 +397,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     }
 
-    search(configStringOpentuner, 1, "exploration", "opentuner")
-    //    search(configStringRandomSampling, 1, "exploration", "random_sampling")
+    //    search(configStringOpentuner, 1, "exploration", "opentuner")
+    search(configStringRandomSampling, 1, "exploration", "random_sampling")
 
     ExplorationResult(
       solution,
