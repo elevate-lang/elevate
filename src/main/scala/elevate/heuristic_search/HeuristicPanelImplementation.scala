@@ -175,8 +175,7 @@ class HeuristicPanelImplementation[P](
         val result: Set[Solution[P]] = afterRewrite match {
           case Some(aftermath) =>
             // todo check if normal form can be applied always
-            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
-          //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+             rewriteFunction(solution).map(elem => Solution(aftermath(elem.expression).get, elem.strategies))
           case None =>
             rewriteFunction.apply(solution)
         }
@@ -201,7 +200,8 @@ class HeuristicPanelImplementation[P](
         //        this.synchronized {
 
         result match {
-          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+          case _: Success[P] =>
+            Some(new Solution[P](result.get, solution.strategies :+ strategy))
           case _: Failure[P] =>
             //              println("failure: " + result.toString)
             None

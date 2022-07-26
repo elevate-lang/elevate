@@ -82,8 +82,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
             searchSpaceEmbeeding.addOne(ne)
             embedding.add(ne, None)
 
-            println("search space embedding: " + searchSpaceEmbeeding.size)
-            println("search space embedding: " + embedding.getSize())
+            println(s"Embedding: (${searchSpaceEmbeeding.size}, ${embedding.getSize()})")
         }
       })
     }
@@ -196,7 +195,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
     // todo read in these values
     //    val doe = size
     val doe = 0
-    val optimizationIterations = 20 - doe
+    val optimizationIterations = Math.min(200, searchSpace.size-1)
 
     val configStringOpentuner = {
       s"""{
@@ -252,6 +251,30 @@ class AutotunerSearch[P] extends Heuristic[P] {
       }
     }"""
     }
+
+    val configStringExhaustive =
+      s"""{
+      "application_name": "mv_exploration",
+      "optimization_objectives": ["runtime"],
+      "feasible_output" : {
+        "enable_feasible_predictor" : true,
+        "name" : "Valid",
+        "true_value" : "True",
+        "false_value" : "False"
+      },
+      "hypermapper_mode" : {
+        "mode" : "client-server"
+      },
+      "optimization_method": "exhaustive",
+      "input_parameters" : {
+        "i": {
+          "parameter_type" : "integer",
+          "values" : [0, ${size - 1}],
+          "constraints" : [],
+          "dependencies": []
+        }
+      }
+    }"""
 
     def search(configFileString: String, iterations: Int, output: String, version: String) = {
 
@@ -367,7 +390,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
         }
 
         // copy file to outpout (avoid overwriting)
-        ("mv mv_exploration_output_samples.csv " + s"${output}/${version}_${k}.csv" !!)
+        (s"mkdir -p $output/$version/results" !!)
+        ("mv mv_exploration_output_samples.csv " + s"${output}/${version}/results/${version}_${k}.csv" !!)
 
       }
 
@@ -377,7 +401,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
       // plot results using hypermapper
       ("hm-plot-optimization-results " +
         "-j " + s"${output}/${version}/tuner_exploration.json" + " " +
-        "-i " + s"${output}/${version}" + " " +
+        "-i " + s"${output}/${version}/results/" + " " +
         "-o" + s"${output}/${version}/tuner_exploration.pdf" + " " +
         "--y_label \"Log Runtime(ms)\"" !!)
       //      "-log --y_label \"Log Runtime(ms)\"" !!)
@@ -393,8 +417,27 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     }
 
-    search(configStringOpentuner, 2, "exploration", "opentuner")
-    search(configStringRandomSampling, 2, "exploration", "random_sampling")
+    val iterations = 10
+    try{
+      search(configStringOpentuner, iterations, "exploration", "opentuner")
+    }
+    catch {
+      case e: Throwable => println(e)
+    }
+
+    try {
+      search(configStringRandomSampling, iterations, "exploration", "random_sampling")
+    }
+    catch {
+      case e: Throwable => println(e)
+    }
+
+    try{
+      search(configStringExhaustive, 1, "exploration", "exhaustive")
+    }
+    catch {
+      case e: Throwable => println(e)
+    }
 
     ExplorationResult(
       solution,
