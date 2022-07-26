@@ -171,16 +171,9 @@ class StandardPanel[P](
 
         val result: Seq[Solution[P]] = afterRewrite match {
           case Some(aftermath) =>
-            // todo check if normal form can be applied always
-            //            println("rewrite: ")
-            val candidates = rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
-            //            println("candidates: " + candidates.size)
-            //            println("check")
-            val checked = candidates.filter(runner.checkSolution)
-            //            val checked = candidates
-            //            println("checked: " + checked.size)
-            checked
-          //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+            //             todo check if normal form can be applied always
+            //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
+            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
           case None =>
             rewriteFunction.apply(solution)
         }
@@ -205,7 +198,8 @@ class StandardPanel[P](
         //        this.synchronized {
 
         result match {
-          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
+          case _: Success[P] =>
+            Some(new Solution[P](result.get, solution.strategies :+ strategy))
           case _: Failure[P] =>
             //              println("failure: " + result.toString)
             None

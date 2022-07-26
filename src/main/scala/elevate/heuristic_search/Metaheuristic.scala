@@ -160,6 +160,10 @@ case class Metaheuristic[P](name: String,
       //                  result._3.writeToDisk(output)
       //
 
+      (s"mv exploration/opentuner $output" !!)
+      (s"mv exploration/random_sampling $output" !!)
+      (s"mv exploration/exhaustive $output" !!)
+
       // move tuner to output
       //      try {
       //        ("mv exploration/tuner/tuner_exploration.csv " + output + "/Executor" !!)
