@@ -1,11 +1,11 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, Solution, hashProgram, hashSolution}
 import elevate.heuristic_search._
+import elevate.heuristic_search.util.Solution
 
 import scala.collection.mutable
 
-class Random[P] extends Heuristic[P] {
+class TabuSearch2[P] extends Heuristic[P] {
   // initialize global best
   var best: Option[Double] = None
 
@@ -20,6 +20,9 @@ class Random[P] extends Heuristic[P] {
 
     // add empty foreach layer
     Range(0, depth + 1).foreach(layer => visited.addOne(layer, mutable.HashSet.empty[Seq[Int]]))
+
+    val tabuList = scala.collection.mutable.Queue.empty[Seq[Int]]
+    val tabuListSize = 100
 
     var counter = 0
 
@@ -37,7 +40,7 @@ class Random[P] extends Heuristic[P] {
         val Ns = panel.N(path.last._1)
 
         // get filter for layer k + 1
-        val layerFilter = visited.get(k + 1).get
+        val layerFilter = visited(k + 1)
 
         // get rewrite sequence so far
         val sequence = path.size match {
@@ -74,11 +77,40 @@ class Random[P] extends Heuristic[P] {
           k += 1
 
 
+          // todo implement tabu search here
+
+          // apply tabu list to NS
+
+          // apply aspiration list to NS
+          // eval Ns
+          //          var best =
+          candidates.foreach(elem => {
+            // execute (check with execution list
+
+            // elem
+            val s_mark = Ns(elem.last)
+
+            // execute
+
+            // get minimum of all
+
+
+          })
+
+          // get best (compare with global best)
+
+          // best is new solution
+          // update tabu list
+          // update aspiration (parent)
+          // are they injected properly?
+
+
           // get random number and translate random index to rewrite index
           val randomIndex = random.nextInt(candidates.size)
           val rewriteIndex = candidates.apply(randomIndex).last
           solution = Ns(rewriteIndex)
 
+          // we don't need the path here
           path = path :+ (solution, sequence :+ rewriteIndex)
 
           // update filter if we are at the bottom
@@ -95,6 +127,8 @@ class Random[P] extends Heuristic[P] {
         }
       }
 
+      // todo move exeuction to main loop
+      // todo check executed counter
       var hasExecuted = false
       path.foreach(elem => {
 
