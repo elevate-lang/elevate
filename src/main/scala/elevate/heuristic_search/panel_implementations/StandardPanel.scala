@@ -101,69 +101,6 @@ class StandardPanel[P](
     //    println("\n")
   }
 
-  // parallel without checking
-  def N3(solution: Solution[P]): Seq[Solution[P]] = {
-    call += 1
-
-    val Ns = strategies.par.map(strategy => {
-      try {
-        val result = strategy.apply(solution.expression)
-        result match {
-          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy))
-          case _: Failure[P] => None
-        }
-      } catch {
-        case e: Throwable => None
-      }
-    })
-
-    //    Ns.flatten
-    Ns.seq.flatten
-  }
-
-
-  def Np(solution: Solution[P]): Seq[Solution[P]] = {
-
-    call += 1
-
-    //    val NsOptions = strategies.map(strategy => {
-    val NsOptions = strategies.par.map(strategy => {
-      try {
-
-        //        var result: RewriteResult[P] = null
-
-
-        // check if no race condition happens here
-        //        val result = this.synchronized {
-        val result = strategy.apply(solution.expression)
-        //        }
-
-        //        this.synchronized {
-        result match {
-          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
-          case _: Failure[P] => {
-            //              println("failure: " + result.toString)
-            None
-          }
-          //          }
-        }
-      } catch {
-        case e: Throwable => None
-      }
-    })
-    val Ns = NsOptions.seq.flatten
-    //    val Ns = NsOptions.flatten
-
-    // add id to neighbourhood (use real id strategy instead of null)
-    //        val identity = basic.id[P]
-
-    //    val Ns2 = Ns ++ Set(new Solution[P](solution.expression, solution.strategies :+ identity))
-
-    //    Ns2
-
-    Ns
-  }
-
   def N(solution: Solution[P]): Seq[Solution[P]] = {
     rewriter match {
       // expand strategy mode
@@ -173,7 +110,17 @@ class StandardPanel[P](
           case Some(aftermath) =>
             //             todo check if normal form can be applied always
             //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies)).filter(runner.checkSolution)
-            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+            //            rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+
+            val candidates = rewriteFunction.apply(solution).map(elem => Solution(aftermath.apply(elem.expression).get, elem.strategies))
+            //            println("candidates: " + candidates.size)
+            //            println("check")
+            val checked = candidates.filter(runner.checkSolution)
+            //            val checked = candidates
+            //            println("checked: " + checked.size)
+            checked
+
+
           case None =>
             rewriteFunction.apply(solution)
         }
@@ -198,8 +145,9 @@ class StandardPanel[P](
         //        this.synchronized {
 
         result match {
-          case _: Success[P] =>
-            Some(new Solution[P](result.get, solution.strategies :+ strategy))
+          //          case _: Success[P] =>
+          //            Some(new Solution[P](result.get, solution.strategies :+ strategy))
+          case _: Success[P] => Some(new Solution[P](result.get, solution.strategies :+ strategy)).filter(runner.checkSolution)
           case _: Failure[P] =>
             //              println("failure: " + result.toString)
             None
