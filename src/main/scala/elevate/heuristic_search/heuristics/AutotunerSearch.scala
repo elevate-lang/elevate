@@ -199,8 +199,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
     // todo read in these values
     //    val doe = size
 
-    val doe = 0
-    val optimizationIterations = Math.min(200, searchSpace.size - 1)
+    //    val doe = 0
+    val optimizationIterations = Math.min(samples, searchSpace.size - 1)
 
     val configStringOpentuner = {
       s"""{
@@ -223,6 +223,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
         "values" : [0, ${size - 1}],
         "constraints" : [],
         "dependencies": []
+         "parameter_default" : 0
       }
       }
     }"""
@@ -243,15 +244,16 @@ class AutotunerSearch[P] extends Heuristic[P] {
       },
       "design_of_experiment": {
         "doe_type": "random sampling",
-        "number_of_samples": ${doe}
+        "number_of_samples": ${optimizationIterations}
        },
-      "optimization_iterations": ${optimizationIterations},
+      "optimization_iterations": 0,
       "input_parameters" : {
         "i": {
         "parameter_type" : "integer",
         "values" : [0, ${size - 1}],
         "constraints" : [],
         "dependencies": []
+        "parameter_default" : 0
       }
       }
     }"""
@@ -276,7 +278,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
           "parameter_type" : "integer",
           "values" : [0, ${size - 1}],
           "constraints" : [],
-          "dependencies": []
+          "dependencies": [],
+          "parameter_default" : 0
         }
       }
     }"""
@@ -343,7 +346,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
                 //              val parametersValues = hypermapper.stdout.readLine().split(",").map(x => x.trim())
                 val index = hypermapper.stdout.readLine().toInt
                 // compute sample (including function value aka runtime)
-                print("[" + i.toString + "/" + (doe + optimizationIterations).toString + "] : ")
+                print("[" + i.toString + "/" + (0 + optimizationIterations).toString + "] : ")
                 print(index.toString + " ")
 
                 val candidate = searchSpace.apply(index)
@@ -422,7 +425,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     }
 
-    val iterations = 10
+    val iterations = 1
     try {
       search(configStringOpentuner, iterations, "exploration", "opentuner")
     }
