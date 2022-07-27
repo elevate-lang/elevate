@@ -222,8 +222,8 @@ class AutotunerSearch[P] extends Heuristic[P] {
         "parameter_type" : "integer",
         "values" : [0, ${size - 1}],
         "constraints" : [],
-        "dependencies": []
-         "parameter_default" : 0
+        "dependencies": [],
+        "parameter_default" : 0
       }
       }
     }"""
@@ -252,7 +252,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
         "parameter_type" : "integer",
         "values" : [0, ${size - 1}],
         "constraints" : [],
-        "dependencies": []
+        "dependencies": [],
         "parameter_default" : 0
       }
       }
@@ -397,20 +397,26 @@ class AutotunerSearch[P] extends Heuristic[P] {
           }
         }
 
-        // copy file to outpout (avoid overwriting)
-        (s"mkdir -p $output/$version/results" !!)
-        ("mv mv_exploration_output_samples.csv " + s"${output}/${version}/results/${version}_${k}.csv" !!)
+        // copy file to output (avoid overwriting)
+
+        (s"mkdir -p ${output}/results" !!)
+
+        (s"mkdir -p ${output}/results/${version}/results" !!)
+
+        (s"mv mv_exploration_output_samples.csv ${output}/results/${version}/results/${version}_${k}.csv" !!)
+        val command = s"mv mv_exploration_output_samples.csv ${output}/results/${version}/results/${version}_${k}.csv"
+        println("command: " + command)
 
       }
 
 
-      (s"mv ${configFile} " + s"${output}/${version}/tuner_exploration.json" !!)
+      (s"mv ${configFile} " + s"${output}/results/${version}/tuner_exploration.json" !!)
 
       // plot results using hypermapper
       ("hm-plot-optimization-results " +
-        "-j " + s"${output}/${version}/tuner_exploration.json" + " " +
-        "-i " + s"${output}/${version}/results/" + " " +
-        "-o" + s"${output}/${version}/tuner_exploration.pdf" + " " +
+        "-j " + s"${output}/results/${version}/tuner_exploration.json" + " " +
+        "-i " + s"${output}/results/${version}/results/" + " " +
+        "-o" + s"${output}/results/${version}/tuner_exploration.pdf" + " " +
         "--y_label \"Log Runtime(ms)\"" !!)
       //      "-log --y_label \"Log Runtime(ms)\"" !!)
 
@@ -425,7 +431,7 @@ class AutotunerSearch[P] extends Heuristic[P] {
 
     }
 
-    val iterations = 1
+    val iterations = 10
     try {
       search(configStringOpentuner, iterations, "exploration", "opentuner")
     }
