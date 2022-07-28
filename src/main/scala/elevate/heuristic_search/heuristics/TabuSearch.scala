@@ -26,7 +26,7 @@ class TabuSearch[P] extends Heuristic[P] {
 
     // init tabu list
     val tabuList = scala.collection.mutable.Queue.empty[Seq[Int]]
-    val tabuListSize = 1000 // change this during exploration
+    val tabuListSize = 25 // change this during exploration
 
     var parents = Stack[(Solution[P], Seq[Int])]()
 
@@ -84,7 +84,7 @@ class TabuSearch[P] extends Heuristic[P] {
         println(elem._2.mkString("[", ", ", "]"))
       })
 
-      println("filter:")
+      println(s"filter: ${tabuList.size}")
       tabuList.foreach(elem => println(elem.mkString("[", ", ", "]")))
       println("\n")
 
@@ -180,8 +180,14 @@ class TabuSearch[P] extends Heuristic[P] {
       }
 
       // update tabu list
-      tabuList.enqueue(solution._2)
+      if (solution._2.size == depth) {
+        tabuList.enqueue(solution._2)
+      }
 
+      // never dequeue
+      //      if (tabuList.size > tabuListSize) {
+      //        tabuList.dequeue()
+      //      }
 
       //        fns
       //
@@ -227,9 +233,7 @@ class TabuSearch[P] extends Heuristic[P] {
       //              tabuList.enqueue(ns._2)
       //
       //              // remove first element if certain size is reached
-      //              if (tabuList.size > tabuListSize) {
-      //                tabuList.dequeue()
-      //              }
+
       //            } else {
       //
       //              val childIsParent = parents.size match {
