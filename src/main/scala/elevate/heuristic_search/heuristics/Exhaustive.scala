@@ -2,7 +2,7 @@ package elevate.heuristic_search.heuristics
 
 import elevate.heuristic_search._
 import elevate.heuristic_search.util.{Solution, hashProgram}
-import elevate.heuristic_search.util.{Path, PathElement}
+//import elevate.heuristic_search.util.{Path, PathElement}
 
 import scala.collection.immutable.Queue
 
@@ -21,7 +21,7 @@ class Exhaustive[P] extends Heuristic[P] {
     val solutionValue = panel.f(solution)
 
     // craete path
-    val path = new Path(solution.expression, solutionValue, null, null, 0)
+    //    val path = new Path(solution.expression, solutionValue, null, null, 0)
 
     var queue = Queue.empty[(Int, Solution[P])]
     queue = queue.enqueue(0, solution)
@@ -103,7 +103,7 @@ class Exhaustive[P] extends Heuristic[P] {
           return ExplorationResult(
             solution,
             solutionValue,
-            Some(path)
+            None
           )
         }
 
@@ -141,7 +141,7 @@ class Exhaustive[P] extends Heuristic[P] {
     ExplorationResult(
       solution,
       solutionValue,
-      Some(path)
+      None
     )
   }
 }

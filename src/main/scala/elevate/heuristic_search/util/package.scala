@@ -31,8 +31,8 @@ package object util {
 
   def hashSolution[P](solution: Solution[P]): String = {
 
-    val programString = solution.expression.toString
-    val strategyString = solution.strategies.mkString(":")
+    val programString = solution.expression().toString
+    val strategyString = solution.strategies().mkString(":")
 
     val solutionString = programString + strategyString
 

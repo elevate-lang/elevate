@@ -2,7 +2,7 @@ package elevate.heuristic_search
 
 import java.io.{File, FileOutputStream, PrintWriter}
 import elevate.core.Strategy
-import elevate.heuristic_search.panel_implementations.{SimpleRewritePanel, StandardPanel}
+import elevate.heuristic_search.panel_implementations.{StandardPanel}
 import elevate.heuristic_search.util.{SearchSpace, Solution}
 import jdk.jfr.AnnotationElement
 
@@ -46,14 +46,15 @@ case class Metaheuristic[P](name: String,
           afterRewrite = afterRewrite,
           importExport = importExport
         )
-      case SimpleRewritePanelChoice =>
-        new SimpleRewritePanel[P](
-          runner = runner,
-          strategies = strategies,
-          rewriter = rewriteFunction,
-          afterRewrite = afterRewrite,
-          importExport = importExport
-        )
+      case _ => throw new Exception("should not reach this point")
+      //      case SimpleRewritePanelChoice =>
+      //        new SimpleRewritePanel[P](
+      //          runner = runner,
+      //          strategies = strategies,
+      //          rewriter = rewriteFunction,
+      //          afterRewrite = afterRewrite,
+      //          importExport = importExport
+      //        )
     }
 
 
@@ -61,7 +62,7 @@ case class Metaheuristic[P](name: String,
     var best: ExplorationResult[P] = ExplorationResult(solution, None, None)
     for (_ <- Range(0, repetitions)) {
       // todo remove this from metaheuristic to exploration (Although generic)
-      println("[METAHEURISTIC] : strategy length: " + solution.strategies.size)
+      println("[METAHEURISTIC] : strategy length: " + solution.strategies().size)
       //      val real_output = iteration match {
       //        case None => output
       //        case Some(value) => s"${output}_${value}"

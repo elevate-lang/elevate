@@ -1,6 +1,6 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, Solution, hashProgram}
+import elevate.heuristic_search.util.{Solution, hashProgram}
 import elevate.heuristic_search.{ExplorationResult, Heuristic, HeuristicPanel}
 
 import scala.collection.mutable.Stack
@@ -14,7 +14,7 @@ class Annealing[P] extends Heuristic[P] {
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     var solution = initialSolution
 
-    val path = new Path(solution.expression, panel.f(solution), null, null, 0)
+    //    val path = new Path(solution.expression, panel.f(solution), null, null, 0)
 
     // initialization of helper
     val random = scala.util.Random
@@ -46,7 +46,7 @@ class Annealing[P] extends Heuristic[P] {
       // create neighborhood
       // filter out expressions to far rewritten
       //      println("rewrite")
-      val NsChildren = panel.N(solution).filter(elem => elem.strategies.size <= depth)
+      val NsChildren = panel.N(solution).filter(elem => elem.strategies().size <= depth)
       //      println("finished")
 
       // todo
@@ -264,7 +264,7 @@ class Annealing[P] extends Heuristic[P] {
     ExplorationResult(
       solution,
       best,
-      Some(path)
+      None
     )
   }
 

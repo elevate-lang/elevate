@@ -1,25 +1,24 @@
 package elevate.heuristic_search.heuristics
 
 import elevate.core.Strategy
-import elevate.heuristic_search.util.Path
 import elevate.heuristic_search._
 import elevate.heuristic_search.util.Solution
 
 class IterativeImprovement[P] extends Heuristic[P] {
 
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
-    //    var solution:P = initialSolution
+    var solution: Solution[P] = initialSolution
     //    val test = Seq(elevate.core.strategies.basic.id[P])
 
-    var solution = initialSolution.strategies.size match {
-      case 0 => Solution(initialSolution.expression, Seq(elevate.core.strategies.basic.id[P]))
-      case _ => initialSolution
-    }
+    //    var solution = initialSolution.strategies.size match {
+    //      case 0 => Solution(initialSolution.expression, Seq(elevate.core.strategies.basic.id[P]))
+    //      case _ => initialSolution
+    //    }
 
     //    var solution = initialSolution
     var solutionValue: Option[Double] = panel.f(solution)
     var solutionStrategies = Seq.empty[Strategy[P]]
-    val path = new Path(solution.expression, solutionValue, null, null, 0)
+    //    val path = new Path(solution.expression, solutionValue, null, null, 0)
 
     var oldSolution = solution
     var oldSolutionValue: Option[Double] = solutionValue
@@ -45,9 +44,9 @@ class IterativeImprovement[P] extends Heuristic[P] {
         // add every node to path
         // todo mark chosen ones (aka solutions)
 
-        val current = path.current
+        //        val current = path.current
         // test this node, so add this node to the path
-        path.add(ns, fns)
+        //        path.add(ns, fns)
 
 
         (fns, fsolution) match {
@@ -57,7 +56,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
             if (fnsInternal < fsolutionInternal) {
               solution = ns
               solutionValue = fns
-              solutionStrategies = ns.strategies
+              solutionStrategies = ns.strategies()
 
               //              path.add(ns.expression, ns.strategies.last, fns)
             }
@@ -65,7 +64,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
         }
 
         // after testing go one node back
-        path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value)
+        //        path.add(Solution(current.solution.expression, current.solution.strategies ++ Seq(elevate.core.strategies.basic.revert)), current.value)
 
       })
 
@@ -81,11 +80,9 @@ class IterativeImprovement[P] extends Heuristic[P] {
       //        case false => path.add(solution.expression, solutionStrategy, solutionValue)
       //      }
 
-      path.add(solution, solutionValue)
-
       // check if chosen solution is better and limit is not reached
 
-    } while ((solution.strategies.size < depth) &&
+    } while ((solution.strategies().size < depth) &&
       ((solutionValue, oldSolutionValue) match {
         case (Some(value0), Some(value1)) => (solutionValue.get < oldSolutionValue.get)
         case _ => false
@@ -95,7 +92,7 @@ class IterativeImprovement[P] extends Heuristic[P] {
     ExplorationResult(
       solution,
       solutionValue,
-      Some(path)
+      None
     )
   }
 }

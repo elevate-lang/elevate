@@ -1,14 +1,12 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, Solution, hashProgram}
+import elevate.heuristic_search.util.{Solution, hashProgram}
 import elevate.heuristic_search.{ExplorationResult, Heuristic, HeuristicPanel}
 
 import scala.collection.mutable
 import scala.collection.mutable.Stack
 
-
 class TabuSearch[P] extends Heuristic[P] {
-
 
   def start(
              panel: HeuristicPanel[P],
@@ -47,7 +45,7 @@ class TabuSearch[P] extends Heuristic[P] {
 
       // create neighborhood
       //      val Ns = panel.N(solution)
-      val NsChildren: Seq[Solution[P]] = panel.N(solution._1).filter(elem => elem.strategies.size <= depth)
+      val NsChildren: Seq[Solution[P]] = panel.N(solution._1).filter(elem => elem.strategies().size <= depth)
 
       val NsChildrenFull = NsChildren.zip(Range(0, NsChildren.size)).map(elem => {
         //        val nsRewrite: Seq[Int] = parents.size match {
@@ -286,5 +284,4 @@ class TabuSearch[P] extends Heuristic[P] {
       searchSpace = None
     )
   }
-
 }

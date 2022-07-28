@@ -1,6 +1,6 @@
 package elevate.heuristic_search.heuristics
 
-import elevate.heuristic_search.util.{Path, Solution, hashProgram, hashSolution}
+import elevate.heuristic_search.util.{Solution, hashProgram, hashSolution}
 import elevate.heuristic_search._
 
 import scala.collection.mutable

@@ -1,6 +1,7 @@
 package elevate.exploration
 
-import elevate.exploration.simpleRewriteExploration.strategies
+//import elevate.exploration.simpleRewriteExploration.strategies
+
 import elevate.heuristic_search
 import elevate.heuristic_search.{ExplorationResult, Runner}
 import elevate.heuristic_search.util.{Solution, hashProgram}
@@ -56,7 +57,7 @@ case class RandomExecutor(
 
     // hash to 64 bit
 
-    val hash = sha.digest(solution.expression.mkString("").getBytes("UTF-8"))
+    val hash = sha.digest(solution.solutionSteps.last.expression.mkString("").getBytes("UTF-8"))
 
     import java.math.BigInteger
     val hash2 = new BigInteger(hash).longValue()
@@ -92,7 +93,7 @@ case class RandomExecutor(
     val tresult =
       TuningResultStatistic(
         number = number,
-        solution = hashProgram(solution.expression),
+        solution = hashProgram(solution.solutionSteps.last.expression),
         timestamp = System.currentTimeMillis(),
         runtime = performance
       )

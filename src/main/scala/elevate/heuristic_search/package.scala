@@ -12,9 +12,9 @@ package object heuristic_search {
     override def toString: String = {
       s"""
          |ExplorationResult:
-         |Solution (exp): ${hashProgram(solution.expression)}
+         |Solution (exp): ${hashProgram(solution.expression())}
          |Solution (exp + strat): ${hashProgram(solution)}
-         |Strategies: ${solution.strategies.mkString("[", ", ", "]")}
+         |Strategies: ${solution.strategies().mkString("[", ", ", "]")}
          |Performance: ${performance}
          |
          |""".stripMargin
