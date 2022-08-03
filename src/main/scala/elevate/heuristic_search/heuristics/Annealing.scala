@@ -49,6 +49,7 @@ class Annealing[P] extends Heuristic[P] {
       val NsChildren = panel.N(solution).filter(elem => elem.strategies().size <= depth)
       //      println("finished")
 
+
       // todo
       // should probably not pop here
       var Ns = parents.size match {

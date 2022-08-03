@@ -29,12 +29,23 @@ package object util {
     convertBytesToHex(hash.toSeq)
   }
 
+  // implement hashing based on rewrites of solution
   def hashSolution[P](solution: Solution[P]): String = {
 
-    val programString = solution.expression().toString
-    val strategyString = solution.strategies().mkString(":")
+    //    val programString = solution.expression().toString
+    //    val strategyString = solution.strategies().mkString(":")
 
-    val solutionString = programString + strategyString
+    //    val solutionString = programString + strategyString
+
+    // todo make sure different but equal paths become same hash
+    // some form of sorting?
+    // remove ids?
+
+    // remove ids
+    // could lead to same but we don't know
+    val filtered = solution.rewrites().filter(elem => !elem.strategy.equals(elevate.core.strategies.basic.id[P]))
+
+    val solutionString = filtered.mkString(",")
 
     val hash = sha256.digest(solutionString.getBytes("UTF-8"))
 
@@ -44,6 +55,22 @@ package object util {
     convertBytesToHex(hash.toSeq)
   }
 
+  //  def hashSolution[P](solution: Solution[P]): String = {
+  //
+  //    val programString = solution.expression().toString
+  //    val strategyString = solution.strategies().mkString(":")
+  //
+  //    val solutionString = programString + strategyString
+  //
+  //    val hash = sha256.digest(solutionString.getBytes("UTF-8"))
+  //
+  //    // return hex string
+  //    //    HexFormat.of().formatHex(hash)
+  //
+  //    convertBytesToHex(hash.toSeq)
+  //  }
+
+  // todo replace this in code if possible
   def hashProgram[P](program: P): String = {
 
     val programString = program.toString

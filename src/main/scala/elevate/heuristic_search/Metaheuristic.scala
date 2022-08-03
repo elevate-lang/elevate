@@ -21,7 +21,8 @@ case class Metaheuristic[P](name: String,
                             rewriteFunction: Option[Solution[P] => Seq[Solution[P]]],
                             afterRewrite: Option[Strategy[P]],
                             importExport: Option[(String => Solution[P], (Solution[P], String) => Unit)],
-                            heuristicPanel: HeuristicPanelChoice = StandardPanelChoice,
+                            heuristicPanelChoice: HeuristicPanelChoice = StandardPanelChoice,
+                            heuristicPanel: Option[HeuristicPanel[P]] = None,
                             iteration: Option[Int] = None
                            ) extends Runner[P] {
   var counter = 0
@@ -34,29 +35,30 @@ case class Metaheuristic[P](name: String,
   //  def execute(solution: Solution[P]): (P, Option[Double]) = {
   def execute(solution: Solution[P]): ExplorationResult[P] = {
 
-
     // new heuristicPanel with runner (is either new metaheuristic or executor)
-
-    val panel = heuristicPanel match {
-      case StandardPanelChoice =>
-        new StandardPanel[P](
-          runner = runner,
-          strategies = strategies,
-          rewriter = rewriteFunction,
-          afterRewrite = afterRewrite,
-          importExport = importExport
-        )
-      case _ => throw new Exception("should not reach this point")
-      //      case SimpleRewritePanelChoice =>
-      //        new SimpleRewritePanel[P](
-      //          runner = runner,
-      //          strategies = strategies,
-      //          rewriter = rewriteFunction,
-      //          afterRewrite = afterRewrite,
-      //          importExport = importExport
-      //        )
+    val panel: HeuristicPanel[P] = heuristicPanel match {
+      case Some(panelInstance) => panelInstance
+      case None =>
+        heuristicPanelChoice match {
+          case StandardPanelChoice =>
+            new StandardPanel[P](
+              runner = runner,
+              strategies = strategies,
+              rewriteFunction = rewriteFunction,
+              afterRewrite = afterRewrite,
+              importExport = importExport
+            )
+          case _ => throw new Exception("should not reach this point")
+          //      case SimpleRewritePanelChoice =>
+          //        new SimpleRewritePanel[P](
+          //          runner = runner,
+          //          strategies = strategies,
+          //          rewriter = rewriteFunction,
+          //          afterRewrite = afterRewrite,
+          //          importExport = importExport
+          //        )
+        }
     }
-
 
     // conduct heuristic using panel and configs like depth and iterations
     var best: ExplorationResult[P] = ExplorationResult(solution, None, None)

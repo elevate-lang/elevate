@@ -16,6 +16,33 @@ case class Solution[P](
   def strategies(): Seq[Strategy[P]] = {
     solutionSteps.map(step => step.strategy)
   }
+
+  def rewrites(): Seq[RewriteIdentifier[P]] = {
+    solutionSteps.map(step =>
+      RewriteIdentifier[P](
+        strategy = step.strategy,
+        location = step.location
+      )
+    )
+  }
+
+  def parent(): Solution[P] = {
+    Solution[P](solutionSteps.dropRight(1))
+  }
+
+  def layer(): Int = {
+    solutionSteps.size
+  }
+
+}
+
+case class RewriteIdentifier[P](
+                                 strategy: Strategy[P],
+                                 location: Int
+                               ) {
+  override def toString: String = {
+    s"(${strategy}, ${location})"
+  }
 }
 
 case class SolutionStep[P](
