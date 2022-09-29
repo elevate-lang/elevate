@@ -72,6 +72,7 @@ case class Metaheuristic[P](name: String,
 
       val real_output = output
       s"mkdir -p ${real_output}" !!
+
       val result = heuristic.start(panel, solution, depth, samples)
 
       // todo move this to output or is this part of exploration?
