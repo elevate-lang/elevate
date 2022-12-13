@@ -6,7 +6,7 @@ lazy val elevate = (project in file("."))
 
     javaOptions ++= Seq("-Xss16m"),
 
-    scalaVersion := "3.1.2",
+    scalaVersion := "3.2.1",
     scalacOptions ++= Seq(
       "-Xfatal-warnings",
       "-indent",

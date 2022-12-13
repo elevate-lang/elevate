@@ -1,13 +1,14 @@
 package elevate.fsmooth
 
 import FSmooth.DSL.freshTypeVar
-import FSmooth.PairFunctionConstants._
-import FSmooth.ScalarFunctionConstants._
-import FSmooth.ValueConstants._
-import FSmooth.VectorFunctionConstants.{build, _}
-import FSmooth._
-import elevate.core.RewriteResult._
-import elevate.core._
+import FSmooth.PairFunctionConstants.*
+import FSmooth.ScalarFunctionConstants.*
+import FSmooth.ValueConstants.*
+import FSmooth.VectorFunctionConstants.{build, *}
+import FSmooth.*
+import FSmooth.Expr.Cases.Variable
+import elevate.core.RewriteResult.*
+import elevate.core.*
 import elevate.core.macros.rule
 
 import scala.reflect.Selectable.reflectiveSelectable
@@ -154,7 +155,8 @@ object rules:
   def foldInsertFun: Strategy[FSmooth] =
     rule("ifold f z n ~> ifold(fun a i -> f a (i+1))(f z 0)(n -1)", {
       case Application(`ifold`(_), Seq(f, z, n), _) =>
-        val (a: Variable, i: Variable) = (Variable("a"), Variable("i"))
+        val a: Variable = Variable("a")
+        val i: Variable = Variable("i")
         Success(Application(VectorFunctionConstants.`ifold`(freshTypeVar), Seq(
           Abstraction(Seq(a, i),
             Application(f, Seq(a, Application(ScalarFunctionConstants.`+`(freshTypeVar), Seq(i, ScalarValue(1)))))),
