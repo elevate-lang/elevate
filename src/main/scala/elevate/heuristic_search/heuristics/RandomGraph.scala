@@ -7,59 +7,43 @@ import scala.collection.mutable.ListBuffer
 class RandomGraph[P] extends Heuristic[P] {
 
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
+
     var solution: Solution[P] = initialSolution
     var solutionValue: Option[Double] = panel.f(solution)
-    //    var min: Option[Double] = solutionValue
-
     val random = scala.util.Random
+    var sampleCounter: Int = 0
 
-    // later:
-    // don't allow duplicates
-    // save position and action
+    while (sampleCounter < samples) {
 
-    // todo: limit rewrite depth
-    // (number of rewrites applied in total (collapse rules+inverse? -> how to recognise?)
+      // reset solution
+      solution = initialSolution
 
-    for (_ <- Range(0, samples)) {
-      //get neighbourhood
-      val Ns: Seq[Solution[P]] = panel.N(solution)
+      for (_ <- Range(0, depth)) {
 
-      solution = Ns.size match {
-        case 0 =>
-          // neighborhood emtpy -> stop search
-          println("empty neighborhood - this should not happen with bidirectional rules")
-          return ExplorationResult(
-            solution,
-            solutionValue,
-            None
-          )
+        //get neighbourhood
+        val Ns: Seq[Solution[P]] = panel.N(solution)
 
-        // chose valid solution randomly from neighborhood
-        case _ =>
+        // choose solution from neighborhood
+        solution = Ns.size match {
+          case 0 =>
+            // neighborhood emtpy -> stop search
+            println("empty neighborhood - this should not happen with bidirectional rules")
+            return ExplorationResult(
+              solution,
+              solutionValue,
+              None
+            )
 
-          // get permutation for
-          val permutationIterator = generateRandomPermutation(Ns.size, random).iterator
-
-          var found = false
-          while (!found) {
+          // chose valid solution randomly from neighborhood
+          case _ =>
 
             // get next element
-            solution = Ns.apply(permutationIterator.next())
+            solution = Ns.apply(random.nextInt(Ns.size))
+            solutionValue = panel.f(solution)
+            sampleCounter += 1
 
-            found = panel.f(solution) match {
-              // invalid candidate
-              case None =>
-                false
-
-              // valid candidate
-              case Some(value) =>
-                solutionValue = Some(value)
-                true
-            }
-          }
-
-          // return chosen solution
-          solution
+            solution
+        }
       }
     }
 
@@ -69,6 +53,33 @@ class RandomGraph[P] extends Heuristic[P] {
       None
     )
   }
+
+  // Code to only allow valid programs
+  //
+  //  // get permutation for
+  //  val permutationIterator = generateRandomPermutation(Ns.size, random).iterator
+  //
+  //  var found = false
+  //  while (!found) {
+  //
+  //    // get next element
+  //    solution = Ns.apply(permutationIterator.next())
+  //    panel.f(solution)
+  //
+  //    found = panel.f(solution) match {
+  //      // invalid candidate
+  //      case None =>
+  //        false
+  //
+  //      // valid candidate
+  //      case Some(value) =>
+  //        solutionValue = Some(value)
+  //        true
+  //    }
+  //  }
+  //
+  //  // return chosen solution
+  //  solution
 
   def generateRandomPermutation(n: Int, random: scala.util.Random): List[Int] = {
     val buffer = ListBuffer.range(0, n)
