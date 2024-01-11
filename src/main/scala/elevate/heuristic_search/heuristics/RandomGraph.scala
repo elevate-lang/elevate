@@ -18,7 +18,10 @@ class RandomGraph[P] extends Heuristic[P] {
       // reset solution
       solution = initialSolution
 
-      for (_ <- Range(0, depth)) {
+      var depthCounter: Int = 0
+      while (depthCounter < depth && sampleCounter < samples) {
+        depthCounter += 1
+        sampleCounter += 1
 
         //get neighbourhood
         val Ns: Seq[Solution[P]] = panel.N(solution)
@@ -40,7 +43,6 @@ class RandomGraph[P] extends Heuristic[P] {
             // get next element
             solution = Ns.apply(random.nextInt(Ns.size))
             solutionValue = panel.f(solution)
-            sampleCounter += 1
 
             solution
         }
