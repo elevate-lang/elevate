@@ -28,14 +28,12 @@ class RandomGraph[P] extends Heuristic[P] {
 
         // choose solution from neighborhood
         solution = Ns.size match {
+
           case 0 =>
-            // neighborhood emtpy -> stop search
-            println("empty neighborhood - this should not happen with bidirectional rules")
-            return ExplorationResult(
-              solution,
-              solutionValue,
-              None
-            )
+            // empty neighborhood
+            // abort this try and reset
+            depthCounter = depth
+            solution
 
           // chose valid solution randomly from neighborhood
           case _ =>
