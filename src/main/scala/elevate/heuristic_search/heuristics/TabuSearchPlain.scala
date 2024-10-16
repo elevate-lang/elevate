@@ -12,6 +12,7 @@ class TabuSearchPlain[P] extends Heuristic[P] {
 
 
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
+
     var solution = initialSolution
 
     val random = scala.util.Random
@@ -22,7 +23,7 @@ class TabuSearchPlain[P] extends Heuristic[P] {
     //    // add empty foreach layer
     //    Range(0, depth + 1).foreach(layer => visited.addOne(layer, mutable.HashSet.empty[Seq[Int]]))
 
-    var tabuList = scala.collection.mutable.Queue.empty[Seq[RewriteIdentifier[P]]]
+    var tabuList = scala.collection.mutable.Queue.empty[Seq[RewriteIdentifier[P]]] // can we collapse a sequence of rewrite identifiers?
     val tabuListSize = 100
 
     var counter = 0
@@ -90,7 +91,8 @@ class TabuSearchPlain[P] extends Heuristic[P] {
         }
       })
 
-      //      add parent to tabu list
+      // add parent to tabu list
+      // allow to go back
       tabuList = tabuList.addOne(solution.rewrites())
 
       // update solution
@@ -104,7 +106,7 @@ class TabuSearchPlain[P] extends Heuristic[P] {
       //      beset
       NsFSorted.take(NsFiltered.size / 4).foreach(elem => tabuList = tabuList.addOne(elem._1.rewrites()))
 
-      // worset
+      // worset?
       //      NsFSorted.takeRight(NsFiltered.size / 2).foreach(elem => tabuList = tabuList.addOne(elem._1.rewrites()))
 
       // add all elements to tab lust

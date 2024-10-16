@@ -35,13 +35,37 @@ class RandomGraph[P] extends Heuristic[P] {
             depthCounter = depth
             solution
 
-          // chose valid solution randomly from neighborhood
+          // choose valid solution randomly from neighborhood
           case _ =>
 
-            // get next element
-            solution = Ns.apply(random.nextInt(Ns.size))
-            solutionValue = panel.f(solution)
+            var foundValid = false
 
+            var attempts = scala.collection.mutable.Set.empty[Solution[P]]
+
+            while (!foundValid) {
+
+              // filter out already visited candidates
+              val candidates = Ns.filter(sol => !attempts.contains(sol))
+
+              // if no candidate left start from root
+              if (candidates.isEmpty) {
+                depthCounter = depth
+                foundValid = true
+              } else {
+                // get next element
+                sampleCounter += 1
+                solution = candidates.apply(random.nextInt(candidates.size))
+                solutionValue = panel.f(solution)
+
+                if (solutionValue.equals(None)) {
+                  // add attempt
+                  attempts += solution
+
+                } else {
+                  foundValid = true
+                }
+              }
+            }
             solution
         }
       }

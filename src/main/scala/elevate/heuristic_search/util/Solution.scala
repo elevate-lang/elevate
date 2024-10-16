@@ -34,6 +34,10 @@ case class Solution[P](
     solutionSteps.size
   }
 
+  override def toString: String = {
+    solutionSteps.map(step => s"${step.strategy}, ${step.location}").mkString("\n")
+  }
+
 }
 
 case class RewriteIdentifier[P](
