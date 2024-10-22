@@ -103,7 +103,7 @@ class MCTS[P] extends Heuristic[P] {
           rollout = choose_valid_solution_randomly(panel = panel, actions = actions, rollout._2)
 
           // check if rollout is empty
-          if (rollout == null) {
+          if (rollout._1 == null) {
             isTerminal = true
           } else {
             rollout._1.solutionSteps.foreach(step => println(s"""[${step.strategy}, ${step.location}]"""))
