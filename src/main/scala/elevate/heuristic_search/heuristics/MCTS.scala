@@ -102,11 +102,16 @@ class MCTS[P] extends Heuristic[P] {
           // rollout performance should be the minimum that was seen during rollout
           rollout = choose_valid_solution_randomly(panel = panel, actions = actions, rollout._2)
 
-          rollout._1.solutionSteps.foreach(step => println(s"""[${step.strategy}, ${step.location}]"""))
-
-          // check if we have a dead end for this rollout
-          if (rollout._1 == null) {
+          // check if rollout is empty
+          if (rollout == null) {
             isTerminal = true
+          } else {
+            rollout._1.solutionSteps.foreach(step => println(s"""[${step.strategy}, ${step.location}]"""))
+
+            // check if we have a dead end for this rollout
+            if (rollout._1 == null) {
+              isTerminal = true
+            }
           }
 
         } else {
