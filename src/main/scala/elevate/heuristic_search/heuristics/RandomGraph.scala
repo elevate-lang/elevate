@@ -27,13 +27,12 @@ class RandomGraph[P] extends Heuristic[P] {
         val Ns: Seq[Solution[P]] = panel.N(solution)
 
         // choose solution from neighborhood
-        solution = Ns.size match {
+        Ns.size match {
 
           case 0 =>
             // empty neighborhood
             // abort this try and reset
             depthCounter = depth
-            solution
 
           // choose valid solution randomly from neighborhood
           case _ =>
@@ -54,19 +53,19 @@ class RandomGraph[P] extends Heuristic[P] {
               } else {
                 // get next element
                 sampleCounter += 1
-                solution = candidates.apply(random.nextInt(candidates.size))
-                solutionValue = panel.f(solution)
+                val candidate = candidates.apply(random.nextInt(candidates.size))
+                val candidateValue = panel.f(candidate)
 
-                if (solutionValue.equals(None)) {
-                  // add attempt
-                  attempts += solution
-
-                } else {
-                  foundValid = true
+                candidateValue match {
+                  case None =>
+                    attempts += candidate
+                  case Some(value) =>
+                    foundValid = true
+                    solution = candidate
+                    solutionValue = candidateValue
                 }
               }
             }
-            solution
         }
       }
     }
