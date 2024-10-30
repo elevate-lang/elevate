@@ -5,6 +5,11 @@ import elevate.heuristic_search.util.Solution
 
 class LocalSearch[P] extends Heuristic[P] {
 
+  // do not terminate here if budget is left over
+  // start from beginning, but do not make similar rewrites
+  // maybe save history to access performance instead of execution?
+
+
   def start(panel: HeuristicPanel[P], initialSolution: Solution[P], depth: Int, samples: Int): ExplorationResult[P] = {
     var solution: Solution[P] = initialSolution
     var solutionValue: Option[Double] = panel.f(solution)

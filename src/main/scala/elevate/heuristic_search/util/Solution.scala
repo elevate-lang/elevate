@@ -26,6 +26,10 @@ case class Solution[P](
     )
   }
 
+  def rewrite_sequence(): Seq[(Strategy[P], Int)] = {
+    solutionSteps.map(step => (step.strategy, step.location))
+  }
+
   def parent(): Solution[P] = {
     Solution[P](solutionSteps.dropRight(1))
   }
