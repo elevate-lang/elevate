@@ -89,7 +89,7 @@ object traversal {
     def apply(p: P): RewriteResult[P] = s(p) match {
       case Failure(a)           => oneUsingState(skip(n)(a)).apply(p)
       case Success(_) if n > 0  => oneUsingState(skip(n - 1)(s)).apply(p)
-      case Success(r) if n <= 0 => Success(r)
+      case Success(r) /*if n <= 0*/ => Success(r)
     }
   }
 }
