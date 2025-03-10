@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.14"
+ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "org.elevate-lang"
 
 lazy val commonSettings = Seq(
