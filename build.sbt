@@ -1,8 +1,8 @@
-ThisBuild / scalaVersion := "2.13.3"
+ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "org.elevate-lang"
 
 lazy val commonSettings = Seq(
-  javaOptions ++= Seq("-Xss16m"),
+  javaOptions ++= Seq("-Xss64m"),
 
   scalacOptions ++= Seq(
     "-Wunused:nowarn",
